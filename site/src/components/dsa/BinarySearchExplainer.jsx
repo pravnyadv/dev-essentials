@@ -52,7 +52,7 @@ function Stage({ step, target, setTarget }) {
       <div className="mt-2"><Line tone={g.found ? 'good' : g.missing ? 'bad' : ''}>{g.note}</Line></div>
       <div className="mt-2 flex min-h-8 flex-wrap justify-center gap-2">
         {live && <>
-          {TARGETS.map(t => <ActionButton key={t} onClick={() => { setTarget(t); reset() }}><span className={t === target ? 'text-indigo-600 dark:text-indigo-300' : ''}>find {t}</span></ActionButton>)}
+          {TARGETS.map(t => <ActionButton key={t} onClick={() => { setTarget(t); reset() }}><span className={t === target ? 'text-fd-primary' : ''}>find {t}</span></ActionButton>)}
           <ActionButton onClick={done ? reset : next}>{done ? 'Restart' : 'Next'}</ActionButton>
         </>}
       </div>

@@ -8,6 +8,7 @@ const config = {
   images: { unoptimized: true }, // static export has no image optimizer
   reactStrictMode: true,
   agentRules: false,
+  devIndicators: false,
 };
 
 export default withMDX(config);

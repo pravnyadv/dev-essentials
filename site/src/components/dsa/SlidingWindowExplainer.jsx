@@ -50,10 +50,10 @@ function Stage({ step, word, setWord }) {
       <CellRow values={[...s]} tone={k => (g.dup && k === g.r ? 'bad' : k >= g.l && k <= g.r ? 'in' : 'idle')} gone={k => k < g.l}
         marks={{ [g.l]: 'L', [g.r]: g.l === g.r ? 'L, R' : 'R' }} />
       <div className="mt-2"><Line tone={g.dup ? 'bad' : ''}>{g.note}</Line></div>
-      <p className="text-center text-xs text-stone-500">best so far: <span className="font-medium text-stone-800 dark:text-stone-200">{g.best}</span></p>
+      <p className="text-center text-xs text-fd-muted-foreground">best so far: <span className="font-medium text-fd-foreground">{g.best}</span></p>
       <div className="mt-2 flex min-h-8 flex-wrap justify-center gap-2">
         {live && <>
-          {WORDS.map(w => <ActionButton key={w} onClick={() => { setWord(w); reset() }} aria-pressed={w === word}><span className={w === word ? 'text-indigo-600 dark:text-indigo-300' : ''}>{w}</span></ActionButton>)}
+          {WORDS.map(w => <ActionButton key={w} onClick={() => { setWord(w); reset() }} aria-pressed={w === word}><span className={w === word ? 'text-fd-primary' : ''}>{w}</span></ActionButton>)}
           <ActionButton onClick={done ? reset : next}>{done ? 'Restart' : 'Next'}</ActionButton>
         </>}
       </div>

@@ -28,7 +28,7 @@ export const source = loader({
       transformPageTree: {
         file(node) {
           const id = (urls as Record<string, string>)[node.url];
-          if (id) node.icon = <StatusDot id={id} />;
+          if (id) node.icon = <StatusDot key={id} id={id} />;
           return node;
         },
       },

@@ -1,5 +1,6 @@
 'use client'
 import { useSyncExternalStore } from 'react'
+import { buttonClass } from './ui.jsx'
 
 // Same localStorage key and shape as the Vite app, so progress carries over.
 const KEY = 'dsa-progress-v1'
@@ -21,7 +22,5 @@ export function StatusButton({ id }) {
   const s = useProgress()[id]
   const next = { undefined: 'learning', learning: 'done', done: undefined }[s]
   const label = { undefined: 'Start learning', learning: 'Mark as done', done: 'Done' }[s]
-  return (
-    <button onClick={() => setStatus(id, next)} className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${s === 'done' ? 'bg-indigo-500/10 text-indigo-700 ring-1 ring-indigo-500/40 dark:text-indigo-300' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}>{label}</button>
-  )
+  return <button onClick={() => setStatus(id, next)} className={buttonClass(s === 'done' ? 'secondary' : 'primary', undefined, 'rounded-full px-4 py-1.5')}>{label}</button>
 }

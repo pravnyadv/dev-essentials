@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { roundIcon } from './ui.jsx'
 import { framesFor } from './sortFrames.js'
 
-const btn = 'grid size-9 place-items-center rounded-full border border-stone-300 transition enabled:hover:bg-indigo-600 enabled:hover:text-white disabled:opacity-30 dark:border-white/20'
+const btn = roundIcon
 
 // Plays a sorting algorithm one frame at a time on a small fixed array.
 export default function SortVisualizer({ algo }) {
@@ -18,18 +19,18 @@ export default function SortVisualizer({ algo }) {
   }, [playing, i, last])
   const f = frames[i], max = Math.max(...f.a)
   return (
-    <div className="my-6 rounded-xl border border-stone-200 p-4 dark:border-white/10">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-500">Watch it run</p>
+    <div className="my-6 rounded-xl border bg-fd-card p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground">Watch it run</p>
       <div className="flex h-40 items-end justify-center gap-2">
         {f.a.map((v, k) => {
           const inRange = !f.range || (k >= f.range[0] && k <= f.range[1])
-          const tone = f.hi.includes(k) ? 'bg-indigo-600 text-white' : f.done.includes(k) ? 'bg-emerald-500/70 text-white' : 'bg-stone-300 dark:bg-white/25'
+          const tone = f.hi.includes(k) ? 'bg-fd-primary text-fd-primary-foreground' : f.done.includes(k) ? 'bg-emerald-500/70 text-white' : 'bg-fd-muted-foreground/40'
           return <div key={k} className={`grid w-10 place-items-start rounded-t-md pt-1 text-sm font-medium transition-all duration-300 ${tone} ${inRange ? '' : 'opacity-30'}`} style={{ height: `${25 + (v / max) * 75}%` }}>{v}</div>
         })}
       </div>
       <div className="mt-3 flex items-start justify-between gap-4">
         <div className="min-h-[3.25rem] text-sm leading-relaxed">
-          <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">Step {i + 1} of {frames.length}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-fd-primary">Step {i + 1} of {frames.length}</p>
           <p>{f.note}</p>
         </div>
         <div className="flex shrink-0 gap-2">
