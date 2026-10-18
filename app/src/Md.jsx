@@ -11,6 +11,7 @@ const components = {
     return <div className="my-5"><Code code={text} name={lang} lang={lang} /></div>
   },
   pre: ({ children }) => <>{children}</>,
+  table: ({ children }) => <div className="overflow-x-auto"><table>{children}</table></div>,
   a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer">{children}</a>,
 }
 

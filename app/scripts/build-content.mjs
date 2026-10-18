@@ -42,6 +42,17 @@ function sections(md) {
   return parts.map(s => ({ title: s.title, body: s.body.join('\n').trim() })).filter(s => s.body)
 }
 
+// Gives short complexity blurbs the "Time Complexity" / "Space Complexity" heading pair the card lays out as two columns.
+function normalizeComplexity(md) {
+  md = md.replace(/^\*\*(Time|Space) complexity\*\*:\s*/im, (_, k) => `### ${k} Complexity\n\n`)
+  if (/^#{2,3} /m.test(md)) return /^\|/.test(md) ? `### Time Complexity\n\n${md}` : md
+  const lines = md.split('\n').filter(l => l.trim() && !l.startsWith('|'))
+  if (lines.length !== md.split('\n').filter(l => l.trim()).length || lines.length < 2 || !lines.some(l => /space/i.test(l))) return md
+  const strip = l => l.replace(/^- (Time|Space):\s*/, '').replace(/^(Worst|Best)-case (performance|space complexity)\s*/i, (_, w) => `${w}-case: `)
+  const [space, time] = [lines.filter(l => /space/i.test(l)), lines.filter(l => !/space/i.test(l))]
+  return `### Time Complexity\n\n${time.map(strip).join('  \n')}\n\n### Space Complexity\n\n${space.map(strip).join('  \n')}`
+}
+
 const read = (...p) => readFileSync(join(...p), 'utf8')
 const topics = {}
 const SOURCES = [
@@ -57,7 +68,7 @@ for (const { base, roots, kind, github } of SOURCES) {
       const code = files(dir).filter(f => f.endsWith('.js')).map(f => ({ name: f, code: read(dir, f) }))
       const all = sections(clean(raw, id, base).replace(/^# .*\n/, ''))
       const cx = all.filter(s => /complexit/i.test(s.title))
-      const complexity = cx.length ? cx.map(s => (cx.length > 1 ? `**${s.title}**\n\n` : '') + s.body).join('\n\n') : null
+      const complexity = cx.length ? normalizeComplexity(cx.map(s => (cx.length > 1 ? `**${s.title}**\n\n` : '') + s.body).join('\n\n')) : null
       topics[id] = { id, title, kind: kind(root), sections: all.filter(s => s.title !== 'References' && !/complexit/i.test(s.title)),
         references: all.find(s => s.title === 'References')?.body ?? '', code, complexity, github: github(id) }
       if (existsSync(join(dir, 'images'))) cpSync(join(dir, 'images'), join(out, id, 'images'), { recursive: true })

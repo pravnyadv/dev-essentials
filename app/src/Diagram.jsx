@@ -1,6 +1,6 @@
 // Draws one scene of a walkthrough. One accent colour: indigo marks what the step acts on.
 const Cell = ({ v, on, tint, dim, compact }) => v === null ? <span className={compact ? 'size-5' : 'size-10'} /> : (
-  <span className={`grid place-items-center rounded-md border font-medium transition ${compact ? 'size-5 min-w-5 text-[10px]' : 'size-10 min-w-10 px-1 text-sm'} ${
+  <span className={`grid place-items-center rounded-md border font-medium transition ${compact ? 'h-5 min-w-5 px-0.5 text-[10px]' : 'size-10 min-w-10 px-1 text-sm'} ${
     on ? 'border-indigo-600 bg-indigo-600 text-white' : tint ? 'border-indigo-400 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300' : 'border-stone-300 dark:border-white/20'} ${dim ? 'opacity-30' : ''}`}>{v}</span>
 )
 const Tag = ({ children }) => <span className="mt-1 block h-4 text-center text-[11px] font-medium text-indigo-700 dark:text-indigo-300">{children}</span>
@@ -51,16 +51,28 @@ function Tree({ d, compact }) {
   )
 }
 
+// One lane per interval on a shared number line, so overlaps are visible as vertical alignment.
+const SPAN = 13
 function Intervals({ d, compact }) {
-  const bar = (s, e, on, k, dim) => <span key={k} className={`absolute top-1 h-4 rounded ${on ? 'bg-indigo-600' : 'bg-stone-300 dark:bg-white/25'} ${dim ? 'opacity-30' : ''}`} style={{ left: `${(s / 13) * 100}%`, width: `${((e - s) / 13) * 100}%` }} />
+  const input = d.rows.find(r => r.label === 'input'), merged = d.rows.find(r => r.label === 'merged')?.items ?? []
+  const current = input.hl?.[0] ?? -1
+  const lane = (key, label, [s, e], tone) => (
+    <div key={key} className="flex items-center gap-2">
+      {!compact && <span className="w-12 shrink-0 text-right font-mono text-[11px] text-stone-500">{label}</span>}
+      <div className={`relative flex-1 ${compact ? 'h-2' : 'h-4'}`}><span className={`absolute inset-y-0 rounded ${tone}`} style={{ left: `${(s / SPAN) * 100}%`, width: `${((e - s) / SPAN) * 100}%` }} /></div>
+    </div>
+  )
+  const tone = k => k === current ? 'bg-indigo-600' : k < current ? 'bg-indigo-300 dark:bg-indigo-500/40' : 'bg-stone-300 dark:bg-white/25'
   return (
-    <div className={`w-full space-y-3 ${compact ? 'max-w-[9rem]' : 'max-w-sm'}`}>
-      {d.rows.map(r => (
-        <div key={r.label} className="flex items-center gap-2">
-          {!compact && <RowLabel>{r.label}</RowLabel>}
-          <div className="relative h-6 flex-1">{r.items.map(([s, e], k) => bar(s, e, r.label === 'merged' || r.hl?.includes(k), k))}</div>
-        </div>
-      ))}
+    <div className={`w-full ${compact ? 'max-w-[9rem] space-y-0.5' : 'max-w-md space-y-1.5'}`}>
+      <div className="relative space-y-1.5">
+        {!compact && <div className="pointer-events-none absolute inset-y-0 left-14 right-0">{Array.from({ length: SPAN + 1 }, (_, n) => <span key={n} className="absolute inset-y-0 border-l border-dashed border-stone-200 dark:border-white/10" style={{ left: `${(n / SPAN) * 100}%` }} />)}</div>}
+        {input.items.map((it, k) => lane(k, `[${it}]`, it, tone(k)))}
+      </div>
+      {merged.length > 0 && <div className="relative space-y-1.5 border-t border-stone-300 pt-2 dark:border-white/20">
+        {merged.map((it, k) => lane(`m${k}`, `[${it}]`, it, 'bg-indigo-600 ring-2 ring-indigo-300'))}
+      </div>}
+      {!compact && <div className="flex gap-2"><span className="w-12 shrink-0" /><div className="relative h-4 flex-1">{Array.from({ length: SPAN }, (_, n) => <span key={n} className="absolute -translate-x-1/2 text-[10px] text-stone-400" style={{ left: `${(n / SPAN) * 100}%` }}>{n}</span>)}</div></div>}
     </div>
   )
 }

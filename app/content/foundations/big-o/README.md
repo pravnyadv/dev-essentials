@@ -22,7 +22,7 @@ Big O describes how the work an algorithm does grows as the input grows. It igno
 - **Different inputs get different letters.** Looping over `a` then over `b` is O(a + b), not O(n).
 - **Halving each step is log n.** Anything that cuts the problem in half per step (binary search, balanced tree height) is O(log n).
 
-## Space complexity
+## Counting memory (space)
 
 Count the extra memory you allocate, including the recursion call stack. A recursive function that goes `n` calls deep uses O(n) stack space even if it allocates nothing else.
 

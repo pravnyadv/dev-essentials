@@ -1,6 +1,7 @@
 // Problem-pattern layer: how to recognise a problem, which topic to open, what to practise.
 // `core: true` marks the 15 patterns from the AlgoMaster cheat sheet; the rest are extras.
 // Problems link to https://leetcode.com/problems/<slug>/. d = E(asy) | M(edium) | H(ard).
+import { EXPLAIN } from './explain.mjs'
 import { STEPS } from './walkthroughs.mjs'
 
 const P = (d, slug, name) => ({ d, slug, name })
@@ -8,7 +9,13 @@ const P = (d, slug, name) => ({ d, slug, name })
 const PATTERN_LIST = [
   { id: 'prefix-sum', core: true, name: 'Prefix Sum', signals: ['Many range-sum queries on a static array', 'Subarray sum equals k', 'Product or count of everything except self'],
     topics: ['foundations/array', 'algorithms/sets/maximum-subarray', 'data-structures/tree/fenwick-tree', 'data-structures/tree/segment-tree'],
-    code: `function subarraySum(nums, k) {
+    code: `// Running totals: prefix[i] = nums[0] + ... + nums[i - 1], with prefix[0] = 0.
+const prefix = [0];
+for (const n of nums) prefix.push(prefix.at(-1) + n);
+const rangeSum = (start, end) => prefix[end + 1] - prefix[start]; // nums[start..end]
+
+// Variant: count subarrays that add up to k, using a Map of running totals seen so far.
+function subarraySum(nums, k) {
   const count = new Map([[0, 1]]);
   let sum = 0, hits = 0;
   for (const n of nums) {
@@ -379,16 +386,16 @@ const lcm = (a, b) => (a / gcd(a, b)) * b;`,
       P('M', 'water-and-jug-problem', 'Water and Jug Problem'), P('M', 'super-pow', 'Super Pow'), P('H', 'largest-component-size-by-common-factor', 'Largest Component Size by Common Factor')] },
 ]
 
-// Roadmap layout on the Patterns page.
+// Roadmap layout on the Patterns page. Order within a group is the learning order.
 export const GROUPS = [
-  { title: 'Arrays & Strings', ids: ['prefix-sum', 'two-pointers', 'sliding-window', 'binary-search', 'intervals', 'sort-first', 'hash-map', 'string-matching'] },
+  { title: 'Arrays & Strings', ids: ['hash-map', 'two-pointers', 'sliding-window', 'prefix-sum', 'binary-search', 'sort-first', 'intervals', 'string-matching'] },
   { title: 'Linked Lists', ids: ['fast-slow', 'in-place-reversal'] },
   { title: 'Stacks, Heaps & Tries', ids: ['monotonic-stack', 'top-k', 'trie'] },
-  { title: 'Trees & Graphs', ids: ['tree-traversal', 'dfs', 'bfs', 'matrix', 'topological', 'shortest-path', 'union-find'] },
-  { title: 'Recursion & Optimisation', ids: ['backtracking', 'dp', 'greedy', 'divide-conquer'] },
+  { title: 'Trees & Graphs', ids: ['tree-traversal', 'dfs', 'bfs', 'matrix', 'topological', 'union-find', 'shortest-path'] },
+  { title: 'Recursion & Optimisation', ids: ['divide-conquer', 'backtracking', 'greedy', 'dp'] },
   { title: 'Math & Bits', ids: ['bits', 'number-theory'] },
 ]
 
-export const PATTERNS = PATTERN_LIST.map(p => ({ ...p, steps: STEPS[p.id] }))
-const missing = PATTERNS.filter(p => !p.steps).map(p => p.id)
-if (missing.length) throw new Error('no walkthrough for: ' + missing.join(', '))
+export const PATTERNS = PATTERN_LIST.map(p => ({ ...p, what: EXPLAIN[p.id]?.[0], usedFor: EXPLAIN[p.id]?.[1], steps: STEPS[p.id] }))
+const missing = PATTERNS.filter(p => !p.steps || !p.what).map(p => p.id)
+if (missing.length) throw new Error('no walkthrough or explanation for: ' + missing.join(', '))

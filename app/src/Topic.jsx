@@ -4,6 +4,9 @@ import { LevelBadge, StatusButton } from './ui.jsx'
 import ProblemList from './ProblemList.jsx'
 import Code from './Code.jsx'
 import Md from './Md.jsx'
+import { PatternSteps } from './Patterns.jsx'
+import SortVisualizer from './SortVisualizer.jsx'
+import { SORTS } from './sortFrames.js'
 
 
 // Highlights the section heading currently in view.
@@ -34,6 +37,9 @@ export default function Topic({ id, index, byId }) {
   const files = t.code
   const patterns = index.patterns.filter(p => meta.patterns.includes(p.id))
   const tabs = ['Learn', ...(t.code.length ? ['Code'] : []), ...(patterns.length ? ['Practice'] : [])]
+  const sortId = id.split('/').at(-1)
+  const demo = SORTS[sortId] ? <SortVisualizer algo={sortId} />
+    : patterns[0] && t.kind !== 'Fundamentals' && <div className="my-6 rounded-xl border border-stone-200 p-4 dark:border-white/10"><p className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-500">Step through it: <a href={`#/patterns/${patterns[0].id}`} className="normal-case tracking-normal text-indigo-600 hover:underline dark:text-indigo-300">{patterns[0].name} pattern</a></p><PatternSteps p={patterns[0]} /></div>
   const finish = () => { setStatus(id, 'done'); if (next) location.hash = `#/topic/${next.id}` }
   return (
     <div className="flex gap-10">
@@ -47,7 +53,7 @@ export default function Topic({ id, index, byId }) {
           <LevelBadge level={meta.level} />
           {patterns.map(p => <a key={p.id} href={`#/patterns/${p.id}`} className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-500/20 dark:text-indigo-300">{p.name}</a>)}
         </div>
-        {t.complexity && <div className="mt-5 rounded-2xl border border-stone-200 p-4 dark:border-white/10 [&_h2]:!mt-3 [&_h2]:!text-sm [&_h3]:!mt-3 [&_h3]:!text-sm [&_p]:!my-1"><p className="mb-1 text-xs font-semibold uppercase tracking-wider text-stone-500">Complexity</p><Md>{t.complexity}</Md></div>}
+        {t.complexity && <div className="cx mt-5 flex flex-wrap items-baseline gap-x-5 gap-y-1 rounded-2xl border border-stone-200 px-4 py-3 dark:border-white/10"><Md>{t.complexity}</Md></div>}
 
         <div className="mt-8 flex gap-1 rounded-xl bg-stone-200/60 p-1 dark:bg-white/5">
           {tabs.map(x => (
@@ -62,6 +68,7 @@ export default function Topic({ id, index, byId }) {
                 <section key={k} id={`sec-${k}`} className="scroll-mt-6">
                   {s.title !== 'Overview' && <h2 className="mb-3 text-2xl font-bold tracking-tight">{s.title}</h2>}
                   <Md>{s.body}</Md>
+                  {k === 0 && demo}
                 </section>
               ))}
               {t.references && <details className="rounded-xl border border-stone-200 p-4 dark:border-white/10"><summary className="cursor-pointer text-sm font-medium text-stone-500">References</summary><Md>{t.references}</Md></details>}

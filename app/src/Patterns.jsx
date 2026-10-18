@@ -2,9 +2,16 @@ import { useState } from 'react'
 import Code from './Code.jsx'
 import Diagram from './Diagram.jsx'
 import ProblemList, { solvedCount } from './ProblemList.jsx'
+import BinarySearchExplainer from './BinarySearchExplainer.jsx'
+import PrefixSumExplainer from './PrefixSumExplainer.jsx'
+import SlidingWindowExplainer from './SlidingWindowExplainer.jsx'
+import TwoPointersExplainer from './TwoPointersExplainer.jsx'
 import Walkthrough from './Walkthrough.jsx'
 import { useProgress } from './lib.js'
 
+// Patterns whose walkthrough is a hand-built interactive component.
+const EXPLAINERS = { 'prefix-sum': <PrefixSumExplainer />, 'two-pointers': <TwoPointersExplainer />, 'sliding-window': <SlidingWindowExplainer />, 'binary-search': <BinarySearchExplainer /> }
+export const PatternSteps = ({ p }) => EXPLAINERS[p.id] ?? <Walkthrough key={p.id} steps={p.steps} />
 const MODE = 'dsa-patterns-mode'
 const Label = ({ children }) => <h3 className="mb-1 mt-4 text-xs font-semibold uppercase tracking-wide text-stone-500">{children}</h3>
 
@@ -17,14 +24,20 @@ function Detail({ p, byId }) {
         <h1 className="text-4xl font-extrabold tracking-tight">{p.name}</h1>
         <span className="text-sm text-stone-500">{solvedCount(p.problems, progress)}/{p.problems.length} solved</span>
       </div>
-      <div className="grid gap-8 pt-2 lg:grid-cols-[1fr_1.4fr]">
-        <div>
+      <div className="grid gap-x-8 pt-2 xl:grid-cols-[minmax(0,1fr)_27rem]">
+        <div className="xl:col-start-1">
+          <Label>What it is</Label>
+          <p className="text-sm leading-relaxed">{p.what}</p>
+          <Label>Used for</Label>
+          <p className="text-sm leading-relaxed">{p.usedFor}</p>
+        </div>
+        <div className="my-6 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:my-0"><PatternSteps p={p} /></div>
+        <div className="xl:col-start-1">
           <Label>You see</Label>
           <ul className="list-disc pl-5 text-sm">{p.signals.map(s => <li key={s}>{s}</li>)}</ul>
           <Label>Learn it in</Label>
           <p className="flex flex-wrap gap-2 text-sm">{p.topics.map(id => byId[id] && <a key={id} href={`#/topic/${id}`} className="rounded-full bg-indigo-500/10 px-3 py-0.5 text-indigo-700 hover:bg-indigo-500/20 dark:text-indigo-300">{byId[id].title}</a>)}</p>
         </div>
-        <Walkthrough steps={p.steps} />
       </div>
       <Label>Template</Label>
       <Code code={p.code} name="template.js" />
