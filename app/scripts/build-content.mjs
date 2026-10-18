@@ -2,11 +2,12 @@
 // Writes public/content/index.json and public/content/topics/<id>.json plus images.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
-import { CHAPTERS, DIFFICULTY, PATTERNS } from './curation.mjs'
+import { CHAPTERS, DIFFICULTY, GROUPS, PATTERNS, TIERS } from './curation.mjs'
 
 const src = process.argv[2]
 const out = new URL('../public/content/', import.meta.url).pathname
 const GH = 'https://github.com/trekhleb/javascript-algorithms/blob/master/src/'
+const AUTHORED = new URL('../content/', import.meta.url).pathname // topics written for this app (fundamentals)
 rmSync(out, { recursive: true, force: true })
 mkdirSync(join(out, 'topics'), { recursive: true })
 
@@ -23,11 +24,11 @@ function* walk(dir) {
   }
 }
 
-function clean(md, id) {
+function clean(md, id, base) {
   return md
     .replace(/_Read this in other languages:_[\s\S]*?\n\n/, '')
     .replace(/!\[([^\]]*)\]\((?!https?:)([^)]+)\)/g, (_, alt, p) => `![${alt}](/content/${id}/${p})`)
-    .replace(/\]\((?!https?:|#|\/content|mailto:)([^)]+)\)/g, (_, p) => `](${GH}${relative(src, join(src, id, p))})`)
+    .replace(/\]\((?!https?:|#|\/content|mailto:)([^)]+)\)/g, (_, p) => (base === src ? `](${GH}${relative(src, join(src, id, p))})` : `](${p})`))
 }
 
 function sections(md) {
@@ -43,37 +44,49 @@ function sections(md) {
 
 const read = (...p) => readFileSync(join(...p), 'utf8')
 const topics = {}
-for (const root of ['algorithms', 'data-structures']) {
-  for (const dir of walk(join(src, root))) {
-    const id = relative(src, dir)
-    const raw = read(dir, 'README.md')
-    const title = raw.match(/^# (.+)/m)?.[1].trim() ?? id.split('/').at(-1)
-    const code = files(dir).filter(f => f.endsWith('.js')).map(f => ({ name: f, code: read(dir, f) }))
-    const testDir = join(dir, '__test__')
-    const tests = existsSync(testDir) ? files(testDir).filter(f => f.endsWith('.js')).map(f => ({ name: f, code: read(testDir, f) })) : []
-    const all = sections(clean(raw, id).replace(/^# .*\n/, ''))
-    const complexity = all.find(s => /complexity/i.test(s.title))?.body ?? null
-    const t = { id, title, kind: root === 'algorithms' ? 'Algorithm' : 'Data Structure', sections: all.filter(s => s.title !== 'References' && !/complexity/i.test(s.title)),
-      references: all.find(s => s.title === 'References')?.body ?? '', code, tests, complexity, github: GH + id }
-    topics[id] = t
-    if (existsSync(join(dir, 'images'))) cpSync(join(dir, 'images'), join(out, id, 'images'), { recursive: true })
+const SOURCES = [
+  { base: src, roots: ['algorithms', 'data-structures'], kind: root => (root === 'algorithms' ? 'Algorithm' : 'Data Structure'), github: id => GH + id },
+  { base: AUTHORED, roots: ['foundations'], kind: () => 'Fundamentals', github: () => null },
+]
+for (const { base, roots, kind, github } of SOURCES) {
+  for (const root of roots) {
+    for (const dir of walk(join(base, root))) {
+      const id = relative(base, dir)
+      const raw = read(dir, 'README.md')
+      const title = raw.match(/^# (.+)/m)?.[1].trim() ?? id.split('/').at(-1)
+      const code = files(dir).filter(f => f.endsWith('.js')).map(f => ({ name: f, code: read(dir, f) }))
+      const all = sections(clean(raw, id, base).replace(/^# .*\n/, ''))
+      const cx = all.filter(s => /complexit/i.test(s.title))
+      const complexity = cx.length ? cx.map(s => (cx.length > 1 ? `**${s.title}**\n\n` : '') + s.body).join('\n\n') : null
+      topics[id] = { id, title, kind: kind(root), sections: all.filter(s => s.title !== 'References' && !/complexit/i.test(s.title)),
+        references: all.find(s => s.title === 'References')?.body ?? '', code, complexity, github: github(id) }
+      if (existsSync(join(dir, 'images'))) cpSync(join(dir, 'images'), join(out, id, 'images'), { recursive: true })
+    }
   }
 }
+
+// Same title in two folders (graph vs tree BFS/DFS): suffix the parent folder.
+const seen = Object.values(topics).reduce((m, t) => m.set(t.title, (m.get(t.title) ?? 0) + 1), new Map())
+for (const t of Object.values(topics)) if (seen.get(t.title) > 1) t.title = `${t.title.replace(/ \(.*\)$/, '')} (${t.id.split('/').at(-2).replace('-', ' ')})`
 
 // Files for a topic that live in a sub-topic folder (e.g. tree/avl-tree) are already separate topics.
 const placed = new Set(CHAPTERS.flatMap(c => c.topics))
 const missing = Object.keys(topics).filter(id => !placed.has(id))
 const unknown = [...placed, ...PATTERNS.flatMap(p => p.topics)].filter(id => !topics[id])
 if (unknown.length) throw new Error('curation references unknown topics: ' + unknown.join(', '))
-if (missing.length) console.warn('topics not in any chapter (added to Misc):', missing)
-CHAPTERS.find(c => c.id === 'misc').topics.push(...missing)
+if (missing.length) console.warn('topics not in any chapter (added to the last chapter):', missing)
+CHAPTERS.at(-1).topics.push(...missing)
 
 const level = Object.fromEntries(Object.entries(DIFFICULTY).flatMap(([n, s]) => s.split(' ').map(id => [id, +n])))
-const meta = t => ({ id: t.id, title: t.title, kind: t.kind, level: level[t.id] ?? 2, sections: t.sections.map(s => s.title), complexity: t.complexity })
+const tierOf = Object.fromEntries(CHAPTERS.flatMap(c => c.topics.map(id => [id, c.tier])))
+const meta = t => ({ id: t.id, title: t.title, kind: t.kind, level: tierOf[t.id] === 2 ? 3 : level[t.id] ?? 2, sections: t.sections.map(s => s.title) })
 for (const t of Object.values(topics)) writeFileSync(join(out, 'topics', t.id.replaceAll('/', '__') + '.json'), JSON.stringify(t))
 const patternsOf = id => PATTERNS.filter(p => p.topics.includes(id)).map(p => p.id)
 writeFileSync(join(out, 'index.json'), JSON.stringify({
+  tiers: TIERS,
   chapters: CHAPTERS.map(c => ({ ...c, topics: [...new Set(c.topics)].map(id => ({ ...meta(topics[id]), patterns: patternsOf(id) })) })),
   patterns: PATTERNS,
+  groups: GROUPS,
 }))
-console.log(Object.keys(topics).length, 'topics')
+const noPattern = Object.keys(topics).filter(id => !patternsOf(id).length)
+console.log(Object.keys(topics).length, 'topics;', noPattern.length, 'without a pattern:', noPattern.map(id => id.split('/').slice(-1)[0]).join(', '))

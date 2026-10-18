@@ -1,5 +1,6 @@
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import Code from './Code.jsx'
 
 const components = {
@@ -15,6 +16,6 @@ const components = {
 
 export default ({ children }) => (
   <div className="prose prose-stone max-w-none dark:prose-invert prose-headings:scroll-mt-4 prose-pre:my-4">
-    <Markdown remarkPlugins={[remarkGfm]} components={components}>{children}</Markdown>
+    <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={components}>{children}</Markdown>
   </div>
 )

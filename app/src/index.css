@@ -15,5 +15,5 @@ body { @apply bg-stone-50 text-stone-900 dark:bg-[#0b0d12] dark:text-stone-100 a
 .prose :where(pre) { @apply bg-transparent p-0; }
 .prose :where(code):not(pre code)::before, .prose :where(code):not(pre code)::after { content: none; }
 .prose :where(code):not(pre code) { @apply rounded bg-stone-200/70 px-1.5 py-0.5 text-[0.85em] dark:bg-white/10; }
-.hljs { background: transparent; font-family: var(--font-mono); }
+.hljs { background: transparent; padding: 0 !important; font-family: var(--font-mono); font-variant-ligatures: none; }
 html { scroll-behavior: smooth; }

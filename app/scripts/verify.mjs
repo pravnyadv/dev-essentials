@@ -5,6 +5,8 @@ import { existsSync, readFileSync } from 'node:fs'
 const dir = new URL('../public/content/', import.meta.url).pathname
 const index = JSON.parse(readFileSync(dir + 'index.json', 'utf8'))
 const errors = [], ids = new Set()
+const placed = index.chapters.flatMap(c => c.topics.map(t => t.id))
+for (const id of placed) if (placed.indexOf(id) !== placed.lastIndexOf(id)) errors.push('topic in two chapters: ' + id)
 for (const c of index.chapters) for (const t of c.topics) {
   ids.add(t.id)
   const f = dir + 'topics/' + t.id.replaceAll('/', '__') + '.json'
