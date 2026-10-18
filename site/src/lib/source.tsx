@@ -1,7 +1,7 @@
 import { loader } from 'fumadocs-core/source';
 import { defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
-import StatusDot from '@/components/dsa/StatusDot';
+import StatusDot from '@/components/shared/StatusDot';
 import ai from '@/generated/ai.json';
 import dsa from '@/generated/dsa.json';
 

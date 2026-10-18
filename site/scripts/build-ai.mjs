@@ -8,7 +8,7 @@ import { importGuide } from './import-guide.mjs'
 const here = new URL('.', import.meta.url).pathname
 const authored = join(here, '../authored/ai')
 const out = join(here, '../content/ai')
-const LEVEL = { 1: 'Beginner', 2: 'Core', 3: 'Advanced' }
+const LEVEL = { 1: 'Starter', 2: 'Core', 3: 'Stretch' }
 const errors = []
 const json = f => JSON.parse(readFileSync(join(authored, 'data', f), 'utf8'))
 const write = (path, text) => { mkdirSync(join(path, '..'), { recursive: true }); writeFileSync(path, text) }
@@ -28,20 +28,26 @@ const stars = existsSync(join(authored, 'data/stars.json')) ? json('stars.json')
 const repoOf = url => url.match(/^https:\/\/github\.com\/([^/]+\/[^/#?]+)\/?$/)?.[1]
 
 
-// Wraps the first use of each glossary term on a page in <abbr title="definition">, outside code, links, headings and tables.
-function defineInline(md, terms) {
-  const pending = terms.map(t => ({ ...t, re: termRe[t.term] })), protect = /(\[[^\]]*\]\([^)]*\)|`[^`]*`|<abbr[^>]*>[^<]*<\/abbr>)/
+// Escapes characters MDX would read as markup, then wraps the first use of each glossary term in <Term def="...">.
+// Code, links and headings-free prose only: fences, tables, quotes and existing <Term> tags are left alone.
+const mdxText = t => t.replace(/</g, '&lt;').replace(/[{}]/g, c => '\\' + c)
+function toMdx(md, terms) {
+  const pending = terms.map(t => ({ ...t, re: termRe[t.term] })), protect = /(\[[^\]]*\]\([^)]*\)|`[^`]*`|<Term def=\{"(?:[^"\\]|\\.)*"\}>[^<]*<\/Term>)/
   let fenced = false
   return md.split('\n').map(line => {
-    if (line.startsWith('```')) fenced = !fenced
-    if (fenced || line.startsWith('```') || /^(#|\||>|---|\s*<)/.test(line)) return line
+    if (line.startsWith('```')) { fenced = !fenced; return line }
+    if (fenced || /^(\||>|---)/.test(line)) return line
+    const math = line.match(/^\$\$(.+)\$\$$/)
+    if (math) return `<Formula tex={${JSON.stringify(math[1].trim())}} />`
+    line = line.split(protect).map((part, i) => (i % 2 ? part : mdxText(part))).join('')
+    if (/^#/.test(line)) return line
     for (const t of pending) {
       if (t.done) continue
-      const parts = line.split(protect) // re-split per term so earlier <abbr> titles stay protected
+      const parts = line.split(protect) // re-split per term so earlier <Term> tags stay protected
       const at = parts.findIndex((part, i) => i % 2 === 0 && t.re.test(part))
       if (at < 0) continue
       t.done = true
-      parts[at] = parts[at].replace(t.re, m => `<abbr title="${t.def.replace(/"/g, '&quot;')}">${m}</abbr>`)
+      parts[at] = parts[at].replace(t.re, m => `<Term def={${JSON.stringify(t.def)}}>${m}</Term>`)
       line = parts.join('')
     }
     return line
@@ -76,6 +82,7 @@ function parseTopic(chapter, raw, file) {
   body = body.trim()
   const summary = body.split('\n\n')[0]
   if (!level || !minutes || summary.startsWith('#')) fail('missing header fields or summary paragraph')
+  if (/(^|\n)1\. [^\n]* 2\. /.test(body)) fail('numbered steps on one line: put each step on its own line')
   if (!resources.length) fail('no resources')
   if (!quiz.length) fail('no quiz')
   const rest = body.slice(summary.length).trim()
@@ -106,7 +113,8 @@ for (const m of models.groups.flatMap(g => g.models)) if (m.topic && !slugs.incl
 for (const r of radar) if (r.topic && !slugs.includes(r.topic)) errors.push(`radar ${r.title} -> unknown topic ${r.topic}`)
 const urlOf = Object.fromEntries(Object.values(topics).map(t => [t.slug, t.url]))
 for (const m of models.groups.flatMap(g => g.models)) if (m.topic) m.topicUrl = urlOf[m.topic]
-for (const r of radar) if (r.topic) r.topicUrl = urlOf[r.topic]
+const titleOf = Object.fromEntries(Object.values(topics).map(t => [t.slug, t.title]))
+for (const r of radar) if (r.topic) { r.topicUrl = urlOf[r.topic]; r.topicTitle = titleOf[r.topic] }
 
 // One entry per URL for the library page, with every topic that cites it.
 const library = {}
@@ -119,7 +127,7 @@ for (const tier of TIERS) {
   for (const c of chapters.filter(c => c.tier === tier.id)) {
     rootPages.push(c.id)
     write(join(out, c.id, 'meta.json'), JSON.stringify({ title: c.title, pages: c.topics.map(t => t.slug) }, null, 2))
-    for (const t of c.topics) write(join(out, c.id, `${t.slug}.md`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : defineInline(t.body, t.terms)}\n`)
+    for (const t of c.topics) write(join(out, c.id, `${t.slug}${t.source ? '.md' : '.mdx'}`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : toMdx(t.body, t.terms)}\n`)
   }
 }
 write(join(out, 'meta.json'), JSON.stringify({ pages: ['[Dashboard](/ai)', '[Learning map](/ai/map)', ...rootPages, '---Reference---', '[Model atlas](/ai/models)', '[Resource library](/ai/library)', '[Glossary](/ai/glossary)'] }, null, 2))

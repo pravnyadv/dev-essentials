@@ -11,7 +11,7 @@ Each stage moved attention outward. First the sentence you type, then everything
 Real: the shift from judging one response to judging a whole run of many steps. Real: that most agent failures come from missing tools, vague rules or noisy context rather than a weak model. Rebranding: calling normal software engineering a new discipline. A harness has a retry loop, tests, permissions and logging, and those are old ideas applied to a new component. The honest framing is that they are the same ideas applied to a component that is non-deterministic, which makes them more important.
 
 ## How to use this
-When you meet a new buzzword, ask three things. What mechanism does it name? What can I measure to know if it helps? What would I have called this last year? The next topics apply that test to each era.
+When you meet a new buzzword, ask three things. What mechanism does it name? What can I measure to know if it helps? What would I have called this last year? The next lessons apply that test to prompt engineering, harness engineering and the buzzwords around them. The Agents chapter covers agents in depth.
 
 ## A worked example: the same task, five eras
 Task: answer customer questions. Prompt era: write a clever instruction. Retrieval era: add the right help articles to the prompt. Agent era: let the model look up orders and issue refunds with tools. Context era: carefully choose what is in the window at each step. Harness era: add tests, approvals, tracing and a separate checker so the whole system is dependable. Each era added a layer. None removed the model.
@@ -30,8 +30,9 @@ article | Industrial Agentic Engineering | https://research.google/pubs/industri
 ```
 
 ```quiz
-What is the clearest sign a term is rebranding rather than new? | It is popular ; It names no mechanism you could not have named before ; It has a hashtag | 1 | Useful terms name a mechanism you can implement and measure.
-In the sequence, what stayed constant? | The prompt format ; The model is still the core component ; The API | 1 | The scope of what engineers design grew, while the model remained at the center.
+What is the clearest sign a term is rebranding rather than new? | It is popular on social media right now ; It names no mechanism you could not name before ; It comes with a catchy hashtag attached | 1 | Useful terms name a mechanism you can implement and measure.
+What stayed constant across the eras? | The exact format of the prompt text ; The design of the provider's API ; The model stayed the core component | 2 | The scope of what engineers design grew, while the model stayed at the center.
+A vendor announces "agentic harness orchestration". What is your first question? | What did they change, and what did the eval show ; Which hashtag are they promoting this week ; How many models do they list as supported | 0 | Look for the mechanism and a measurement.
 ```
 
 ```story
@@ -51,7 +52,7 @@ Secret phrases that supposedly unlock hidden performance, "act as a world-class 
 Prompts are now treated as code: versioned, tested against examples and reviewed. Writing one is still a skill. It is just no longer the whole job.
 
 ## A worked example: separating habit from superstition
-"You are a world-class expert": no measurable effect on many tasks. "Think step by step": real effect on multi-step problems for older models. "Here are three examples": real, reliable effect on format. "Take a deep breath": noise. The test is simple: run both versions on twenty inputs and count.
+"You are a world-class expert": no measurable effect on many tasks. "Think step by step": real effect on multi-step problems for older models. "Here are three examples": real, reliable effect on format. "Take a deep breath and work on this problem step-by-step": a 2023 DeepMind paper found it reached 80.2 percent on a grade-school math set with one model (PaLM 2-L), and I found no evidence of a reliable effect on current models. The test is simple: run both versions on twenty inputs and count.
 
 ## What became of the job title
 Writing prompts turned into one of many skills. Today it is usually bundled with building the whole system: data, tools, tests and monitoring.
@@ -67,49 +68,13 @@ article | Prompt Engineering | https://lilianweng.github.io/posts/2023-03-15-pro
 ```
 
 ```quiz
-Why does few-shot prompting work? | The model memorizes your examples ; It infers the task from patterns in context ; It retrains itself | 1 | In-context learning lets the model pick up the task from examples in the prompt.
-What happened to the "prompt engineer" role? | It became the core of every company ; It mostly merged into general engineering and product work ; It was banned | 1 | A prompt is one component of a system that needs data, tools and tests.
+Why does few-shot prompting work? | The model memorizes the examples permanently ; The model infers the task from patterns in context ; It retrains itself on each prompt | 1 | In-context learning lets the model pick up the task from examples in the prompt.
+What happened to the "prompt engineer" job title? | It became the core role at most companies ; It was made illegal in many countries ; It mostly merged into wider engineering work | 2 | A prompt is one part of a system that also needs data, tools and tests.
+You find a viral "magic prompt" online. How do you decide whether to use it? | Test it against your prompt on your own inputs ; Trust it because many people have shared it ; Use it only if the prompt is very long | 0 | Count results on twenty inputs before adopting any prompt.
 ```
 
 ```story
 In 2023 people shared "magic prompts" like secret codes. Some were just good habits (be specific, give examples). Others only looked clever. As models got better at plain instructions, the secret-code ones faded and the habits stayed. What survived was the part that had a reason behind it.
-```
-
-# agents-era | The agent era | 1 | 12
-"Agent" is an overloaded word. The technical meaning is narrow and useful: a model that decides its own next step in a loop.
-
-## The mechanism
-An agent loop sends the model a goal and a set of tools. The model replies with either an answer or a tool call. The program runs the tool, appends the result and calls the model again. It stops when the model answers, a limit is hit, or a human steps in. That is it. The loop plus tools gives the model a way to observe and act, so it can handle tasks whose steps are not known in advance.
-
-## Workflow or agent
-A workflow follows a path you wrote in code and calls the model at fixed points. An agent chooses the path at runtime. Anthropic's guidance is to start with the simplest workflow that works. Use an agent only when the number of steps cannot be predicted, because agents cost more, are slower and are harder to debug.
-
-## Hype to discount
-"Autonomous employees", agent swarms for tasks a script could do, and demos that work once. The real constraints are reliability over many steps (small error rates multiply) and cost (every step re-reads context). The useful agents in 2025 and 2026 are the ones with narrow scope, good tools and a way to check their own work, such as coding agents that can run tests.
-
-## A worked example: why long chains fail
-Suppose each step of an agent is 95 percent reliable. After 10 steps, the chance every step is right is 0.95^10 = 60 percent. After 30 steps, 21 percent. That is why useful agents have short chains, checks after each step, and a human at the risky points. It is also why a tool that lets the agent verify its own work, like a test, is worth so much.
-
-## How to read an agent claim
-Ask: what are the steps, what checks it, what does one run cost, and what is the pass rate on twenty realistic tasks?
-
-## Common mistake
-Believing a demo that ran once.
-
-```resources
-article | Building effective agents | https://www.anthropic.com/engineering/building-effective-agents | Anthropic | The definition of workflow versus agent and the common patterns.
-article | A practical guide to building agents | https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf | OpenAI | When to build an agent and how to scope tools and guardrails.
-article | LLM Powered Autonomous Agents | https://lilianweng.github.io/posts/2023-06-23-agent/ | Lilian Weng | Planning, memory and tool use as the three components.
-article | Agents | https://huyenchip.com/2025/01/07/agents.html | Chip Huyen | Tools, planning and failure modes, in depth.
-```
-
-```quiz
-What is the technical core of an agent? | A persona ; A loop where the model picks tool calls until it answers ; A vector database | 1 | The loop plus tools is what lets a model act over multiple steps.
-Why do long agent runs fail often? | Models forget English ; Small per-step error rates multiply over many steps ; Tools are slow | 1 | At 95 percent per step, twenty steps succeed only about 36 percent of the time.
-```
-
-```story
-A travel assistant that only chats can say "you could try a train". An agent can check timetables, compare prices, notice a strike and rebook you. The step from chat to action is the real change. The hype is the idea that agents can run a whole company unsupervised. The reality is narrow, supervised, well-tooled agents doing specific jobs.
 ```
 
 # harness-engineering | Harness engineering: real or hype? | 2 | 15
@@ -130,9 +95,6 @@ Click through the parts in the diagram. Then take your own agent and list which 
 ## A worked example: one failure, one harness change
 Failure: the agent says "done" but half the feature is missing. Cause: no way to check. Harness change: give it the test suite and require passing tests before it can finish. Failure: it edited a config file it should not touch. Harness change: a permission rule blocking that folder. Each change is small and measurable.
 
-## Why this is more than a slogan, and where it is not
-Anthropic found that long tasks fall apart as the context fills and that models praise their own work, so they added context resets and a separate evaluator, and measured gains. That is concrete. Calling ordinary things like retries and logging "harness engineering" is the part that is relabeling. The test: what did you change, and what did the eval show?
-
 ## Common mistake
 Adding harness parts without a way to measure whether they help.
 
@@ -145,8 +107,9 @@ repo | 12-Factor Agents | https://github.com/humanlayer/12-factor-agents | Human
 ```
 
 ```quiz
-A model grades its own output as excellent but it is mediocre. What harness change helps? | Raise temperature ; Separate the generator from a skeptical evaluator ; Shorten the prompt | 1 | Tuning a separate evaluator to be skeptical is easier than making a generator critical of itself.
-Which statement about "harness engineering" is the most accurate? | It replaces software engineering ; It applies familiar engineering to a probabilistic component, with evals to prove changes help ; It only matters for coding | 1 | The parts are old ideas. The context is new, and so the need for verification is stronger.
+A model grades its own output as excellent but it is mediocre. Which harness change helps? | Raise the temperature of the model ; Separate the generator from a skeptical evaluator ; Shorten the prompt that asks for grading | 1 | Tuning a standalone evaluator to be skeptical is easier than making a generator self-critical.
+Which statement about harness engineering is most accurate? | It replaces software engineering with something new ; It only matters for coding agents and nothing else ; It applies familiar engineering to an uncertain part | 2 | The parts are old ideas. The new context is that the central component is probabilistic.
+An agent keeps editing a folder it should not touch. Which harness part addresses this? | A permission rule or hook ; A longer system prompt ; A larger model | 0 | Rules enforced in code cannot be argued around.
 ```
 
 ```story
@@ -181,7 +144,7 @@ Real: storing facts outside the window and retrieving them. Mostly files plus se
 Real: models trained to spend tokens on thinking before answering. It improves multi-step problems. It does not mean the model understands in a human sense.
 
 ## "10x" and "replaces developers"
-Studies are mixed. One 2025 randomized study of experienced open-source developers found tasks took 19 percent longer with AI assistance, partly from the time spent verifying. Gains are real on well-specified, verifiable work and smaller elsewhere.
+Studies are mixed. One 2025 randomized study by METR followed 16 experienced open-source developers on 246 real issues and found tasks took 19 percent longer with the AI tools of early 2025, partly from the time spent verifying. It is a small sample and the tools have since changed, so treat it as one data point. Gains are real on well-specified, verifiable work and smaller elsewhere.
 
 ## A worked example: translating a pitch
 Pitch: "Our multi-agent swarm autonomously builds your product." Translation: several model calls coordinated by code. Questions: what does each agent do, what checks the output, what is the pass rate, what does a run cost, what happens when it is wrong? If the answers are vague, it is a demo.
@@ -199,8 +162,9 @@ article | AI Snake Oil | https://www.aisnakeoil.com/ | Narayanan and Kapoor | A 
 ```
 
 ```quiz
-What question best tests a new buzzword? | Is it on social media ; What mechanism does it name and how would I measure it ; Who coined it | 1 | A useful term names something you can implement and measure.
-When is a multi-agent system justified? | Always ; For parallel, independent work such as research or audits ; Never | 1 | Coordination cost makes it overkill for most tasks, but it fits parallel independent subtasks.
+What question best tests a new buzzword? | Who coined the phrase, and how popular is it ; What mechanism does it name, and how can I measure it ; Does it have a slick logo and website | 1 | A useful term names something you can implement and measure.
+When is a multi-agent system justified? | Always, because more agents are always smarter ; Never, since a single agent is cheaper ; For parallel, independent work such as research | 2 | Coordination cost makes it overkill for most tasks, but it fits parallel independent subtasks.
+A study finds developers were 19 percent slower with AI tools. How should you treat this? | As one data point from a small early study ; As proof that AI never helps developers ; As irrelevant because it is only one study | 0 | The study had 16 developers and early-2025 tools, so weigh it as evidence, not a verdict.
 ```
 
 ```story

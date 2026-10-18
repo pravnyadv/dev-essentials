@@ -1,5 +1,5 @@
 'use client'
-import { Card, Cards } from 'fumadocs-ui/components/card'
+import { Cards } from 'fumadocs-ui/components/card'
 import { Callout } from 'fumadocs-ui/components/callout'
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock'
@@ -10,8 +10,12 @@ import PrefixSumExplainer from './PrefixSumExplainer.jsx'
 import SlidingWindowExplainer from './SlidingWindowExplainer.jsx'
 import TwoPointersExplainer from './TwoPointersExplainer.jsx'
 import Walkthrough from './Walkthrough.jsx'
-import { useProgress } from './progress.jsx'
-import { Bar, Pill } from './ui.jsx'
+import { useProgress } from '../shared/progress.jsx'
+import ProgressCard from '../shared/ProgressCard.jsx'
+import Roadmap from '../shared/Roadmap.jsx'
+import SectionHeading from '../shared/SectionHeading.jsx'
+import { ListRow, RowList } from '../shared/RowList.jsx'
+import { Pill } from '../shared/ui.jsx'
 
 // Patterns whose walkthrough is a hand-built interactive component.
 const EXPLAINERS = { 'prefix-sum': <PrefixSumExplainer />, 'two-pointers': <TwoPointersExplainer />, 'sliding-window': <SlidingWindowExplainer />, 'binary-search': <BinarySearchExplainer /> }
@@ -24,7 +28,7 @@ export function PatternDetail({ p, byId }) {
     <div className="space-y-2">
       <a href="/dsa/patterns" className="text-sm text-fd-primary hover:underline">← All patterns</a>
       <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-4xl font-extrabold tracking-tight">{p.name}</h1>
+        <SectionHeading level={1}>{p.name}</SectionHeading>
         <span className="text-sm text-fd-muted-foreground">{solvedCount(p.problems, progress)}/{p.problems.length} solved</span>
       </div>
       <div className="grid gap-x-8 pt-2 xl:grid-cols-[minmax(0,1fr)_27rem]">
@@ -53,45 +57,39 @@ function Tile({ p }) {
   const progress = useProgress()
   const done = solvedCount(p.problems, progress)
   return (
-    <Card href={`/dsa/patterns/${p.id}`} title={<span className="flex items-center justify-between gap-2">{p.name}{p.core && <Pill tone="primary">core</Pill>}</span>}>
-      <div className="my-3 flex min-h-20 items-center justify-center overflow-hidden"><Diagram d={p.steps[Math.min(1, p.steps.length - 1)].scene} compact /></div>
-      <Bar value={done / p.problems.length} />
-      <p className="mt-1 text-[11px]">{done}/{p.problems.length} solved</p>
-    </Card>
+    <ProgressCard
+      href={`/dsa/patterns/${p.id}`}
+      title={<span className="flex items-center justify-between gap-2">{p.name}{p.core && <Pill tone="primary">core</Pill>}</span>}
+      lead={<div className="my-3 flex min-h-20 items-center justify-center overflow-hidden"><Diagram d={p.steps[Math.min(1, p.steps.length - 1)].scene} compact /></div>}
+      value={done / p.problems.length}
+      caption={`${done}/${p.problems.length} solved`}
+    />
   )
 }
 
-function Roadmap({ patterns, groups }) {
+function RoadmapView({ patterns, groups }) {
   const progress = useProgress()
   const byId = Object.fromEntries(patterns.map(p => [p.id, p]))
   return (
-    <div className="relative ml-3 border-l-2 border-fd-primary/30 pl-8">
-      {groups.map(g => {
-        const ps = g.ids.map(id => byId[id]), solved = ps.reduce((n, p) => n + solvedCount(p.problems, progress), 0), total = ps.reduce((n, p) => n + p.problems.length, 0)
-        return (
-          <section key={g.title} className="relative pb-10">
-            <span className="absolute -left-[2.6rem] top-1 size-4 rounded-full border-4 border-fd-primary bg-fd-background" />
-            <div className="mb-3 flex items-baseline gap-3"><h2 className="text-lg font-bold">{g.title}</h2><span className="text-xs text-fd-muted-foreground">{solved}/{total} problems</span></div>
-            <Cards className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">{ps.map(p => <Tile key={p.id} p={p} />)}</Cards>
-          </section>
-        )
-      })}
-    </div>
+    <Roadmap groups={groups.map(g => {
+      const ps = g.ids.map(id => byId[id]), solved = ps.reduce((n, p) => n + solvedCount(p.problems, progress), 0), total = ps.reduce((n, p) => n + p.problems.length, 0)
+      return { id: g.title, title: g.title, aside: `${solved}/${total} problems`, content: <Cards className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">{ps.map(p => <Tile key={p.id} p={p} />)}</Cards> }
+    })} />
   )
 }
 
 function List({ patterns }) {
   const progress = useProgress()
   return (
-    <ul className="divide-y divide-fd-border rounded-xl border bg-fd-card">
+    <RowList>
       {patterns.map(p => (
-        <li key={p.id}><a href={`/dsa/patterns/${p.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-fd-accent/60">
+        <ListRow key={p.id} href={`/dsa/patterns/${p.id}`} className="flex items-center gap-4">
           <span className="w-52 shrink-0 font-medium">{p.name}</span>
-          <span className="hidden flex-1 truncate text-sm text-fd-muted-foreground md:block">{p.signals.join(' · ')}</span>
+          <span className="hidden flex-1 truncate text-fd-muted-foreground md:block">{p.signals.join(' · ')}</span>
           <span className="shrink-0 text-xs text-fd-muted-foreground">{solvedCount(p.problems, progress)}/{p.problems.length}</span>
-        </a></li>
+        </ListRow>
       ))}
-    </ul>
+    </RowList>
   )
 }
 
@@ -99,11 +97,11 @@ export function PatternsIndex({ patterns, groups }) {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-4xl font-extrabold tracking-tight">Problem patterns</h1>
+        <SectionHeading level={1}>Problem patterns</SectionHeading>
         <p className="mt-1 text-fd-muted-foreground">Spot the signal in a problem, open the pattern, step through it, then practise.</p>
       </header>
       <Tabs items={['Roadmap', 'List']}>
-        <Tab value="Roadmap"><Roadmap patterns={patterns} groups={groups} /></Tab>
+        <Tab value="Roadmap"><RoadmapView patterns={patterns} groups={groups} /></Tab>
         <Tab value="List"><List patterns={patterns} /></Tab>
       </Tabs>
     </div>

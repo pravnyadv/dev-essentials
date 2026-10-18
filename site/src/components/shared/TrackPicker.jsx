@@ -1,15 +1,16 @@
 'use client'
 import { Card, Cards } from 'fumadocs-ui/components/card'
 import { useProgress } from './progress.jsx'
+import SectionHeading from './SectionHeading.jsx'
 import { Bar, Pill } from './ui.jsx'
 
 // Landing page: pick a track and see how far you are in each.
 export default function TrackPicker({ tracks }) {
   const progress = useProgress()
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center gap-8 px-4 py-12">
+    <main id="nd-page" className="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center gap-8 px-4 py-12">
       <header className="text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl">What do you want to learn?</h1>
+        <SectionHeading level={1} className="sm:!text-5xl">What do you want to learn?</SectionHeading>
         <p className="mx-auto mt-3 max-w-xl text-fd-muted-foreground">Visual lessons with worked examples, quizzes and progress tracking. Pick a track. Your progress is saved in this browser.</p>
       </header>
       <Cards className="grid-cols-1 sm:grid-cols-2">

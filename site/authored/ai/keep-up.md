@@ -10,9 +10,6 @@ Lab engineering blogs for how things are built. A practitioner blog with daily l
 ## A worked example: a weekly routine
 Monday, 20 minutes: skim one newsletter for the week's research. Wednesday, 10 minutes: read one engineering blog post fully. Friday, 15 minutes: check the model release tracker and the radar page here. Total under an hour. Anything bigger gets a deeper read, from the primary source.
 
-## Reading a claim
-What was measured, on what, against what? Who benefits from you believing it? Is there a primary source, such as a paper, docs or code, that you can read?
-
 ## Common mistake
 Following everything. Sources you do not read are noise.
 
@@ -27,8 +24,9 @@ tool | Hugging Face Papers | https://huggingface.co/papers | Hugging Face | Dail
 ```
 
 ```quiz
-A viral thread claims a huge result. Best next step? | Share it ; Find the primary source and check what was measured ; Ignore it | 1 | Threads are pointers. The paper or docs hold the evidence.
-How many sources should you follow closely? | As many as possible ; A few reliable ones ; None | 1 | Depth on a few beats skimming everything.
+A viral thread claims a huge result. Best next step? | Find the primary source and check what was measured ; Share it, since many other people did ; Ignore it without reading anything about it | 0 | Threads are pointers. The paper or docs hold the evidence.
+How many sources should you follow closely? | As many as you can find ; A few reliable ones ; Only one | 1 | Depth on a few beats skimming everything.
+A post says "this changes everything" but links nothing. What does that suggest? | It is probably true, so act on it now ; The author must be an expert in the field ; Treat it as a pointer and look for evidence | 2 | A claim without a source is a lead, not evidence.
 ```
 
 ```story
@@ -70,8 +68,9 @@ tool | roadmap.sh AI Engineer | https://roadmap.sh/ai-engineer | roadmap.sh | Co
 ```
 
 ```quiz
-What makes a list entry more useful? | A link only ; A reason and a date ; An emoji | 1 | Context tells you whether to read it.
-What does a list of 500 links give you? | A curriculum ; A reference to dip into ; Nothing | 1 | A curated order is what turns links into a path.
+What makes a list entry more useful? | A reason it matters and a date ; A short title and a link only ; A long list of tags | 0 | Context tells you whether to read it.
+What does a list of 500 links give you? | A curriculum with a clear order ; A reference to dip into ; A guarantee of quality | 1 | A curated order is what turns links into a path.
+A list was last updated 14 months ago. What should you do? | Trust it fully because it is popular ; Skip it and never open lists again ; Treat the links as hints and check each one | 2 | Lists age quickly in this field, so check recency.
 ```
 
 ```story
@@ -88,10 +87,7 @@ Is the test saturated, with top models all near 100 percent so differences are n
 Use leaderboards to shortlist, then run your own examples. Track a small number of benchmarks that resemble your work. Be suspicious of any single headline number.
 
 ## A worked example: is the gap real?
-Model A scores 87.3 and model B 86.9 on a test with 500 questions. With that many questions the noise is around plus or minus 1.5 points, so the difference is within noise. Treat them as equal until a larger or different test separates them.
-
-## Questions to ask
-Is the benchmark nearly maxed out? Could the answers have leaked into training? Was the score run by the vendor or independently? For an agent, which harness and tools were used, since the score belongs to the model plus the harness?
+Model A scores 87.3 and model B 86.9 on a test with 500 questions. With that many questions the typical sampling error is about 1.5 points (about 3 points at 95 percent confidence), so a gap of 0.4 is within noise. Treat them as equal until a larger or different test separates them.
 
 ## Common mistake
 Quoting a single number without its context.
@@ -105,8 +101,9 @@ article | AI Snake Oil | https://www.aisnakeoil.com/ | Narayanan and Kapoor | Cr
 ```
 
 ```quiz
-All top models score 97 to 99 percent. What does that tell you? | Pick the highest ; The benchmark is saturated and no longer separates them ; They are identical | 1 | Small differences near the ceiling are mostly noise.
-An agent benchmark score reflects | The model only ; The model plus the harness ; The dataset only | 1 | Harness choices change results significantly.
+All top models score 97 to 99 percent. What does that tell you? | The benchmark no longer separates them ; Pick the one with the highest score ; They are exactly identical models | 0 | Small differences near the ceiling are mostly noise.
+An agent benchmark score reflects what? | The model only ; The model plus the harness ; The test questions only | 1 | Harness choices change results significantly.
+Model A scores 87.3 and B scores 86.9 on 500 questions. Which conclusion is fair? | A is clearly the better of the two ; B is clearly the worse of the two ; The gap is within noise, so call it a tie | 2 | With 500 questions, a 0.4 gap is smaller than typical sampling error.
 ```
 
 ```story

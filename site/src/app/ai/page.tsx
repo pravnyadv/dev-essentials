@@ -1,4 +1,4 @@
-import Dashboard from '@/components/dsa/Dashboard';
+import Dashboard from '@/components/shared/Dashboard';
 import { Radar } from '@/components/ai/Directory';
 import ai from '@/generated/ai.json';
 

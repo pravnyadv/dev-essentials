@@ -9,8 +9,8 @@ export const TONE = {
   idle,
   in: 'border-fd-primary bg-fd-primary/15 text-fd-primary',
   pick: 'border-fd-primary bg-fd-primary text-fd-primary-foreground',
-  good: 'border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-  bad: 'border-rose-400 bg-rose-500/10 text-rose-700 dark:text-rose-300',
+  good: 'border-success bg-success/15 text-success',
+  bad: 'border-danger bg-danger/10 text-danger',
 }
 
 // A row of cells, each with an optional pointer label underneath. tone(i) -> key of TONE, gone(i) -> faded out.
@@ -20,7 +20,7 @@ export function CellRow({ values, tone = () => 'idle', gone = () => false, marks
       {values.map((v, i) => (
         <div key={i} className={`w-10 transition-opacity ${gone(i) ? 'opacity-30' : ''}`}>
           <button disabled={!onClick} onClick={() => onClick?.(i)} className={`${cell} w-full ${TONE[tone(i)]} ${onClick ? 'cursor-pointer hover:border-fd-primary/70' : 'cursor-default'}`}>{v}</button>
-          <span className="mt-0.5 block h-4 text-center text-[11px] font-medium text-fd-primary">{marks[i] ?? ''}</span>
+          <span className="mt-0.5 block h-4 text-center text-xs font-medium text-fd-primary">{marks[i] ?? ''}</span>
         </div>
       ))}
     </div>
@@ -29,7 +29,7 @@ export function CellRow({ values, tone = () => 'idle', gone = () => false, marks
 
 // One fixed-height line for a calculation or verdict, so steps never change the box height.
 export const Line = ({ children, tone = '' }) => (
-  <p className={`flex min-h-7 items-center justify-center text-center text-sm font-medium ${{ good: 'text-emerald-700 dark:text-emerald-300', bad: 'text-rose-700 dark:text-rose-300' }[tone] ?? ''}`}>{children}</p>
+  <p className={`flex min-h-7 items-center justify-center text-center text-sm font-medium ${{ good: 'text-success', bad: 'text-danger' }[tone] ?? ''}`}>{children}</p>
 )
 
 export const Hint = ({ children }) => <p className="mt-1 min-h-5 text-center text-xs text-fd-muted-foreground">{children}</p>

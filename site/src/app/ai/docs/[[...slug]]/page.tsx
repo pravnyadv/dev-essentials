@@ -1,12 +1,8 @@
 import { aiSource as source } from '@/lib/source';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
-import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { StatusButton } from '@/components/dsa/progress';
-import { MarkDone } from '@/components/dsa/TopicExtras';
-import { LevelBadge, Pill } from '@/components/dsa/ui';
+import LessonPage from '@/components/shared/LessonPage';
+import { LevelBadge, Pill } from '@/components/shared/ui';
 import Explainer from '@/components/ai/Explainers';
 import { CheckYourself, Resources, SourceNote, Story, Terms } from '@/components/ai/LessonParts';
 import ai from '@/generated/ai.json';
@@ -33,34 +29,50 @@ export default async function Page(props: PageProps<'/ai/docs/[[...slug]]'>) {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  const MDX = page.data.body;
   const url = `/ai/docs/${page.slugs.join('/')}`;
   const topic = byUrl[url];
   const next = byUrl[ai.order[ai.order.indexOf(url) + 1]];
+  const chapterNo = ai.chapters.findIndex((c) => c.title === topic?.chapter) + 1;
+  const chapter = ai.chapters[chapterNo - 1];
+  const lessonNo = (chapter?.topics.findIndex((t) => t.url === url) ?? 0) + 1;
+  const lessonCount = chapter?.topics.length ?? 0;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      {topic && !topic.source && <DocsDescription className="mb-0">{topic.summary}</DocsDescription>}
-      <div className="flex flex-row gap-2 items-center border-b pb-6">{topic && <StatusButton id={topic.id} />}</div>
-      {topic && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-          <LevelBadge level={topic.level} />
-          <Pill>{topic.minutes} min</Pill>
-          <Pill>{topic.chapter}</Pill>
-        </div>
-      )}
-      {topic?.story && <Story text={topic.story} />}
-      {topic?.explainer && <Explainer name={topic.explainer} />}
-      {topic && <Terms terms={topic.terms} />}
-      {topic && <SourceNote source={topic.source} />}
-      <DocsBody>
-        <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
-      </DocsBody>
-      {topic && <CheckYourself quiz={topic.quiz} />}
-      {topic && <Resources resources={topic.resources} />}
-      {topic && <MarkDone id={topic.id} next={next && { url: next.url, title: next.title }} />}
-    </DocsPage>
+    <LessonPage
+      source={source}
+      page={page}
+      topicId={topic?.id}
+      description={topic && !topic.source ? topic.summary : page.data.description}
+      next={next && { url: next.url, title: next.title }}
+      badges={
+        topic && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+            <Pill>Chapter {chapterNo}: {topic.chapter}</Pill>
+            <Pill>Lesson {lessonNo} of {lessonCount}</Pill>
+            <LevelBadge level={topic.level} />
+            <Pill>About {topic.minutes} min</Pill>
+          </div>
+        )
+      }
+      before={
+        topic && (
+          <>
+            <Story text={topic.story} />
+            {topic.explainer && <Explainer name={topic.explainer} />}
+            <Terms terms={topic.terms} />
+          </>
+        )
+      }
+      after={
+        topic && (
+          <>
+            <SourceNote source={topic.source} />
+            <CheckYourself quiz={topic.quiz} />
+            <Resources resources={topic.resources} />
+          </>
+        )
+      }
+    />
   );
 }
 

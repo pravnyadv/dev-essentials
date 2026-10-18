@@ -10,9 +10,6 @@ Write a short brief with the story beats, the style and the length. Ask the agen
 ## A worked example: a scene as code
 A scene is a function of the frame number. Frames 0 to 30: a title fades in (opacity = frame / 30). Frames 30 to 90: a bar chart grows (height = value × progress). Because it is plain code, the agent can change a number, re-render and compare. Timing constants live in one file so you can retime the whole video in a minute.
 
-## Directing well
-Write the story beats and style first. Ask for one scene at a time. Look at rendered stills before moving on. Keep the brand colors and fonts in one place.
-
 ## Common mistake
 Asking for a whole video in one prompt. Build and check scene by scene.
 
@@ -24,8 +21,9 @@ repo | awesome-claude-5-5-videos | https://github.com/athemeroy/awesome-claude-5
 ```
 
 ```quiz
-Why is code-based video good for agents? | It is smaller ; The agent can write, render, look and fix in a loop ; It needs no preview | 1 | Verification by rendering closes the loop.
-What stays with you in this workflow? | Syntax ; Taste, pacing and direction ; Rendering | 1 | The agent handles mechanics. You decide what is good.
+Why is code-based video good for agents? | Code files are always smaller than video files ; Videos made from code do not need any preview ; The agent can write, render, look and fix in a loop | 2 | Verification by rendering closes the loop.
+What stays with you in this workflow? | Taste, pacing and direction ; Writing every line of the syntax ; Rendering all of the frames | 0 | The agent handles mechanics. You decide what is good.
+An agent's scene has text overlapping an image. What is the quickest fix loop? | Rewrite the entire video again in one prompt ; Render a still, look at it, and ask for a layout fix ; Add more scenes to cover up the overlap | 1 | Checking rendered stills scene by scene catches layout problems early.
 ```
 
 ```story
@@ -56,8 +54,9 @@ article | How we built our multi-agent research system | https://www.anthropic.c
 ```
 
 ```quiz
-What does a citation prove? | The claim is true ; That a source exists, not necessarily that it says that ; Nothing | 1 | Always check important claims against the source.
-Why run verifier agents? | To cross-check claims independently ; To save tokens ; For speed | 0 | Independent checking filters unsupported claims.
+What does a citation prove? | That the claim being made is definitely true ; Nothing at all about the claim ; That a source exists, not that it supports the claim | 2 | Always check important claims against the source.
+Why run verifier agents? | To cross-check claims independently ; To save tokens on the later steps ; To make the final report shorter | 0 | Independent checking filters unsupported claims.
+A report claims "filings fell 8 percent [3]". What should you do before relying on it? | Trust it, since a source is cited ; Open source 3 and check the figure ; Ask the report to repeat the number | 1 | A cited figure can be close but narrower or different, so check the source.
 ```
 
 ```story

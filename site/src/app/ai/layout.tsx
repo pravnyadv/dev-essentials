@@ -1,17 +1,14 @@
+import type { Metadata } from 'next';
 import { aiSource } from '@/lib/source';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import { baseOptions } from '@/lib/layout.shared';
-import OverallProgress from '@/components/dsa/OverallProgress';
+import TrackLayout from '@/components/shared/TrackLayout';
 import ai from '@/generated/ai.json';
+
+export const metadata: Metadata = { title: { default: 'AI Engineering', template: '%s | AI Engineering' } };
 
 export default function Layout({ children }: LayoutProps<'/ai'>) {
   return (
-    <DocsLayout
-      tree={aiSource.getPageTree()}
-      sidebar={{ footer: <OverallProgress ids={Object.keys(ai.topics)} /> }}
-      {...baseOptions('/ai', 'AI Engineering')}
-    >
+    <TrackLayout tree={aiSource.getPageTree()} home="/ai" title="AI Engineering" topicIds={Object.keys(ai.topics)}>
       {children}
-    </DocsLayout>
+    </TrackLayout>
   );
 }

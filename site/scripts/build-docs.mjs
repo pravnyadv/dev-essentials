@@ -7,7 +7,7 @@ const here = new URL('.', import.meta.url).pathname
 const src = join(here, '../.cache/content')
 const out = join(here, '../content/dsa')
 const index = JSON.parse(readFileSync(join(src, 'index.json'), 'utf8'))
-const LEVEL = { 1: 'Beginner', 2: 'Core', 3: 'Advanced' }
+const LEVEL = { 1: 'Starter', 2: 'Core', 3: 'Stretch' }
 
 rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })

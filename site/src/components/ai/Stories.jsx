@@ -1,15 +1,12 @@
 'use client'
 import { useState } from 'react'
-import Walkthrough from '../dsa/Walkthrough.jsx'
-import { Pill } from '../dsa/ui.jsx'
+import Chip from '../shared/Chip.jsx'
+import DemoFrame from '../shared/DemoFrame.jsx'
+import Panel from '../shared/Panel.jsx'
+import Stepper from '../shared/Stepper.jsx'
+import { Pill } from '../shared/ui.jsx'
 import { ERAS, HARNESS, LOOP_STEPS, RAG_CHUNKS, RAG_STEPS, STACK, TIMELINE, TIMELINE_ERAS } from './storyData.js'
 
-const Frame = ({ title, children }) => (
-  <div className="my-6">
-    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground">{title}</p>
-    {children}
-  </div>
-)
 const ACTORS = ['Model', 'Tools', 'You']
 
 // The agent loop as a stepper: who acts, and the context growing underneath.
@@ -33,7 +30,7 @@ export function LoopDemo() {
       </div>
     )
   }
-  return <Frame title="The agent loop, step by step"><Walkthrough steps={LOOP_STEPS} stage={stage} /></Frame>
+  return <DemoFrame title="The agent loop, step by step"><Stepper steps={LOOP_STEPS} stage={stage} /></DemoFrame>
 }
 
 // RAG as a stepper: question, embed, search, keep the best, prompt, answer.
@@ -63,17 +60,17 @@ export function RagDemo() {
       </div>
     )
   }
-  return <Frame title="Retrieval-augmented generation, step by step"><Walkthrough steps={RAG_STEPS} stage={stage} /></Frame>
+  return <DemoFrame title="Retrieval-augmented generation, step by step"><Stepper steps={RAG_STEPS} stage={stage} /></DemoFrame>
 }
 
 // A row of buttons and one detail panel. All panels share a grid cell so the box never changes height.
 function DetailMap({ title, items, accent }) {
   const [i, setI] = useState(0)
   return (
-    <Frame title={title}>
-      <div className="rounded-xl border bg-fd-card p-4">
+    <DemoFrame title={title}>
+      <Panel padding="p-4">
         <div className="flex flex-wrap gap-2">
-          {items.map((it, n) => <button key={it.id} onClick={() => setI(n)} className={`rounded-full border px-3 py-1 text-sm font-medium transition ${n === i ? 'border-fd-primary bg-fd-primary text-fd-primary-foreground' : 'hover:border-fd-primary/60'}`}>{it.label}</button>)}
+          {items.map((it, n) => <Chip key={it.id} on={n === i} onClick={() => setI(n)}>{it.label}</Chip>)}
         </div>
         <div className="mt-4 grid grid-cols-1 text-sm leading-relaxed">
           {items.map((it, n) => (
@@ -85,8 +82,8 @@ function DetailMap({ title, items, accent }) {
             </div>
           ))}
         </div>
-      </div>
-    </Frame>
+      </Panel>
+    </DemoFrame>
   )
 }
 export const HarnessDemo = () => <DetailMap title="Agent = Model + Harness. Click a part" items={HARNESS} accent="Prevents:" />
@@ -97,16 +94,16 @@ export const ErasDemo = () => <DetailMap title="How the craft changed. Click an 
 export function TimelineDemo() {
   const [i, setI] = useState(TIMELINE.findIndex(e => e[0] === '2012'))
   return (
-    <Frame title="AI timeline. Click a year">
-      <div className="rounded-xl border bg-fd-card p-4">
+    <DemoFrame title="AI timeline. Click a year">
+      <Panel padding="p-4">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fd-muted-foreground">
           {Object.values(TIMELINE_ERAS).map(([name, color]) => <span key={name} className="flex items-center gap-1.5"><i className={`size-2.5 rounded-full ${color}`} />{name}</span>)}
         </div>
         <div className="mt-3 flex gap-1.5 overflow-x-auto pb-2">
           {TIMELINE.map(([year, era], n) => (
-            <button key={n} onClick={() => setI(n)} className={`shrink-0 rounded-md border px-2 py-1 text-xs font-medium tabular-nums transition ${n === i ? 'border-fd-primary ring-2 ring-fd-primary/40' : ''}`}>
+            <Chip key={n} size="sm" on={n === i} onClick={() => setI(n)} className="shrink-0 tabular-nums">
               <i className={`mr-1.5 inline-block size-2 rounded-full ${TIMELINE_ERAS[era][1]}`} />{year}
-            </button>
+            </Chip>
           ))}
         </div>
         <div className="mt-3 grid grid-cols-1 text-sm">
@@ -118,7 +115,7 @@ export function TimelineDemo() {
             </div>
           ))}
         </div>
-      </div>
-    </Frame>
+      </Panel>
+    </DemoFrame>
   )
 }

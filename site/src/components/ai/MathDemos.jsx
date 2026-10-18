@@ -1,13 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { ActionButton, Hint, Line } from '../dsa/explainerKit.jsx'
+import DemoFrame from '../shared/DemoFrame.jsx'
+import { ActionButton, Hint, Line } from '../shared/explainerKit.jsx'
 
-const Box = ({ title, children }) => (
-  <div className="my-6 rounded-xl border bg-fd-card p-5">
-    <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground">{title}</p>
-    {children}
-  </div>
-)
+const Box = ({ title, children }) => <DemoFrame boxed title={title}>{children}</DemoFrame>
 const Slider = ({ label, value, onChange, min, max, step = 0.1, unit = '' }) => (
   <label className="flex items-center gap-3 text-sm">
     <span className="w-28 shrink-0 font-medium">{label}</span>
@@ -16,7 +12,8 @@ const Slider = ({ label, value, onChange, min, max, step = 0.1, unit = '' }) => 
   </label>
 )
 
-const TOKENS = [['cat', 2.0], ['dog', 1.5], ['fish', 0.5], ['car', -0.5]]
+// The same scores as the worked example in the Probability and softmax lesson.
+const TOKENS = [['cat', 2.0], ['dog', 1.0], ['fish', 0.1]]
 const softmax = (logits, t) => {
   const e = logits.map(z => Math.exp(z / t))
   const sum = e.reduce((a, b) => a + b, 0)
@@ -26,7 +23,7 @@ const softmax = (logits, t) => {
 // Logits to probabilities with a temperature knob, plus a sampler to see what the probabilities mean.
 export function SamplerDemo() {
   const [t, setT] = useState(1)
-  const [counts, setCounts] = useState([0, 0, 0, 0])
+  const [counts, setCounts] = useState([0, 0, 0])
   const p = softmax(TOKENS.map(x => x[1]), t)
   const draw = n => {
     const next = [...counts]
@@ -40,7 +37,7 @@ export function SamplerDemo() {
   const total = counts.reduce((a, b) => a + b, 0)
   return (
     <Box title="Temperature and softmax">
-      <Slider label="Temperature" value={t} onChange={v => { setT(v); setCounts([0, 0, 0, 0]) }} min={0.1} max={3} />
+      <Slider label="Temperature" value={t} onChange={v => { setT(v); setCounts([0, 0, 0]) }} min={0.1} max={3} />
       <div className="mt-4 space-y-2">
         {TOKENS.map(([name, z], i) => (
           <div key={name} className="grid grid-cols-[3rem_1fr_8rem] items-center gap-3 text-sm">
@@ -54,7 +51,7 @@ export function SamplerDemo() {
       <div className="flex justify-center gap-2">
         <ActionButton onClick={() => draw(1)}>Sample 1</ActionButton>
         <ActionButton onClick={() => draw(20)}>Sample 20</ActionButton>
-        <ActionButton onClick={() => setCounts([0, 0, 0, 0])}>Reset</ActionButton>
+        <ActionButton onClick={() => setCounts([0, 0, 0])}>Reset</ActionButton>
       </div>
       <Hint>Low temperature: the top score almost always wins. High: choices spread out.</Hint>
     </Box>
@@ -76,9 +73,9 @@ export function DotDemo() {
         <svg viewBox="0 0 120 120" className="mx-auto w-48">
           <circle cx="60" cy="60" r="2" className="fill-fd-muted-foreground" />
           <line x1="60" y1="60" x2={pt(A).split(',')[0]} y2={pt(A).split(',')[1]} className="stroke-fd-primary" strokeWidth="2.5" />
-          <line x1="60" y1="60" x2={pt(B).split(',')[0]} y2={pt(B).split(',')[1]} className="stroke-emerald-500" strokeWidth="2.5" />
+          <line x1="60" y1="60" x2={pt(B).split(',')[0]} y2={pt(B).split(',')[1]} className="stroke-success" strokeWidth="2.5" />
           <text x={pt(A).split(',')[0]} y={+pt(A).split(',')[1] - 3} fontSize="8" className="fill-fd-primary">a</text>
-          <text x={pt(B).split(',')[0]} y={+pt(B).split(',')[1] - 3} fontSize="8" className="fill-emerald-600">b</text>
+          <text x={pt(B).split(',')[0]} y={+pt(B).split(',')[1] - 3} fontSize="8" className="fill-success">b</text>
         </svg>
         <div className="space-y-3">
           <Slider label="Angle of a" value={a} onChange={setA} min={0} max={180} step={5} unit="°" />
@@ -116,7 +113,7 @@ export function NeuronDemo() {
           <div className="grid grid-cols-[repeat(11,1fr)] gap-px overflow-hidden rounded border bg-fd-border" style={{ width: 176 }} aria-label="Neuron output over inputs">
             {cells.flat().map((v, i) => <div key={i} className="aspect-square bg-fd-primary" style={{ opacity: 0.06 + 0.94 * (v / peak) }} />)}
           </div>
-          <p className="mt-1 text-center text-[11px] text-fd-muted-foreground">output for x₁ (→) and x₂ (↑)</p>
+          <p className="mt-1 text-center text-xs text-fd-muted-foreground">output for x₁ (→) and x₂ (↑)</p>
         </div>
       </div>
       <Line>{w1}×{x1} + {w2}×{x2} + {b} = {z.toFixed(2)} → ReLU → <b className="ml-1">{out.toFixed(2)}</b></Line>
@@ -149,6 +146,58 @@ export function DescentDemo() {
       <Line>w = {w.toFixed(3)} &nbsp;|&nbsp; loss = {loss(w).toFixed(3)} &nbsp;|&nbsp; gradient = {(2 * (w - 3)).toFixed(2)}</Line>
       <div className="flex justify-center gap-2"><ActionButton onClick={step}>Take a step</ActionButton><ActionButton onClick={() => setPath([0])}>Reset</ActionButton></div>
       <Hint>{rate > 1 ? 'Too large: each step overshoots further and the loss grows.' : rate < 0.1 ? 'Small steps: safe but slow.' : 'w ← w − rate × gradient. Watch it settle at 3.'}</Hint>
+    </Box>
+  )
+}
+
+const num = v => (Number.isFinite(v) ? v : 0)
+const Cell = ({ value, onChange, label }) => (
+  <input type="number" value={value} aria-label={label} onChange={e => onChange(num(+e.target.value))} className="h-10 w-14 rounded-md border bg-fd-background px-1 text-center text-sm tabular-nums max-md:h-11" />
+)
+
+// A 2 by 3 matrix times a 3-number vector: each output is the dot product of a row with the input.
+export function MatrixDemo() {
+  const [M, setM] = useState([[1, 0, 2], [0, 1, 1]])
+  const [x, setX] = useState([3, 4, 5])
+  const out = M.map(row => row.reduce((n, m, j) => n + m * x[j], 0))
+  const setCell = (i, j) => v => setM(M.map((row, r) => (r === i ? row.map((c, k) => (k === j ? v : c)) : row)))
+  return (
+    <Box title="Matrix times vector: edit any number">
+      <div className="flex flex-wrap items-center justify-center gap-6">
+        <div className="space-y-1">{M.map((row, i) => <div key={i} className="flex gap-1">{row.map((c, j) => <Cell key={j} value={c} label={`Matrix row ${i + 1}, column ${j + 1}`} onChange={setCell(i, j)} />)}</div>)}</div>
+        <span className="text-lg">×</span>
+        <div className="space-y-1">{x.map((c, j) => <Cell key={j} value={c} label={`Vector entry ${j + 1}`} onChange={v => setX(x.map((o, k) => (k === j ? v : o)))} />)}</div>
+        <span className="text-lg">=</span>
+        <div className="space-y-1">{out.map((o, i) => <div key={i} className="grid h-10 w-14 place-items-center rounded-md border border-fd-primary bg-fd-primary/10 font-semibold tabular-nums max-md:h-11">{o}</div>)}</div>
+      </div>
+      <Line>{M.map((row, i) => `row ${i + 1}: ${row.map((m, j) => `${m}×${x[j]}`).join(' + ')} = ${out[i]}`).join('   |   ')}</Line>
+      <Hint>Each output is a dot product of one row with the input. A neural network layer is this, plus a bend.</Hint>
+    </Box>
+  )
+}
+
+const KEYS = [[1, 0], [0, 1]], VALUES = [[10, 0], [0, 10]], NAMES = ['token 1', 'token 2']
+// Attention for one query over two tokens, with the same numbers as the lesson. Turn the query to see the weights move.
+export function AttentionDemo() {
+  const [deg, setDeg] = useState(0)
+  const q = [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180)]
+  const scores = KEYS.map(k => (q[0] * k[0] + q[1] * k[1]) / Math.sqrt(2))
+  const e = scores.map(Math.exp), total = e.reduce((a, b) => a + b, 0), w = e.map(v => v / total)
+  const out = [0, 1].map(c => w.reduce((n, wi, i) => n + wi * VALUES[i][c], 0))
+  return (
+    <Box title="Attention for one query: turn it toward a key">
+      <Slider label="Query angle" value={deg} onChange={setDeg} min={0} max={90} step={5} unit="°" />
+      <div className="mt-4 space-y-2">
+        {NAMES.map((n, i) => (
+          <div key={n} className="grid grid-cols-[4.5rem_1fr_9rem] items-center gap-3 text-sm">
+            <span className="font-medium">{n}</span>
+            <div className="h-5 overflow-hidden rounded bg-fd-border"><div className="h-full rounded bg-fd-primary transition-all" style={{ width: `${w[i] * 100}%` }} /></div>
+            <span className="text-right text-xs leading-tight tabular-nums text-fd-muted-foreground">score {scores[i].toFixed(2)}<br />weight {(w[i] * 100).toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+      <Line>output = {w[0].toFixed(2)} × [10, 0] + {w[1].toFixed(2)} × [0, 10] = [{out[0].toFixed(1)}, {out[1].toFixed(1)}]</Line>
+      <Hint>At 0° this is the lesson's example. The output leans toward whichever key the query matches best.</Hint>
     </Box>
   )
 }

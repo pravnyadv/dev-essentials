@@ -27,8 +27,9 @@ video | But how do AI images and videos actually work? | https://www.youtube.com
 ```
 
 ```quiz
-How does a diffusion model generate an image? | Copies a stored image ; Starts from noise and removes it step by step, guided by a prompt ; Draws pixel by pixel left to right | 1 | It is trained to reverse a noising process and applies that reversal at generation time.
-What did AlexNet show? | Hand features were best ; Learned features at scale beat hand-designed ones ; GPUs are useless | 1 | It started the deep learning era in vision.
+How does a diffusion model make an image? | It copies the closest image it saw in training ; It paints the image one pixel at a time ; It starts from noise and removes it step by step | 2 | It is trained to reverse a noising process, and applies that reversal at generation time.
+What did AlexNet show? | Features learned at scale beat hand-designed features ; Hand-designed features are still best for images ; GPUs are too slow for training networks | 0 | It started the deep learning era in vision.
+A diffusion model draws six fingers on a hand. What is the most likely reason? | It ran out of memory halfway through the image ; It learned how things usually look, not what a hand is ; The prompt was typed in capital letters | 1 | The model captures typical appearance without understanding structure, which is why hands and text were hard.
 ```
 
 ```story
@@ -50,9 +51,6 @@ Self-play and reward signals let a system exceed its teachers. The limit is that
 ## A worked example: learning a tiny game by reward
 A robot in a 3-cell corridor starts in cell 1. Cell 3 holds a reward of +10. Moving costs -1. At first it moves randomly. After a few hundred tries, it notices that moving right from cell 2 usually leads to +10 and records a high value for that action. Soon the value spreads backward: moving right from cell 1 is good too, because it leads to cell 2. This is the core idea of Q-learning.
 
-## Why games came first
-A game has clear rules, a clear score and can be played millions of times quickly and for free. Real life has none of those. That is why reinforcement learning worked first on Go and chess, and later on math and code, where answers can be checked automatically.
-
 ## Common mistake
 Expecting the same method to work where there is no clear score. Defining the reward is the hard part. A badly chosen reward gets exploited: a cleaning robot rewarded for "no visible mess" may learn to hide the mess.
 
@@ -64,8 +62,9 @@ paper | Mastering Chess and Shogi by Self-Play with a General Reinforcement Lear
 ```
 
 ```quiz
-What does a reinforcement learning agent optimize? | Labels ; Total reward over time ; Data size | 1 | It learns actions that maximize reward, not copies of labeled answers.
-Why does RL work well on math and code? | They are popular ; Answers can be checked automatically to give a reward ; They are short | 1 | A computable reward is what the method needs.
+What does a reinforcement learning agent try to maximize? | The number of labelled examples ; The length of each game ; Total reward over time | 2 | It learns actions that earn reward, not copies of labelled answers.
+Why does reinforcement learning work well on math and code? | Answers can be checked automatically, giving a reward ; Those subjects are short and simple to write ; They have the most training data online | 0 | A computable reward is what the method needs.
+A cleaning robot is rewarded for "no visible mess" and learns to hide mess under a rug. What went wrong? | The robot had too little time to train properly ; The reward did not match the real goal and was exploited ; The robot's camera had a low resolution | 1 | A badly chosen reward gets gamed. Defining the reward is the hard part.
 ```
 
 ```story
@@ -87,9 +86,6 @@ These systems are tools in a pipeline. Predictions need lab or expert verificati
 ## A worked example: why folding is hard
 A short protein of 100 building blocks has an astronomical number of possible shapes. Trying them all is impossible. AlphaFold learned from about 170,000 known structures which blocks tend to sit near each other, and predicts the shape directly. The result is not magic. It is pattern knowledge from known proteins, applied to a new one.
 
-## Beyond proteins
-Weather models trained on decades of data now forecast many measures as well as traditional physics simulations, using far less computing. Models help sort millions of candidate materials and drug molecules into a short list worth testing. In each case AI narrows the search. People and labs still confirm.
-
 ## Common mistake
 Treating a predicted structure as a measured one. It is a strong hypothesis. Check with experiments before relying on it for a drug.
 
@@ -101,8 +97,9 @@ article | The Nobel Prize in Chemistry 2024 | https://www.nobelprize.org/prizes/
 ```
 
 ```quiz
-What problem did AlphaFold address? | Drawing pictures ; Predicting a protein's 3D shape from its amino acid chain ; Weather ; Playing Go | 1 | Protein structure prediction was a long-standing open problem.
-Why verify AI predictions in science? | They are usually wrong ; Models can be confidently wrong outside their training data ; It is required by law | 1 | Treat outputs as strong hypotheses.
+What problem did AlphaFold address? | Reading handwritten text from old documents ; Playing the game of Go at expert level ; Predicting a protein's 3D shape from its amino acids | 2 | Protein structure prediction was a long-standing open problem.
+Why should you verify AI predictions in science? | Models can be wrong beyond their training data ; They are usually wrong in every single case ; Journals require a second model's opinion | 0 | Treat outputs as strong hypotheses until experiments confirm them.
+A predicted protein shape suggests a drug could bind. What should happen next? | Publish the shape as if it were measured ; Lab tests to confirm it before relying on the result ; Skip testing because the model scored well | 1 | The prediction narrows the search. People and labs still confirm.
 ```
 
 ```story
@@ -137,8 +134,9 @@ paper | Learning Transferable Visual Models From Natural Language Supervision | 
 ```
 
 ```quiz
-How does a transformer read an image? | Converts it to text first ; Cuts it into patches turned into vectors, like tokens ; Cannot read images | 1 | Vision transformers treat patches like tokens.
-What does CLIP do? | Compresses video ; Places matching images and text near each other in vector space ; Writes code | 1 | That shared space powers image search and guidance.
+How does a transformer read an image? | It converts the image to text first with a separate tool ; It cannot read images without extra hardware ; It cuts it into patches that become vectors, like tokens | 2 | Vision transformers treat image patches the way language models treat tokens.
+What does CLIP do? | Puts matching images and text close in vector space ; Compresses video so that it takes less storage ; Writes captions for any video, word by word | 0 | That shared space powers image search and guides image generation.
+A 224 by 224 image is cut into 16 by 16 patches. How many patches is that? | 256 ; 196 ; 14 | 1 | 224 divided by 16 is 14 in each direction, and 14 × 14 = 196.
 ```
 
 ```story
@@ -173,8 +171,9 @@ paper | Evaluating Large Language Models Trained on Code | https://arxiv.org/abs
 ```
 
 ```quiz
-Why did code and math improve fastest? | More data ; Results can be verified automatically ; They are easy | 1 | Checkable answers enable reward signals and trustworthy evaluation.
-What does SWE-bench test? | Typing speed ; Fixing real GitHub issues so the tests pass ; Translation | 1 | It scores agents on real repository tasks.
+Why did code and math improve fastest? | They have the least ambiguous wording of all ; More money was spent on them than anything ; Results can be auto-checked to train on them | 2 | A pass or fail result can be used to train and to trust the output.
+What does SWE-bench test? | Whether an agent fixes real issues, tests passing ; How quickly a model can type out new code ; How well a model explains very old code | 0 | It scores agents on real repository tasks.
+A generated change compiles. Why is that not enough to accept it? | Compiling guarantees that the logic is correct ; It may still be wrong, so test and read the diff ; The model already tested it internally | 1 | Compiling checks syntax, not behavior. Tests and review check behavior.
 ```
 
 ```story
@@ -209,8 +208,9 @@ course | Building with Llama 4 | https://www.deeplearning.ai/short-courses/build
 ```
 
 ```quiz
-Open-weight models usually let you | Download and run them yourself ; See all training data ; Skip licenses | 0 | The weights are published. Licenses and data availability vary.
-Good reason to choose an open model? | Privacy and control ; It always beats closed models ; Zero setup | 0 | Running it yourself keeps data in-house, at the cost of operating it.
+What do open-weight models usually let you do? | Read all of the training data ; Ignore the license terms ; Download and run them yourself | 2 | The weights are published. Licenses and data availability vary.
+When is an open model a good choice? | When privacy or control matters, and you can operate it ; When you want zero setup effort ; When you need the very best quality on every task | 0 | Running it yourself keeps data in-house, at the cost of operating it.
+You classify 5 million tickets a month and have no privacy concern. What should you compare first? | Which model has the largest parameter count ; API cost against hosting cost plus maintenance time ; Which license has the longest text ; Whichever model tops a public leaderboard | 1 | At volume, total cost including your own time decides, not size or fame.
 ```
 
 ```story

@@ -1,17 +1,14 @@
+import type { Metadata } from 'next';
 import { dsaSource } from '@/lib/source';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import { baseOptions } from '@/lib/layout.shared';
-import OverallProgress from '@/components/dsa/OverallProgress';
+import TrackLayout from '@/components/shared/TrackLayout';
 import dsa from '@/generated/dsa.json';
+
+export const metadata: Metadata = { title: { default: 'DSA in JavaScript', template: '%s | DSA in JavaScript' } };
 
 export default function Layout({ children }: LayoutProps<'/dsa'>) {
   return (
-    <DocsLayout
-      tree={dsaSource.getPageTree()}
-      sidebar={{ footer: <OverallProgress ids={Object.keys(dsa.topics)} /> }}
-      {...baseOptions('/dsa', 'DSA in JavaScript')}
-    >
+    <TrackLayout tree={dsaSource.getPageTree()} home="/dsa" title="DSA in JavaScript" topicIds={Object.keys(dsa.topics)}>
       {children}
-    </DocsLayout>
+    </TrackLayout>
   );
 }

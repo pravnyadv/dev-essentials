@@ -24,48 +24,13 @@ tool | roadmap.sh AI Engineer | https://roadmap.sh/ai-engineer | roadmap.sh | A 
 ```
 
 ```quiz
-A new tool claims to replace everything. What do you do first? | Install it ; Find which layer it occupies ; Wait a year | 1 | Placing it in a layer shows what job it does and what it leaves to others.
-What is the minimum stack for most AI features? | A model, a way to call it, retrieval or tools, and evals ; A vector database and a framework ; Fine-tuning | 0 | Add other layers only when a concrete problem requires them.
+A new tool claims to replace everything. What do you do first? | Install it on your main project now ; Find which layer of the stack it belongs to ; Wait a year for more reviews | 1 | Placing it in a layer shows what job it does and what it leaves to others.
+What is the minimum stack for most AI features? | A vector database and a framework ; Fine-tuning and a GPU cluster ; A model, a call path, retrieval or tools, evals | 2 | Add other layers only when a concrete problem requires them.
+Your team wants a vector database for 20,000 chunks. What should you ask? | Whether a table in your current database would do ; Which vendor has the nicest logo ; How to shard it across several regions | 0 | Match infrastructure to the size of the problem.
 ```
 
 ```story
 A hardware store is organized by aisle: fasteners, paint, plumbing. A new gadget does not confuse you because you know which aisle it belongs in. The AI tooling market is overwhelming until you learn the aisles: models, serving, data, orchestration, protocols, testing and applications.
-```
-
-# coding-tools | Chat apps and coding agents | 1 | 12
-Coding agents run in your terminal, your editor or the cloud. They differ in where they run and how much control you keep.
-
-## The families
-Terminal agents such as Claude Code, OpenAI Codex CLI and Aider read your repo, edit files and run commands, usually with permission prompts. IDE agents such as Cursor, Windsurf and GitHub Copilot sit in the editor with inline edits and an agent mode. OpenCode is an open-source terminal agent, and Replit Agent builds apps in a hosted environment. Cloud agents run tasks on a remote machine and open a pull request when finished, which suits parallel background work. Chat apps are for questions, drafts and analysis.
-
-## How to choose
-Try one tool seriously for two weeks before comparing. Learn its memory file, permission model, and how it handles context. The skills transfer between tools: explore, plan, implement, verify, keep context clean, and give the agent checks it can run. Models change quickly, so prefer tools that let you switch models.
-
-## A worked example: a two-week trial
-Pick one tool. Use it for real tasks for two weeks. Keep a short log: where it saved time, where it wasted time, what you had to correct. After two weeks you know more than any comparison chart can tell you. The habits you build (plan, small steps, tests, review) transfer to any other tool.
-
-## Things to check
-Does it let you pick the model? How does it ask permission before running commands? Where does your code go? Can it be run on a branch or worktree so it cannot damage your main work?
-
-## Common mistake
-Changing tools every week. Depth in one beats shallow tries of five.
-
-```resources
-docs | Claude Code | https://code.claude.com/docs/en/overview | Anthropic | Terminal and IDE coding agent.
-repo | OpenAI Codex CLI | https://github.com/openai/codex | OpenAI | Open-source terminal coding agent.
-tool | Aider | https://aider.chat/ | Aider | Open-source terminal pair programmer that works with many models.
-repo | awesome-claude-code | https://github.com/hesreallyhim/awesome-claude-code | hesreallyhim | Community skills, hooks and workflows.
-docs | Cursor docs | https://cursor.com/docs | Cursor | The IDE agent: rules, agent mode and context.
-tool | Codex | https://chatgpt.com/codex | OpenAI | OpenAI's coding agent in the cloud and terminal.
-```
-
-```quiz
-What transfers between coding agents? | Keyboard shortcuts ; The workflow: plan, implement, verify, clean context ; Nothing | 1 | The habits are tool-independent.
-Which agent type suits many parallel background tasks? | Cloud agents ; Autocomplete ; Chat only | 0 | They run remotely and return a pull request.
-```
-
-```story
-A designer, a data analyst and a backend developer each try a different AI tool. The designer likes a visual app builder. The analyst likes a notebook assistant. The developer likes a terminal agent that edits files and runs tests. All three are good. They match how each person works.
 ```
 
 # provider-landscape | Model providers and API styles | 1 | 12
@@ -103,8 +68,9 @@ tool | Mistral AI | https://mistral.ai | Mistral | Open and hosted models from a
 ```
 
 ```quiz
-Why wrap model calls in one function? | It is shorter ; It makes switching providers and models easy ; It is faster | 1 | Portability is a single point of change.
-What does an OpenAI-compatible endpoint let you do? | Use one client library across many providers ; Get free tokens ; Skip authentication | 0 | The request format is shared.
+Why wrap model calls in one function? | It makes each single call run faster ; It makes switching providers and models easy ; It removes the need for an API key | 1 | Portability is a single point of change.
+What does an OpenAI-compatible endpoint let you do? | Get free tokens from every lab ; Skip authentication on all requests ; Use one client library across many providers | 2 | The request format is shared.
+Your only provider has an outage. What would have made recovery easy? | A tested second provider behind one wrapper ; A longer timeout on every request ; A bigger model from the same provider | 0 | Keeping a tested fallback behind one function turns an outage into a config change.
 ```
 
 ```story
@@ -143,49 +109,13 @@ article | Introducing AgentKit | https://openai.com/index/introducing-agentkit |
 ```
 
 ```quiz
-When is a framework most worth it? | For a 20-line script ; When you need durable state, approvals and tracing ; Never | 1 | Those are costly to build and are what frameworks provide.
-What is the main risk of a framework? | Cost ; Hidden prompts and loop make debugging harder ; License | 1 | You must be able to see what the model saw.
+When is a framework most worth using? | For a script that is only 20 lines long ; When you need durable state, approvals, tracing ; When you want to hide the prompts | 1 | Those are costly to build and are what frameworks provide.
+What is the main risk of a framework? | The license is always very restrictive ; It cannot call any tools at all ; Hidden prompts and loops make debugging harder | 2 | You must be able to see what the model saw.
+You can write your agent loop in 80 lines. Why might that be a good first step? | You learn what a framework would hide ; Frameworks never work with tools ; It is always faster than any framework | 0 | Writing the loop once teaches you what to look for when you later pick a framework.
 ```
 
 ```story
 A beginner follows a tutorial that uses a framework and builds a working agent in ten minutes. A month later they need to change one prompt and cannot find where it lives, buried in four layers of classes. A different beginner wrote the loop by hand first. They now choose a framework deliberately and know what it hides.
-```
-
-# data-and-infra | Vector databases, inference and hubs | 2 | 12
-Three pieces of plumbing you meet quickly: where vectors are stored, how models are run and where they are shared.
-
-## Vector databases
-They store embeddings and find the nearest ones fast, using approximate search structures such as HNSW (a graph that jumps toward close neighbors). Chroma is easy to start with. pgvector adds vector search to Postgres, which is often the simplest choice if you already run it. Managed services like Pinecone remove operations work. Under a million vectors almost any option works. Pick based on what you already run.
-
-## Inference servers
-Inference means running a trained model to produce output. vLLM serves many users on GPUs efficiently by batching requests and managing the KV cache. llama.cpp and Ollama run quantized models on laptops and small machines. Quantization stores weights with fewer bits, such as 4 instead of 16, to cut memory at a small quality cost.
-
-## Hubs
-Hugging Face is the GitHub of models and datasets: model files, datasets, demos called Spaces and libraries like Transformers.
-
-## A worked example: sizing
-50,000 chunks of 1,536 numbers each, 4 bytes per number: about 300 MB of vectors. That fits in memory on a laptop. No special cluster needed. At 50 million chunks the same math gives 300 GB, and now index choice, sharding and cost matter.
-
-## Serving models
-If you use an API, none of this applies. If you host a model, you need an inference server that batches requests and a GPU with enough memory. A 4-bit 8-billion-parameter model fits on a laptop. A 70-billion one needs a serious GPU or two.
-
-## Common mistake
-Planning for a million users before you have ten.
-
-```resources
-repo | Chroma | https://github.com/chroma-core/chroma | Chroma | Open-source embedding database.
-repo | vLLM | https://github.com/vllm-project/vllm | vLLM project | High-throughput model serving.
-repo | Ollama | https://github.com/ollama/ollama | Ollama | Local model runner.
-tool | Hugging Face | https://huggingface.co/ | Hugging Face | Models, datasets and demos.
-```
-
-```quiz
-What does quantization do? | Stores weights with fewer bits to reduce memory ; Adds layers ; Encrypts the model | 0 | It trades a little quality for large memory savings.
-Which vector store is a reasonable default if you already run Postgres? | A new managed service ; pgvector ; None | 1 | Keeping data in one system simplifies operations.
-```
-
-```story
-A team builds a chatbot over their documents and chooses a fancy vector database, then discovers they only have 20,000 chunks. A single table in the database they already run would have been enough. Match the infrastructure to the size of the problem.
 ```
 
 # hugging-face | Hugging Face: the hub for open AI | 2 | 12
@@ -225,8 +155,9 @@ docs | Inference client | https://huggingface.co/docs/huggingface_hub/en/package
 ```
 
 ```quiz
-What does a model card tell you? | How the model was trained, its limits and license ; Its price ; Nothing | 0 | Always read it before using a model.
-What does Transformers.js do? | Runs models in the browser ; Trains models ; Hosts demos | 0 | It brings inference to JavaScript environments.
+What does a model card tell you? | The current price of using the model ; How it was trained, its limits and its license ; How many people downloaded it today | 1 | Always read it before using a model.
+What does Transformers.js do? | Trains models on a cluster ; Hosts demo apps for you ; Runs models in the browser | 2 | It brings inference to JavaScript environments.
+You find a promising model but its license is unclear. What should you do? | Check the license before using it commercially ; Use it anyway, since it is public ; Delete the model card to avoid confusion | 0 | Licenses vary and some forbid commercial use.
 ```
 
 ```story

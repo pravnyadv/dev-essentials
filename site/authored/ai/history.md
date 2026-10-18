@@ -31,8 +31,9 @@ article | Artificial intelligence: a brief history | https://ourworldindata.org/
 ```
 
 ```quiz
-Why did funding for neural networks drop in the late 1960s? | They were too expensive ; A single perceptron could not learn simple functions like XOR ; Computers were banned | 1 | Minsky and Papert's analysis showed the limits of single-layer perceptrons. Multi-layer networks trained with backpropagation came later.
-What is the core difference between symbolic AI and the learning approach? | Symbolic uses rules written by people, learning fits parameters from data ; Symbolic is faster ; Learning needs no computers | 0 | Symbolic systems encode knowledge by hand. Learning systems extract it from examples.
+Why did interest in neural networks fall after 1969? | Governments banned research on neural networks that year ; Single-layer perceptrons cannot learn simple functions like XOR ; Computers became too fast for neural networks to use | 1 | The analysis showed a hard limit of single-layer perceptrons. Multi-layer networks trained with backpropagation came later.
+What separates symbolic AI from the learning approach? | Symbolic systems need data but learning systems do not ; Learning systems were invented before symbolic ones ; Symbolic follows written rules, learning fits data | 2 | Symbolic systems encode knowledge by hand. Learning systems extract it from data.
+A team writes 5,000 rules to catch spam and spammers keep finding gaps. Which idea would help most? | Train a model on many labelled spam emails ; Write 5,000 more rules and ban more words ; Make every rule stricter than the last | 0 | A learning system finds patterns that no person thought to write down, so it can keep up as spam changes.
 ```
 
 ```story
@@ -71,8 +72,9 @@ book | The Hundred-Page Machine Learning Book | https://themlbook.com/ | Andriy 
 ```
 
 ```quiz
-Spam filter trained on emails labeled spam or not. What kind of learning? | Supervised ; Unsupervised ; Reinforcement | 0 | Labels are the correct answers the model learns to predict.
-Training accuracy 99 percent, validation accuracy 70 percent. What is happening? | Overfitting ; Underfitting ; Nothing | 0 | The model memorized the training data and does not generalize.
+A spam filter is trained on emails that people labelled as spam or not. What kind of learning is this? | Unsupervised learning ; Supervised learning ; Reinforcement learning | 1 | Labels are the correct answers that the model learns to predict.
+Training accuracy is 99 percent and validation accuracy is 70 percent. What is happening? | The model is underfitting and has learned too little ; The validation set is too easy for the model ; The model is overfitting and memorizing its training data | 2 | A large gap between training and validation scores means the model memorized instead of generalizing.
+You want to predict a house's sale price from its area and age. Which task is this? | Regression, because the answer is a number ; Classification, because there are many houses ; Clustering, because houses are alike | 0 | Predicting a number is regression. Classification picks a category.
 ```
 
 ```story
@@ -108,8 +110,9 @@ paper | Neural Machine Translation by Jointly Learning to Align and Translate | 
 ```
 
 ```quiz
-What changed the field in 2012? | A new programming language ; A deep network trained on GPUs beat hand-engineered methods on ImageNet ; A new law of physics | 1 | AlexNet showed that learned features at scale beat hand-designed ones, and the field followed.
-What does machine learning replace? | Computers ; Hand-written rules with parameters fitted from examples ; Data | 1 | You supply examples and a training algorithm finds the rules.
+What changed the field in 2012? | A new programming language made training faster ; A deep GPU network beat hand-built methods ; A famous lab released its very first chatbot | 1 | AlexNet showed that features learned at scale beat hand-designed ones, and the field followed.
+What does machine learning replace in a program? | The computer's processor, replaced by a faster chip ; The data, replaced by rules chosen by experts ; Hand-written rules, replaced by fitted parameters | 2 | You supply examples and a training algorithm finds the rules.
+Why did graphics cards matter so much for deep learning? | They do thousands of multiplications at once, as networks need ; They store more training data than normal chips ; They make the network's design simpler to write down | 0 | A network is mostly matrix multiplication, and GPUs were built to do many of those at once.
 ```
 
 ```story
@@ -147,12 +150,54 @@ article | The Illustrated GPT-2 | https://jalammar.github.io/illustrated-gpt2/ |
 ```
 
 ```quiz
-Why did the transformer scale better than earlier language models? | It processes all tokens in parallel, which suits GPUs ; It has fewer parameters ; It does not need data | 0 | Parallel training over tokens made it practical to train much larger models on much more data.
-What did GPT-3 show? | Models can only be fine-tuned ; A big enough model can learn new tasks from examples in the prompt ; Attention is unnecessary | 1 | In-context learning is why prompting became useful.
+Why did the transformer scale better than earlier language models? | It uses far fewer parameters than older models ; It trains on all tokens in parallel, which suits GPUs ; It does not need large amounts of training data | 1 | Parallel training made it practical to build much larger models on much more data.
+What did GPT-3 show? | Models must be fine-tuned for every new task ; Attention turned out to be unnecessary for language ; A big enough model can learn tasks from examples in the prompt | 2 | In-context learning is why prompting became a useful skill.
+BERT hides a word in the middle of a sentence and guesses it. GPT guesses the next word. Which is better for writing text? | GPT, because predicting the next word is writing ; BERT, because it sees words on both sides ; They are equally suited to writing text | 0 | Generating text means predicting what comes next, which is exactly GPT's training task.
 ```
 
 ```story
 Imagine reading a long sentence one word at a time and having to remember everything in your head. By the end, the start has faded. That was how older language models worked. The transformer lets the model glance back at every earlier word at once and decide which ones matter. It could also train on all the words in parallel, so it could be made much bigger, much faster.
+```
+
+# scaling-laws | Why bigger worked: scaling laws | 2 | 12
+Loss falls as a predictable power law when you add parameters, data or compute. That predictability financed the whole era.
+
+## The math, lightly
+Test loss L as a function of model size N follows roughly L(N) = (Nc / N)^α, with a small exponent α, around 0.07 for the early OpenAI fits. A power law is a straight line on a log-log plot. Each time you multiply N by 10, loss drops by the same factor, 10^(-α), which is about 15 percent for α = 0.07.
+
+$$L(N) = \left(\frac{N_c}{N}\right)^{\alpha}$$
+
+Chinchilla refined this: for a compute budget C, the best split gives parameters and tokens that grow together, and a good rule is about 20 training tokens per parameter. A 70 billion parameter model should see around 1.4 trillion tokens.
+
+## Example
+Suppose a 1B model has loss 3.0. With α = 0.07, a 10B model has loss 3.0 × 10^(-0.07) = 3.0 × 0.851 = 2.55. Another 10x gives 2.17. Each step costs ten times more compute for a smaller absolute gain, which is why labs also look for gains elsewhere: better data, reasoning at inference time and tools.
+
+## What to take from it
+Scaling is a trend, not a guarantee of every skill. It tells you that bigger runs reliably improve average loss, not when a particular ability will appear. It also explains why training tokens are as important as parameters.
+
+## Reading the exponent
+An exponent of 0.07 sounds tiny, and it is. It means progress is steady but slow in absolute terms. To halve the loss with that exponent you would need to multiply the model size by about 2^(1/0.07), which is around 20,000 times. That is why labs build enormous data centers and why they also hunt for other gains, like better training data and letting models think longer at answer time.
+
+## A worked example with Chinchilla
+You have a budget to train a model. Option A: 280 billion parameters on 300 billion tokens. Option B: 70 billion parameters on 1.4 trillion tokens. Chinchilla found B wins at the same cost, because A was too big for how little data it saw. Rule of thumb: about 20 tokens of training text per parameter.
+
+## Common mistake
+Treating scaling laws as a promise that any skill will appear at some size. They predict average error, not when a specific ability such as reliable arithmetic will show up.
+
+```resources
+paper | Scaling Laws for Neural Language Models | https://arxiv.org/abs/2001.08361 | Kaplan et al. | The original power-law fits.
+paper | Training Compute-Optimal Large Language Models | https://arxiv.org/abs/2203.15556 | Hoffmann et al. | The 20 tokens per parameter result.
+article | Scaling laws | https://epoch.ai/blog/scaling-laws-literature-review | Epoch AI | A literature review of the evidence and its limits.
+```
+
+```quiz
+Loss follows L = (Nc/N)^0.07. What happens to loss when N grows 10 times? | It drops to half its value ; It drops about 15 percent ; It stays about the same | 1 | 10 to the power -0.07 is about 0.85, so loss falls by roughly 15 percent.
+What is Chinchilla's rule of thumb? | About 1 training token for each parameter ; Parameters matter and data does not ; About 20 training tokens for each parameter | 2 | Compute-optimal training balances model size with the amount of training data.
+A lab has a fixed budget and trains a huge model on very little data. What does Chinchilla suggest? | A smaller model on more data would likely do better ; The model should have been even larger ; The budget should be spent on a longer prompt | 0 | Many large models were undertrained: size and data should grow together.
+```
+
+```story
+A farmer notices that every extra bag of fertilizer adds a bit more corn, but each bag adds less than the one before. The pattern is so regular that she can predict next year's harvest from this year's spending. Scaling laws are that regularity for AI: spend ten times more on size, data and compute, and the error drops by a predictable amount.
 ```
 
 # chatgpt-and-the-race | ChatGPT and how companies kept improving | 1 | 18
@@ -186,50 +231,13 @@ article | State of AI | https://www.stateof.ai/ | Air Street Capital | Yearly fr
 ```
 
 ```quiz
-What turned GPT-3 into ChatGPT? | A bigger model only ; Instruction tuning with human feedback plus a chat interface ; A new architecture | 1 | Post-training made the model follow instructions, and the interface made it usable.
-What is test-time compute? | Faster chips ; Spending extra tokens thinking before answering ; Testing the code | 1 | Reasoning models trade latency and cost for accuracy on hard problems.
+What turned GPT-3 into ChatGPT? | A much larger model with no other changes ; Instruction tuning with feedback plus a chat interface ; A new architecture that replaced the transformer | 1 | Post-training made the model follow instructions, and the interface made it usable by anyone.
+What is test-time compute? | Running the same model on faster chips ; Testing the code that the model wrote ; Spending extra tokens thinking before it answers | 2 | Reasoning models trade latency and cost for accuracy on hard problems.
+Two labs release models in the same month. How should a company decide which to use? | Test both on its own examples before choosing ; Pick whichever one the news covers more ; Pick the one with the biggest parameter count | 0 | Models differ in quality, speed and price, so your own examples decide.
 ```
 
 ```story
 In November 2022 a research lab put a chat box on top of a model that had existed for months in a developer tool. Nothing about the model had changed overnight, but the box made it usable by anyone. A hundred million people tried it within about two months. The lesson: a capability becomes a revolution when someone makes it easy to use.
-```
-
-# scaling-laws | Why bigger worked: scaling laws | 2 | 12
-Loss falls as a predictable power law when you add parameters, data or compute. That predictability financed the whole era.
-
-## The math, lightly
-Test loss L as a function of model size N follows roughly L(N) = (Nc / N)^α, with a small exponent α, around 0.07 for the early OpenAI fits. A power law is a straight line on a log-log plot. Each time you multiply N by 10, loss drops by the same factor, 10^(-α), which is about 15 percent for α = 0.07.
-
-Chinchilla refined this: for a compute budget C, the best split gives parameters and tokens that grow together, and a good rule is about 20 training tokens per parameter. A 70 billion parameter model should see around 1.4 trillion tokens.
-
-## Example
-Suppose a 1B model has loss 3.0. With α = 0.07, a 10B model has loss 3.0 × 10^(-0.07) = 3.0 × 0.851 = 2.55. Another 10x gives 2.17. Each step costs ten times more compute for a smaller absolute gain, which is why labs also look for gains elsewhere: better data, reasoning at inference time and tools.
-
-## What to take from it
-Scaling is a trend, not a guarantee of every skill. It tells you that bigger runs reliably improve average loss, not when a particular ability will appear. It also explains why training tokens are as important as parameters.
-
-## Reading the exponent
-An exponent of 0.07 sounds tiny, and it is. It means progress is steady but slow in absolute terms. To halve the loss with that exponent you would need to multiply the model size by about 2^(1/0.07), which is around 20,000 times. That is why labs build enormous data centers and why they also hunt for other gains, like better training data and letting models think longer at answer time.
-
-## A worked example with Chinchilla
-You have a budget to train a model. Option A: 280 billion parameters on 300 billion tokens. Option B: 70 billion parameters on 1.4 trillion tokens. Chinchilla found B wins at the same cost, because A was too big for how little data it saw. Rule of thumb: about 20 tokens of training text per parameter.
-
-## Common mistake
-Treating scaling laws as a promise that any skill will appear at some size. They predict average error, not when a specific ability such as reliable arithmetic will show up.
-
-```resources
-paper | Scaling Laws for Neural Language Models | https://arxiv.org/abs/2001.08361 | Kaplan et al. | The original power-law fits.
-paper | Training Compute-Optimal Large Language Models | https://arxiv.org/abs/2203.15556 | Hoffmann et al. | The 20 tokens per parameter result.
-article | Scaling laws | https://epoch.ai/blog/scaling-laws-literature-review | Epoch AI | A literature review of the evidence and its limits.
-```
-
-```quiz
-Loss follows L = (Nc/N)^0.07. What happens to loss when N grows 10x? | It drops about 15 percent ; It halves ; It stays the same | 0 | 10^(-0.07) is about 0.85, so loss falls by roughly 15 percent.
-Chinchilla's rule of thumb? | 1 token per parameter ; About 20 training tokens per parameter ; Parameters only | 1 | Compute-optimal training balances model size with the amount of data.
-```
-
-```story
-A farmer notices that every extra bag of fertilizer adds a bit more corn, but each bag adds less than the one before. The pattern is so regular that she can predict next year's harvest from this year's spending. Scaling laws are that regularity for AI: spend ten times more on size, data and compute, and the error drops by a predictable amount.
 ```
 
 # ai-engineer-role | What is an AI engineer? | 1 | 10
@@ -247,7 +255,7 @@ All current systems are narrow in the sense that they have uneven abilities: sup
 ## How to grow
 Build small projects that break in interesting ways. Read traces of your own system. Learn evals early. Keep a short list of sources and ignore the noise.
 
-## A day in the life of an AI engineer
+## A worked example: a day in the life of an AI engineer
 Morning: read yesterday's failed conversations from the assistant and group them by cause. Midday: change a prompt, add a missing tool, rerun the test set to see if the pass rate moved. Afternoon: check cost and speed dashboards, review a pull request, talk to the people who use the product. Notice how little of it is "training a model" and how much is testing, reading and fixing.
 
 ## What you need to start
@@ -263,8 +271,9 @@ article | Start AI Engineering in 2026 | https://github.com/louisfb01/start-ai-e
 ```
 
 ```quiz
-What is the main difference between an AI engineer and an ML engineer? | AI engineers build on pretrained models, ML engineers train custom models ; AI engineers do not code ; No difference | 0 | The first builds systems around existing models, the second trains models.
-Why not design around AGI? | It is illegal ; It has no agreed definition or test ; It is too cheap | 1 | Design around measured behavior on your task.
+How does an AI engineer differ from an ML engineer? | AI engineers never write code, ML engineers always do ; AI engineers build on models, ML engineers train them ; AI engineers work only on images, ML engineers on text | 1 | The first builds systems around existing models. The second trains models.
+Why not design a product around AGI? | It is illegal to build products with it ; It has already been fully achieved ; It has no agreed definition or test | 2 | Design around measured behavior on your own task today.
+You are starting out and the field changes every month. What is the best first step? | Build one small project and test how it fails ; Wait until the tools settle down ; Read every new paper before writing any code | 0 | Building something small teaches more than waiting, and the habits carry over.
 ```
 
 ```story

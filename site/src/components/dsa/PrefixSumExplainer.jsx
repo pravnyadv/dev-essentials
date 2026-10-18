@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { cell, idle } from './explainerKit.jsx'
+import { cell, idle } from '../shared/explainerKit.jsx'
 import Walkthrough from './Walkthrough.jsx'
 
 const N = [3, 1, 4, 2, 5]
@@ -33,21 +33,21 @@ function Stage({ step, s, e, picking, onPick }) {
         {N.map((v, i) => {
           const inRange = (rangeOn && i >= s && i <= e) || (!rangeOn && step >= 2 && i <= e)
           const out = showBefore && i < s
-          const tone = inRange ? 'border-fd-primary bg-fd-primary/15 text-fd-primary' : out ? 'border-rose-400 bg-rose-500/10 text-rose-700 dark:text-rose-300' : idle
+          const tone = inRange ? 'border-fd-primary bg-fd-primary/15 text-fd-primary' : out ? 'border-danger bg-danger/10 text-danger' : idle
           return <button key={i} disabled={!last} onClick={() => onPick(i)} className={`${cell} ${tone} ${last ? 'cursor-pointer hover:border-fd-primary/70' : 'cursor-default'}`}>{v}</button>
         })}
         {showTotals && <>
           <Label>running total</Label>
-          {P.map((v, i) => <div key={i} className={`${cell} ${idle} ${showEnd && i === e ? '!border-2 !border-emerald-500 text-emerald-700 dark:text-emerald-300' : ''} ${showBefore && i === s - 1 ? '!border-2 !border-rose-500 text-rose-700 dark:text-rose-300' : ''}`}>{v}</div>)}
+          {P.map((v, i) => <div key={i} className={`${cell} ${idle} ${showEnd && i === e ? '!border-2 !border-success text-success' : ''} ${showBefore && i === s - 1 ? '!border-2 !border-danger text-danger' : ''}`}>{v}</div>)}
           <span />
           {P.map((v, i) => <div key={i} className="text-center text-[10px] text-fd-muted-foreground">{i ? `${P[i - 1]} + ${N[i]}` : N[0]}</div>)}
         </>}
       </div>
       {showEnd && <div style={{ ...grid, marginTop: 10 }}><Label>total up to end</Label>
-        <div className={`${bar} bg-emerald-500/15 text-emerald-700 dark:text-emerald-300`} style={{ gridColumn: `2 / span ${e + 1}` }}>{N.slice(0, e + 1).join(' + ')} = {P[e]}</div></div>}
+        <div className={`${bar} bg-success/15 text-success`} style={{ gridColumn: `2 / span ${e + 1}` }}>{N.slice(0, e + 1).join(' + ')} = {P[e]}</div></div>}
       {showBefore && <>
         <div style={{ ...grid, marginTop: 4 }}><Label>extra before</Label>
-          {s > 0 ? <div className={`${bar} bg-rose-500/15 text-rose-700 dark:text-rose-300`} style={{ gridColumn: `2 / span ${s}` }}>{P[s - 1]}</div>
+          {s > 0 ? <div className={`${bar} bg-danger/15 text-danger`} style={{ gridColumn: `2 / span ${s}` }}>{P[s - 1]}</div>
             : <div className="text-xs text-fd-muted-foreground" style={{ gridColumn: '2 / span 5' }}>nothing before, so subtract 0</div>}</div>
         <p className="mt-3 text-center text-lg font-medium">{P[e]} − {before} = <span className="text-fd-primary">{P[e] - before}</span></p>
         <p className="mt-0.5 text-center text-xs text-fd-muted-foreground">check: {N.slice(s, e + 1).join(' + ')} = {P[e] - before}</p>

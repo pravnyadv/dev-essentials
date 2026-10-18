@@ -23,8 +23,9 @@ paper | From Local to Global: A GraphRAG Approach | https://arxiv.org/abs/2404.1
 ```
 
 ```quiz
-What does a reranker do? | Creates embeddings ; Rescores a short list of candidates by reading query and passage together ; Splits documents | 1 | It is slower but more accurate, so it runs on a short list.
-How do you decide to keep a new technique? | It is popular ; Recall improves enough to justify added cost and latency ; It uses an agent | 1 | Measure on your own questions.
+What does a reranker do? | Splits long documents into smaller chunks ; Creates the embeddings for every passage ; Rescores a short list, reading both texts together | 2 | It is slower but more accurate, so it runs on a short list.
+How do you decide to keep a new technique? | Recall improves enough to justify the cost ; It is popular in many online tutorials ; It happens to use an agent | 0 | Measure on your own questions.
+GraphRAG builds a graph of entities first. When might it help most? | Looking up one exact fact in one document ; Questions about themes across many documents ; Short chats about the weather | 1 | Collection-wide questions need a map of the whole set, not just the nearest passages.
 ```
 
 ```story
@@ -37,14 +38,13 @@ Token cost and wait time are product features. A few levers cut both by a large 
 ## The math
 Cost per call is input tokens times the input price plus output tokens times the output price, and output tokens usually cost several times more than input. Example: input costs $3 per million tokens and output $15 per million. A call with 20,000 input tokens costs 20,000 × 3 / 1,000,000 = $0.06. Its 1,000 output tokens cost 1,000 × 15 / 1,000,000 = $0.015. The total is $0.075. An agent making 30 such calls costs about $2.25 per task. Context re-sent each step is the main cost.
 
+$$\text{cost} = \frac{n_{\text{in}} \, p_{\text{in}} + n_{\text{out}} \, p_{\text{out}}}{10^6}$$
+
 ## Levers
 Prompt caching: providers reuse the computed state of an unchanged prompt prefix, charging much less for cached input and responding faster. Keep stable content first. Model routing: use a small model for easy steps. Shorter context: trim tool results. Batch APIs: lower prices for non-urgent work. Streaming: improves perceived speed. Output limits: cap length.
 
 ## A worked example: where the money goes
-A support agent averages 6 model calls per ticket. Each call sends about 8,000 tokens in and 300 out. At $3 and $15 per million: input 6 × 8,000 = 48,000 tokens = $0.144; output 6 × 300 = 1,800 tokens = $0.027. About $0.17 per ticket, 90 percent of it input. Trimming context or caching the shared prefix cuts the biggest part.
-
-## Levers in order
-Cache the unchanged beginning of the prompt. Trim old tool output. Use a small model for easy steps. Batch non-urgent work. Cap output length. Measure after each change.
+A support agent averages 6 model calls per ticket. Each call sends about 8,000 tokens in and 300 out. At $3 and $15 per million: input 6 × 8,000 = 48,000 tokens = $0.144; output 6 × 300 = 1,800 tokens = $0.027. About $0.17 per ticket, and 84 percent of it is input. Caching shrinks that biggest part. Suppose 6,000 of the 8,000 input tokens in each call are the same unchanged prefix, and cached reads cost a tenth of the normal input price. Each call then costs 6,000 × $0.30 / 1,000,000 + 2,000 × $3 / 1,000,000 = $0.0078 for input. Over 6 calls that is $0.047, so a ticket costs about $0.074, roughly 57 percent less.
 
 ## Common mistake
 Optimizing output length when the cost is mostly input.
@@ -56,8 +56,9 @@ tool | Artificial Analysis | https://artificialanalysis.ai/ | Artificial Analysi
 ```
 
 ```quiz
-A call has 20,000 input tokens at $3 per million. What is the input cost? | $0.06 ; $0.60 ; $6 | 0 | 20,000 / 1,000,000 × 3 = 0.06.
-Where should stable instructions go to benefit from caching? | At the start of the prompt ; At the end ; Anywhere | 0 | Caches match on the unchanged prefix.
+A call has 20,000 input tokens at $3 per million. What is the input cost? | $0.60 ; $6 ; $0.06 | 2 | 20,000 divided by a million, times 3, is 0.06.
+Where should stable instructions go to benefit from caching? | At the start of the prompt ; At the end of the prompt ; Anywhere, since caching ignores order | 0 | Caches match on the unchanged prefix.
+Your agent costs $0.17 per ticket and 84 percent is input. Which change cuts the most? | Shorten the final answer that is returned ; Cache the shared prefix and trim old tool output ; Lower the temperature of the model | 1 | The biggest cost is input, so reduce or cache the input.
 ```
 
 ```story
@@ -80,10 +81,13 @@ Set per-user and global rate limits and a daily spend cap, since a loop or an ab
 Point a custom domain with DNS and HTTPS. Back up the database and test the restore. Run migrations before the new code needs them.
 
 ## A worked example: a safe release
-1. Merge to main; the host builds. 2. Deploy to staging with its own keys and a low spend cap. 3. Smoke test: ask one real question. 4. Run the eval set against staging. 5. Promote to production. 6. Watch error rate, latency and cost for fifteen minutes. 7. If anything looks wrong, roll back to the previous version. Each step is boring and each has saved someone.
-
-## What the health endpoint checks
-That the app is up, the database answers and the model provider accepts your key. Platforms call it often and restart instances that fail.
+1. Merge to main; the host builds.
+2. Deploy to staging with its own keys and a low spend cap.
+3. Smoke test: ask one real question.
+4. Run the eval set against staging.
+5. Promote to production.
+6. Watch error rate, latency and cost for fifteen minutes.
+7. If anything looks wrong, roll back to the previous version. Each step is boring and each has saved someone.
 
 ## Common mistake
 No cap on spending. A bug can turn a quiet day into an expensive one.
@@ -96,8 +100,9 @@ repo | LiteLLM | https://github.com/BerriAI/litellm | BerriAI | A proxy with bud
 ```
 
 ```quiz
-What should a deploy do on SIGTERM? | Exit immediately ; Stop new requests, finish in-flight ones, then exit ; Ignore it | 1 | Otherwise users get cut off mid-response.
-Why set a spend cap? | A loop or abuse can create a large bill quickly ; Models are free ; It speeds up responses | 0 | Caps limit the damage of runaway usage.
+What should a deploy do on SIGTERM? | Exit immediately and drop everything in progress ; Ignore the signal and keep running ; Stop new requests, finish in-flight ones, then exit | 2 | Otherwise users get cut off mid-response.
+Why set a spend cap? | A loop or abuse can create a large bill fast ; Models are free below a certain cap ; It makes responses faster for everyone | 0 | Caps limit the damage of runaway usage.
+Your first real user hits an error right after deploy. What step would have caught it? | A bigger staging server for the same code ; A smoke test through the whole path ; A longer prompt for the same task | 1 | One real request through the whole path catches key and permission mistakes in seconds.
 ```
 
 ```story
@@ -116,9 +121,6 @@ Pin model versions. Keep prompts in files under version control. Run the eval se
 ## A worked example: tracing a regression
 Pass rate fell from 92 to 84 on 14 March. The log shows: prompt v18 deployed 12 March, model upgraded 13 March, new documents indexed 14 March. Rerun the eval set with each change reverted in turn. Reverting the model alone restores 92. You now know what to fix.
 
-## Minimum setup
-Git for code and prompts. A place to version datasets. A log of experiments with settings and scores. CI that runs the eval set. A dashboard for error rate, latency and cost. None of it is exotic.
-
 ## Common mistake
 Changing several things between releases, so you cannot tell which caused a change.
 
@@ -130,8 +132,9 @@ repo | MLOps Zoomcamp | https://github.com/DataTalksClub/mlops-zoomcamp | DataTa
 ```
 
 ```quiz
-What three things can change an AI system's behavior? | Only the model ; Code, data and the model or prompt ; Only the code | 1 | All three need versioning and tests.
-What should CI run for an LLM feature? | Only unit tests ; Unit tests and the eval set ; Nothing | 1 | The eval set catches quality regressions that unit tests miss.
+What three things can change an AI system's behavior? | Only the code in the repository ; Only the model version in use ; Code, data and the model or prompt | 2 | All three need versioning and tests.
+What should CI run for an LLM feature? | Unit tests and the eval set ; Only unit tests ; Nothing, since models are not code | 0 | The eval set catches quality regressions that unit tests miss.
+Accuracy falls after a week with a new prompt, a model update and new documents. How do you find the cause? | Guess which one it was and move on ; Revert each change and rerun the evals ; Rebuild everything from scratch | 1 | Versioned changes let you isolate the cause.
 ```
 
 ```story
@@ -150,9 +153,6 @@ These standards are young and still changing. Prefer the ones with wide adoption
 ## A worked example: which protocol for what
 Your agent needs to read a calendar: MCP (agent to tool). Your coding agent needs to know the repo rules: AGENTS.md. Your travel agent needs to ask another company's booking agent for a quote: A2A (agent to agent). Three protocols, three jobs.
 
-## Keeping options open
-These are young. Keep your code behind a thin layer so a protocol change touches one file. Check how a protocol handles authentication before connecting anything with real access.
-
 ## Common mistake
 Adopting a protocol because it is new, not because you have the problem it solves.
 
@@ -164,8 +164,9 @@ course | A2A: The Agent2Agent Protocol | https://www.deeplearning.ai/short-cours
 ```
 
 ```quiz
-MCP connects an agent to what? | Another agent ; Tools and data ; A GPU | 1 | A2A is the agent-to-agent protocol.
-How do you protect against churn in young standards? | Avoid them entirely ; Keep a thin adapter between them and your code ; Pin to one vendor | 1 | An adapter keeps changes local.
+What does MCP connect an agent to? | Another vendor's agent ; A GPU cluster ; Tools and data | 2 | A2A is the agent-to-agent protocol.
+How do you protect against churn in young standards? | Keep a thin adapter between them and your code ; Avoid every standard entirely forever ; Pin your whole product to one vendor | 0 | An adapter keeps changes local.
+Your finance agent needs to ask another company's booking agent for a quote. Which protocol fits? | MCP, which is agent to tool ; A2A, which is agent to agent ; AGENTS.md, which is repo rules | 1 | A2A is built for agents from different makers to exchange tasks.
 ```
 
 ```story
@@ -184,9 +185,6 @@ Show what will happen in plain terms and what the agent tried before. Avoid appr
 ## A worked example: sorting actions by risk
 Read a file: allow. Edit a file in a branch: allow and log. Send a customer email: ask first. Delete data or spend over a limit: require approval and a reason. The sort uses two questions: how bad is a mistake, and can it be undone?
 
-## Avoid approval fatigue
-If every action asks, people click yes without reading. Group low-risk steps, ask only for real decisions and show a clear, short summary of what will happen.
-
 ## Common mistake
 Putting the rule in the prompt. Enforce it with permissions and hooks.
 
@@ -197,8 +195,9 @@ repo | NeMo Guardrails | https://github.com/NVIDIA/NeMo-Guardrails | NVIDIA | Pr
 ```
 
 ```quiz
-Which action should usually need human approval? | Reading a file ; Sending an email to customers ; Searching the repo | 1 | It is outward-facing and hard to reverse.
-Why is a hook stronger than a prompt rule? | It is code the harness runs, so it does not depend on the model complying ; It is shorter ; It is free | 0 | Prompts request, hooks enforce.
+Which action should usually need human approval? | Reading a file ; Searching the repository ; Sending an email to customers | 2 | It is outward-facing and hard to reverse.
+Why is a hook stronger than a prompt rule? | It is code the harness runs, so it always applies ; It is much shorter to write than a prompt ; It is cheaper to run on every call | 0 | Prompts request, hooks enforce.
+An agent asks for approval on every single action and people click yes without reading. What is the fix? | Ask for approval even more often than now ; Group low-risk steps and ask only when it matters ; Remove approval completely from the flow | 1 | Approval fatigue makes checks useless. Reserve them for meaningful decisions.
 ```
 
 ```story

@@ -107,3 +107,30 @@ open source | Software whose code is public and can be reused under a license.
 diffusion model [diffusion] | An image generator trained to remove noise step by step. Generation starts from pure noise.
 CNN [convolutional neural network] | A network that slides small filters over an image to detect edges, shapes and objects.
 AGI | Artificial general intelligence: a loosely defined label for AI as capable as people across most tasks. There is no agreed test.
+DPO | Direct preference optimization: a simpler way to tune a model toward answers people prefer, without a separate reward model.
+PPO | Proximal policy optimization: a reinforcement learning method that limits how far each update can move the model.
+GRPO | Group relative policy optimization: a reinforcement learning method that scores each answer against the other answers sampled for the same prompt.
+HNSW | A graph-based index that finds approximate nearest neighbors quickly by jumping through layers of connections.
+ANN [approximate nearest neighbor] | Search that returns vectors that are almost always the closest ones, much faster than checking every vector.
+OAuth | A standard way to let an app act for you without giving it your password.
+stdio | Standard input and output: how a local program talks to the program that started it, used by local MCP servers.
+latency | The time you wait for a response.
+backoff [exponential backoff] | Waiting longer after each failed attempt before retrying, for example 1, 2, then 4 seconds.
+jitter | A little randomness added to retry waits so many clients do not retry at the same moment.
+hyperparameter [hyperparameters] | A setting you choose before training, such as the learning rate, rather than a value the model learns.
+MRR | Mean reciprocal rank: the average of 1 divided by the rank of the first correct result. Higher is better.
+F1 | A score that combines precision (how many flagged items were right) and recall (how many right items were found).
+prefill | The first stage of generation, where the model reads the whole prompt at once.
+decode | The second stage of generation, where the model writes one token at a time.
+context rot | Answers getting worse as the input gets longer, even on simple tasks.
+cross-encoder | A model that reads a query and a passage together and scores how relevant the passage is. Used for reranking.
+validation set | Data held out from training and used to tune choices and check that the model generalizes.
+SIGTERM | A signal that asks a program to shut down cleanly.
+OCR | Optical character recognition: turning an image of text into real text.
+BPE | Byte-pair encoding: a common way tokenizers build their vocabulary by merging frequent pairs of characters.
+logarithm [logarithms, log] | The power you raise a base to in order to get a number. log base 2 of 8 is 3 because 2 to the power 3 is 8.
+nats | The unit of information when you use the natural logarithm. Bits use log base 2.
+SWE-bench | A benchmark that scores coding agents on real GitHub issues from open-source projects.
+GraphRAG | Retrieval that first builds a graph of entities and relations, for questions that span many documents.
+reciprocal rank fusion [RRF] | A way to merge two ranked result lists by adding 1 / (k + rank) for each list.
+A2A | Agent2Agent: a protocol for agents from different makers to find each other and exchange tasks.

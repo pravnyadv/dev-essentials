@@ -1,4 +1,5 @@
 import { PatternDetail } from '@/components/dsa/Patterns';
+import PageContainer from '@/components/shared/PageContainer';
 import site from '@/generated/dsa.json';
 import { notFound } from 'next/navigation';
 
@@ -17,8 +18,8 @@ export default async function PatternPage(props: PageProps<'/dsa/patterns/[id]'>
   if (!pattern) notFound();
   const byId = Object.fromEntries(Object.values(site.topics).map((t) => [t.id, { title: t.title, url: t.url }]));
   return (
-    <div className="[grid-area:main] min-w-0 mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
+    <PageContainer>
       <PatternDetail p={pattern} byId={byId} />
-    </div>
+    </PageContainer>
   );
 }

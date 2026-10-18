@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { ActionButton, CellRow, Hint, Line, useFrames } from './explainerKit.jsx'
+import { ActionButton, CellRow, Hint, Line, useFrames } from '../shared/explainerKit.jsx'
 import Walkthrough from './Walkthrough.jsx'
 
 const A = [2, 5, 8, 12, 16, 23, 38]

@@ -2,7 +2,7 @@
 // Draws one scene of a walkthrough. One accent colour: indigo marks what the step acts on.
 const Cell = ({ v, on, tint, dim, compact }) => v === null ? <span className={compact ? 'size-5' : 'size-10'} /> : (
   <span className={`grid place-items-center rounded-md border font-medium transition ${compact ? 'h-5 min-w-5 px-0.5 text-[10px]' : 'size-10 min-w-10 px-1 text-sm'} ${
-    on ? 'border-fd-primary bg-fd-primary text-fd-primary-foreground' : tint ? 'border-fd-primary/70 bg-fd-primary/10 text-fd-primary' : 'border-fd-border'} ${dim ? 'opacity-30' : ''}`}>{v}</span>
+    on ? 'border-fd-primary bg-fd-primary text-fd-primary-foreground' : tint ? 'border-fd-primary/70 bg-fd-primary/10 text-fd-primary' : 'border-fd-border'} ${dim ? '!border-fd-border/40 text-fd-muted-foreground' : ''}`}>{v}</span>
 )
 const Tag = ({ children }) => <span className="mt-1 block h-4 text-center text-[11px] font-medium text-fd-primary">{children}</span>
 const RowLabel = ({ children }) => <span className="w-16 shrink-0 pr-2 text-right text-xs text-fd-muted-foreground">{children}</span>

@@ -1,4 +1,4 @@
-import Dashboard from '@/components/dsa/Dashboard';
+import Dashboard from '@/components/shared/Dashboard';
 import site from '@/generated/dsa.json';
 
 export default function DsaHome() {

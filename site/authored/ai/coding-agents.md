@@ -19,6 +19,13 @@ Ask for the diff, not a summary. Ask "what did you not verify?" Treat it like a 
 ## Common mistakes
 Starting with implementation. Letting the diff grow to hundreds of lines before looking. Skipping tests because the code "looks right".
 
+## Asking for more
+Felix Rieseberg, who works on Claude, describes four ways to ask models for more. Speed is the same work in less time. Altitude is asking for the outcome instead of the task, such as "keep our app crash-free" instead of "fix this crash". Depth is pushing the model to use the tools and rigor an expert would, for example real statistics instead of a summary table. Range is drawing on several fields instead of the one the task sits in.
+
+A worked example of altitude. Level 1: "Write a summary of last month's sales." Level 2: "Tell me what changed last month, why, and what we should do about it." Level 3: "Design a better way for leadership to catch problems early than a monthly report, and show from our history that it would have caught last spring's dip sooner." Each level gives the model more of the goal and less of the steps.
+
+The cost of ambition is verification. A bigger goal needs data to work from and checks that run, because a high-level goal without checks is how errors get big. "Make my business grow" fails. "Find the three biggest reasons customers cancel, using these exports" works.
+
 ```resources
 article | Claude Code: Best practices for agentic coding | https://www.anthropic.com/engineering/claude-code-best-practices | Anthropic | The canonical workflow guide: explore, plan, code, commit.
 article | Industrial Agentic Engineering | https://research.google/pubs/industrial-agentic-engineering/ | Google Research | Specification, harness, trajectory, verification and meta-debugging.
@@ -26,47 +33,55 @@ article | The New Software Lifecycle | https://addyosmani.com/blog/new-sdlc-vibe
 course | Claude Code: A Highly Agentic Coding Assistant | https://www.deeplearning.ai/short-courses/claude-code-a-highly-agentic-coding-assistant/ | DeepLearning.AI and Anthropic | Short free course on exploring, testing and refactoring with an agent.
 docs | Claude Code overview | https://code.claude.com/docs/en/overview | Anthropic | Install, commands and how the tool is organized.
 course | Claude Code in Action | https://anthropic.skilljar.com/claude-code-in-action | Anthropic | Free course on tools, context, plan mode, hooks and the SDK.
+article | How to be more ambitious: A tutorial for humans with models | https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/ | Felix Rieseberg | The source: altitude, depth and range with worked examples.
+video | Software Is Changing (Again) | https://www.youtube.com/watch?v=LCEmiRjPEtQ | Andrej Karpathy at Y Combinator | Talk on software 1.0, 2.0 and 3.0 and designing for agents.
 ```
 
 ```quiz
-What lets a coding agent fix its own mistakes? | A bigger model ; Running tests and checks it can see the output of ; A longer prompt | 1 | Feedback it can observe, like failing tests, lets it iterate without you in the loop.
-Which phase do people most often skip? | Plan ; Verify ; Implement | 1 | Skipping verification is how plausible but wrong code reaches review.
+What lets a coding agent fix its own mistakes? | A bigger model with a longer prompt ; Checks it can run and read, such as tests ; A reminder to be careful in each message | 1 | Feedback it can observe, like a failing test, lets it iterate without you in the loop.
+Which phase do people most often skip? | Plan ; Implement ; Verify | 2 | Skipping verification is how plausible but wrong code reaches review.
+"Fix this crash" becomes "keep our app crash-free". Which kind of ambition is this? | Altitude: asking for the outcome, not the task ; Speed: doing the same work in less time ; Range: borrowing methods from another field | 0 | Altitude means asking for the goal beyond the individual task, and it needs data and checks to match.
 ```
 
 ```story
 Two developers ask an agent to add a discount feature. One says "add discounts" and merges whatever comes back. The other asks the agent to read the checkout code first, proposes a plan, reviews it, then asks the agent to write a failing test and make it pass. The first spends the next week fixing surprises. The second ships on Friday.
 ```
 
-# being-ambitious | Being more ambitious with models | 1 | 12
-Most people use models for small tasks. Felix Rieseberg, who works on Claude, describes four ways to ask for more.
+# coding-tools | Chat apps and coding agents | 1 | 12
+Coding agents run in your terminal, your editor or the cloud. They differ in where they run and how much control you keep.
 
-## What it is
-His tutorial names four kinds of ambition. Speed is the same work in less time. Altitude is asking for the outcome instead of the task, for example "keep our app crash-free" instead of "fix this crash". Depth is pushing the model to use the tools and rigor a field expert would. Range is drawing on several fields instead of the one the task sits in.
+## The families
+Terminal agents such as Claude Code, OpenAI Codex CLI and Aider read your repo, edit files and run commands, usually with permission prompts. IDE agents such as Cursor, Windsurf and GitHub Copilot sit in the editor with inline edits and an agent mode. OpenCode is an open-source terminal agent, and Replit Agent builds apps in a hosted environment. Cloud agents run tasks on a remote machine and open a pull request when finished, which suits parallel background work. Chat apps are for questions, drafts and analysis.
 
-## How to apply it
-For altitude, ask what you want to happen next and give the model the data and access to do it, such as crash reports and a machine to reproduce on. For depth, insist on real instruments like databases and statistical tests instead of summary tables, and ask the model to challenge your assumptions against raw data. The cost is that you need verification in proportion to the ambition. A higher-level goal without checks is how errors get big.
+## How to choose
+Try one tool seriously for two weeks before comparing. Learn its memory file, permission model, and how it handles context. The skills transfer between tools: explore, plan, implement, verify, keep context clean, and give the agent checks it can run. Models change quickly, so prefer tools that let you switch models.
 
-## A worked example: climbing altitude
-Level 1: "Write a summary of last month's sales." Level 2: "Tell me what changed last month, why, and what we should do about it." Level 3: "Design a better way for leadership to catch problems early than a monthly report, and show from our history that it would have caught last spring's dip sooner." Each level gives the model more of the goal and less of the steps.
+## A worked example: a two-week trial
+Pick one tool. Use it for real tasks for two weeks. Keep a short log: where it saved time, where it wasted time, what you had to correct. After two weeks you know more than any comparison chart can tell you. The habits you build (plan, small steps, tests, review) transfer to any other tool.
 
-## What must come with ambition
-Access (data the model can read), checks (a way to see if it worked), and limits (what it must not touch). Without checks, a bigger goal just makes bigger mistakes.
+## Things to check
+Does it let you pick the model? How does it ask permission before running commands? Where does your code go? Can it be run on a branch or worktree so it cannot damage your main work?
 
 ## Common mistake
-Asking for huge outcomes with no data. "Make my business grow" fails. "Find the three biggest reasons customers cancel, using these exports" works.
+Changing tools every week. Depth in one beats shallow tries of five.
 
 ```resources
-article | How to be more ambitious: A tutorial for humans with models | https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/ | Felix Rieseberg | The source: altitude, depth and range with worked examples.
-video | Software Is Changing (Again) | https://www.youtube.com/watch?v=LCEmiRjPEtQ | Andrej Karpathy at Y Combinator | Talk on software 1.0, 2.0 and 3.0 and designing for agents.
+docs | Claude Code | https://code.claude.com/docs/en/overview | Anthropic | Terminal and IDE coding agent.
+repo | OpenAI Codex CLI | https://github.com/openai/codex | OpenAI | Open-source terminal coding agent.
+tool | Aider | https://aider.chat/ | Aider | Open-source terminal pair programmer that works with many models.
+repo | awesome-claude-code | https://github.com/hesreallyhim/awesome-claude-code | hesreallyhim | Community skills, hooks and workflows.
+docs | Cursor docs | https://cursor.com/docs | Cursor | The IDE agent: rules, agent mode and context.
+tool | Codex | https://chatgpt.com/codex | OpenAI | OpenAI's coding agent in the cloud and terminal.
 ```
 
 ```quiz
-"Keep our app crash-free" instead of "fix this crash" is an example of which kind? | Speed ; Altitude ; Range | 1 | Altitude means asking for the outcome rather than the individual task.
-What must grow with your ambition? | Prompt length ; Verification ; Temperature | 1 | The bigger the goal, the more checks you need to trust the result.
+What transfers between coding agents? | The exact keyboard shortcuts of one specific tool ; The habits: plan, small steps, verify, clean context ; The pricing plan of the vendor you chose | 1 | The workflow is tool-independent. The details are not.
+Which kind of agent suits many parallel background tasks? | Inline autocomplete in an editor ; A chat window used for questions only ; Cloud agents that return a pull request | 2 | They run remotely and finish while you do other work.
+You try five tools for one day each. Why might that mislead you? | You never learn any tool's memory, permissions or habits ; Free trials always hide the real quality of tools ; Five different tools always give the same answers | 0 | Depth in one tool teaches skills that carry across. Shallow tries only show first impressions.
 ```
 
 ```story
-Most people use an AI like a search box: one question, one answer. Someone who works on Claude noticed that the people getting astonishing results ask differently. Not "fix this crash" but "keep the app crash-free", then they give the agent the tools to do it. Same model, bigger ask.
+A designer, a data analyst and a backend developer each try a different AI tool. The designer likes a visual app builder. The analyst likes a notebook assistant. The developer likes a terminal agent that edits files and runs tests. All three are good. They match how each person works.
 ```
 
 # project-memory-files | CLAUDE.md and AGENTS.md | 1 | 10
@@ -81,9 +96,6 @@ Commands (install, test, lint, run), architecture in a few lines, conventions th
 ## A worked example: a good file
 Run: pnpm install, pnpm test, pnpm dev. Layout: app code in src/, tests in spec/. Conventions: functional components, no default exports. Never: edit src/generated, commit .env. Gotcha: tests need Docker running. Eight lines. Every line prevents a repeated correction.
 
-## Growing it
-When the agent makes the same mistake twice, add one line. When a line stops mattering, delete it. If the file passes about 100 lines, move details into other files and link to them.
-
 ## Common mistake
 Pasting the whole architecture document. The file loads every session, so only keep what changes behavior.
 
@@ -94,8 +106,9 @@ article | Claude Code: Best practices for agentic coding | https://www.anthropic
 ```
 
 ```quiz
-What belongs in CLAUDE.md? | Everything about the project ; What the agent cannot infer from code: commands, conventions, sharp edges ; The full API reference | 1 | It loads every session, so keep it to high-value facts and link to the rest.
-The agent repeats the same mistake. What do you do? | Retype the correction each time ; Add one line to the memory file ; Switch tools | 1 | A single line in the file fixes the mistake for every future session.
+What belongs in CLAUDE.md? | The complete text of every design document ; What it cannot infer: commands and sharp edges ; Every function name in the whole project | 1 | It loads every session, so keep it to high-value facts and link to the rest.
+The agent repeats the same mistake. What do you do? | Retype the correction each session ; Switch to a different tool ; Add one line to the memory file | 2 | One line fixes it for every future session.
+Your memory file has grown past 300 lines. What is a sensible response? | Move detail to linked files, keep the main short ; Add a table of contents and keep on growing it ; Delete the commands section to save some space | 0 | A short file keeps attention on what matters, and detail loads only when needed.
 ```
 
 ```story
@@ -128,7 +141,8 @@ repo | superpowers | https://github.com/obra/superpowers | Jesse Vincent | A pop
 
 ```quiz
 A rule must apply every single time, with no exceptions. What do you use? | A line in the prompt ; A hook ; A skill | 1 | Hooks are code run by the harness, so they do not depend on the model remembering.
-Why do skills keep context small? | They are compressed ; Only name and description load until the task needs the rest ; They run on a smaller model | 1 | Progressive disclosure: the full instructions load only when relevant.
+Why do skills keep context small? | They are compressed into far fewer tokens ; They always run on a smaller, cheaper model ; Only a name and description load until needed | 2 | Progressive loading means the full instructions appear only when relevant.
+You keep typing "review the last commit for security issues". What is the best fit? | A saved command you run by name ; A hook on every file edit ; A new section in the system prompt | 0 | A command is a reusable prompt you trigger on demand.
 ```
 
 ```story
@@ -160,8 +174,9 @@ docs | git worktree | https://git-scm.com/docs/git-worktree | Git | The referenc
 ```
 
 ```quiz
-Why run two agents in separate worktrees? | Git requires it ; They would otherwise overwrite each other's files and tests ; It is faster to type | 1 | A shared checkout means shared half-finished edits. Separate worktrees isolate them.
-What does a subagent return to the main agent? | Its whole context ; A focused summary ; Nothing | 1 | The point is to keep the main context clean by returning only the result.
+Why run two agents in separate worktrees? | Git refuses to run two agents at the same time ; Worktrees are the only way to make a branch ; They would overwrite each other's files and tests | 2 | A shared checkout means shared half-finished edits. Separate worktrees isolate them.
+What does a subagent return to the main agent? | Its entire context window ; A focused summary of its result ; Nothing, it works silently | 1 | The point is to keep the main context clean by returning only the result.
+You need a five-minute fix in one file. What should you do? | Start three agents to be safe ; Create a worktree for each line of the change ; Use one session, since extra agents add overhead | 2 | For a small change, parallel agents cost more than they save.
 ```
 
 ```story
@@ -196,8 +211,9 @@ article | Building effective agents | https://www.anthropic.com/engineering/buil
 ```
 
 ```quiz
-Where do intermediate results live in a dynamic workflow? | In the main context ; In script variables ; In a database | 1 | That is the point: the main context only receives the final answer.
-When is a workflow overkill? | A 500-file migration ; A single focused bug fix ; A codebase audit | 1 | One session is cheaper and simpler for a small, focused change.
+Where do intermediate results live in a dynamic workflow? | In script variables ; In the main context window ; In a database the model queries | 0 | That is the point: the main context only receives the final answer.
+When is a workflow overkill? | A 500-file migration ; A single focused bug fix ; A codebase-wide audit | 1 | One session is cheaper and simpler for a small change.
+A post says a three-model setup will "cut your bill by 90 percent". What should you do? | Adopt it on faith, since the idea is documented ; Reject the pattern because the number is high ; Measure cost and quality on your own task | 2 | The pattern is real, but savings depend on how large and parallel your work is.
 ```
 
 ```story
@@ -216,9 +232,6 @@ Most agent failures are underspecified tasks. A spec forces the missing decision
 ## A worked example: a tiny spec
 Feature: password reset by email. Behavior: user enters email, receives a link valid for 30 minutes, link works once. Edge cases: unknown email shows the same message as a known one, so attackers cannot discover accounts. Checks: a test for expired links, a test for reuse, a test for unknown email. The agent now knows what done means.
 
-## What the spec buys you
-Most failures come from decisions nobody made out loud. A spec forces them early. It also survives context resets: a fresh agent can pick up from the spec.
-
 ## Common mistake
 Specs nobody can check. If you cannot say how you would test a line, rewrite the line.
 
@@ -229,8 +242,9 @@ article | Industrial Agentic Engineering | https://research.google/pubs/industri
 ```
 
 ```quiz
-The agent built the wrong thing. What do you fix first? | The generated code by hand ; The spec and acceptance checks ; The model choice | 1 | If the spec was ambiguous, regenerating from a better spec fixes the cause instead of the symptom.
-What makes a spec useful? | Length ; Checks that someone or something can run ; A formal template | 1 | A spec you cannot verify cannot tell you when the agent is done.
+The agent built the wrong thing. What do you fix first? | The spec and acceptance checks ; The generated code, by hand ; The model you are using | 0 | If the spec was ambiguous, a better spec fixes the cause instead of the symptom.
+What makes a spec useful? | Its length and level of detail ; Checks that someone or something can run ; A formal template with many headings | 1 | A spec you cannot verify cannot tell you when the agent is done.
+A spec says "make the reset flow secure". What is wrong with it? | It is too short for an agent to work from ; It names the wrong feature for the task ; It cannot be checked, so make it testable behavior | 2 | Say what to test, such as "a reset link works once and expires after 30 minutes".
 ```
 
 ```story
@@ -262,8 +276,9 @@ repo | mem0 | https://github.com/mem0ai/mem0 | Mem0 | A memory layer for agents 
 ```
 
 ```quiz
-Why keep the raw sources next to the wiki? | To save disk space ; So claims can be traced and errors caught ; Obsidian requires it | 1 | Summaries can drift. Raw sources let you verify what a page claims.
-What does the control file do? | Stores the notes ; Tells the agent how to ingest, link and answer ; Encrypts the vault | 1 | It is the harness for the system: the rules the agent follows each session.
+Why keep the raw sources next to the wiki? | Because Obsidian needs them to work ; To save disk space ; So the wiki loads faster ; So claims can be traced and errors caught | 3 | Summaries can drift. Raw sources let you verify what a page claims.
+What does the control file do? | It tells the agent how to ingest, link and answer ; It stores the notes themselves inside the file ; It encrypts the vault for safe keeping | 0 | It is the harness for the system: the rules the agent follows each session.
+After a month, a wiki page states a fact that no source supports. What likely happened? | The raw file was deleted by the model ; The summarizer drifted from its source ; The wiki was too small | 1 | Compiled summaries can introduce errors, which is why sources and spot-checks matter.
 ```
 
 ```story

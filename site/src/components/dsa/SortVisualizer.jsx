@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { roundIcon } from './ui.jsx'
+import DemoFrame from '../shared/DemoFrame.jsx'
+import { roundIcon } from '../shared/ui.jsx'
 import { framesFor } from './sortFrames.js'
 
 const btn = roundIcon
@@ -19,12 +20,11 @@ export default function SortVisualizer({ algo }) {
   }, [playing, i, last])
   const f = frames[i], max = Math.max(...f.a)
   return (
-    <div className="my-6 rounded-xl border bg-fd-card p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground">Watch it run</p>
+    <DemoFrame boxed title="Watch it run">
       <div className="flex h-40 items-end justify-center gap-2">
         {f.a.map((v, k) => {
           const inRange = !f.range || (k >= f.range[0] && k <= f.range[1])
-          const tone = f.hi.includes(k) ? 'bg-fd-primary text-fd-primary-foreground' : f.done.includes(k) ? 'bg-emerald-500/70 text-white' : 'bg-fd-muted-foreground/40'
+          const tone = f.hi.includes(k) ? 'bg-fd-primary text-fd-primary-foreground' : f.done.includes(k) ? 'bg-success/70 text-white' : 'bg-fd-muted-foreground/40'
           return <div key={k} className={`grid w-10 place-items-start rounded-t-md pt-1 text-sm font-medium transition-all duration-300 ${tone} ${inRange ? '' : 'opacity-30'}`} style={{ height: `${25 + (v / max) * 75}%` }}>{v}</div>
         })}
       </div>
@@ -39,6 +39,6 @@ export default function SortVisualizer({ algo }) {
           <button className={btn} disabled={i === last} onClick={() => { setPlaying(false); setI(i + 1) }} aria-label="Next step">→</button>
         </div>
       </div>
-    </div>
+    </DemoFrame>
   )
 }

@@ -10,13 +10,10 @@ Using the biggest model everywhere wastes money and time. Using the smallest eve
 Public benchmarks are useful for shortlisting. They are weak predictors of how a model does on your data, and some are contaminated or saturated. Build ten to fifty examples from your own task and compare.
 
 ## A worked example: a simple comparison
-Take 50 real support emails with the correct category. Run model A (large), B (mid), C (small). Results: A 96 percent at $0.020 per email, B 94 percent at $0.004, C 88 percent at $0.0005. If a 2-point difference is not worth five times the price, pick B. For a medical triage tool, you might pick A. The decision is about your costs of being wrong.
+Take 50 real support emails with the correct category. Run model A (large), B (mid), C (small). Example results (invented for illustration): A 96 percent at $0.020 per email, B 94 percent at $0.004, C 88 percent at $0.0005. If a 2-point difference is not worth five times the price, pick B. For a medical triage tool, you might pick A. The decision is about your costs of being wrong.
 
 ## Open or closed?
 A closed model is used through the lab's API. An open-weight model can be downloaded and run by you, which helps with privacy and cost at scale. The [open-weight models lesson](/ai/docs/breakthroughs/open-models) covers the trade-offs, and the Model atlas lists both kinds.
-
-## A useful pattern
-Use a large model to plan and review, a mid-size model to do the work, and a small model for high-volume checks like classification. Only do this after you have a test set, so you know the cheaper model is good enough.
 
 ## Common mistake
 Choosing by popularity or by one benchmark number. Always test on your own data.
@@ -29,8 +26,9 @@ article | Your AI product needs evals | https://hamel.dev/blog/posts/evals/ | Ha
 ```
 
 ```quiz
-Best way to choose between two models for your product? | Pick the top leaderboard entry ; Run both on a set of your own examples ; Pick the cheaper one | 1 | Leaderboards shortlist. Only your own examples show how each model behaves on your task.
-Why route steps to different model sizes? | Small models are always worse ; Hard steps need strength, simple steps do not justify the cost ; It reduces tokens | 1 | Matching model size to step difficulty cuts cost and latency without losing quality where it matters.
+What is the best way to choose between two models for your product? | Pick the top entry on a leaderboard ; Run both on a set of your own examples ; Pick the cheaper of the two | 1 | Leaderboards shortlist. Only your own examples show how each model behaves on your task.
+Why route different steps to different model sizes? | Small models are always worse than large ones ; It reduces the number of tokens in every call ; Hard steps need strength, easy steps need cheapness | 2 | Matching size to difficulty cuts cost and latency without losing quality where it matters.
+Model A gets 96 percent at $0.020 per email and model C gets 88 percent at $0.0005. What decides the choice? | The cost of a wrong answer in your use case ; Always the model with the highest score ; Always the model with the lowest price | 0 | A medical triage tool might pay for A. A low-stakes tagger might pick C.
 ```
 
 ```story
@@ -58,6 +56,27 @@ Create an API key in the provider's dashboard. Store it in an environment variab
 ## Common mistakes
 Putting the key in browser code. Forgetting a max output length. Not logging the request and the usage, which makes every later bug harder to find.
 
+## The code
+Here is the whole request in Python, using the Anthropic SDK. Install it with `pip install anthropic` and set `ANTHROPIC_API_KEY` in your environment first. Other providers have nearly identical SDKs, and TypeScript versions exist.
+
+```python
+from anthropic import Anthropic
+
+client = Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+
+reply = client.messages.create(
+    model="claude-sonnet-5-5",
+    max_tokens=300,  # cap the answer so one runaway reply cannot cost much
+    system="You suggest gifts in two sentences.",
+    messages=[{"role": "user", "content": "Gift for a hiker, under $50"}],
+)
+
+print(reply.content[0].text)
+print("tokens in/out:", reply.usage.input_tokens, reply.usage.output_tokens)
+```
+
+Run it, then change the system message and the question and watch how the answer and the token counts move.
+
 ```resources
 docs | Claude API overview | https://docs.anthropic.com/en/api/overview | Anthropic | Messages API, authentication and SDKs.
 repo | Claude Cookbooks | https://github.com/anthropics/claude-cookbooks | Anthropic | Runnable notebooks for common patterns.
@@ -66,8 +85,9 @@ course | Generative AI for Beginners | https://github.com/microsoft/generative-a
 ```
 
 ```quiz
-The API is stateless. How do you continue a conversation? | The server remembers ; Send the full message history each call ; Reuse the request id | 1 | Each call is independent, so your code owns the history.
-What should you log from day one? | Only errors ; Request, response and token counts ; Nothing until production | 1 | You cannot debug or budget what you did not record.
+The API is stateless. How do you continue a conversation? | The server remembers the earlier turns ; Send the full message history each call ; Reuse the previous request id | 1 | Each call is independent, so your code owns the history.
+What should you log from day one? | Only the errors, to keep logs small ; Nothing at all until the app goes live ; The request, the response and the token counts | 2 | You cannot debug or budget what you did not record.
+Your script works, but the API key is in the source file you push to a public repo. What should you do? | Revoke it and use an environment variable ; Keep it, since the repository is small ; Rename the file so it is harder to find | 0 | Assume a published key is stolen. Revoke it and keep secrets out of code.
 ```
 
 ```story
@@ -90,13 +110,35 @@ Model names like "claude-sonnet-5-5" can point at a moving target while dated sn
 Count tokens before sending: input plus the maximum output must fit in the context window. Set a max output length so one runaway answer cannot cost a lot.
 
 ## A worked example: why the bill grows
-Turn 1 sends 100 tokens, gets 100 back. Turn 2 sends the first 200 plus a new 50: 250 tokens in. Turn 3 sends 400 plus 50: 450 tokens in. By turn 10 each call carries thousands of tokens of history. The cost of a conversation grows faster than its length. Trim old turns or summarize them.
+Say the first question is 100 tokens, every later question is 50 and every reply is 100. Turn 1 sends 100 tokens. Turn 2 sends the first question and its reply (200) plus the new question (50): 250. Turn 3 sends those 250, plus the second reply (100) and the new question (50): 400. By turn 10 each call carries about 1,450 tokens of history. The cost of a conversation grows faster than its length. Trim old turns or summarize them.
 
 ## Where to put what
 System message: rules that never change. User messages: this turn's request. Assistant messages: what the model said before. Do not paste secrets into any of them if you would not want them in logs.
 
 ## Common mistake
 Using a model alias such as "latest" in production. A silent upgrade can change behavior. Pin a dated version and upgrade on purpose after testing.
+
+## The code
+To keep a conversation going, keep a list and append to it after every turn.
+
+```python
+history = []
+
+def ask(text):
+    history.append({"role": "user", "content": text})
+    reply = client.messages.create(
+        model="claude-sonnet-5-5",
+        max_tokens=300,
+        system="You suggest gifts in two sentences.",
+        messages=history,  # the whole conversation, every time
+    )
+    answer = reply.content[0].text
+    history.append({"role": "assistant", "content": answer})
+    return answer
+
+print(ask("Gift for a hiker, under $50"))
+print(ask("What about under $20?"))  # works only because history was sent again
+```
 
 ```resources
 docs | Messages API | https://docs.anthropic.com/en/api/messages | Anthropic | The message format, roles and parameters.
@@ -106,8 +148,9 @@ course | Prompt Engineering Interactive Tutorial | https://github.com/anthropics
 ```
 
 ```quiz
-How does a model remember what was said earlier? | It stores it ; You send the earlier messages again ; The API does it | 1 | The API is stateless, so your code resends the history.
-Why pin a dated model snapshot in production? | It is cheaper ; Behavior stays fixed until you choose to test and upgrade ; It is faster | 1 | Aliases can move to a new version that changes behavior.
+How does a model remember what was said earlier? | The API stores the whole chat on its servers ; You send the earlier messages again on each call ; The model keeps its own notes between calls | 1 | The API is stateless, so your code resends the history.
+Why pin a dated model snapshot in production? | It is always cheaper than using an alias ; It makes every response noticeably faster ; Behavior stays fixed until you choose to upgrade | 2 | An alias can move to a new version that changes behavior.
+A chat grows to 10 turns and each call is getting slower and costlier. What is the sensible fix? | Trim or summarize old turns ; Switch to a larger model ; Lower the temperature | 0 | Every call pays for the whole history, so shorten it.
 ```
 
 ```story
@@ -138,6 +181,19 @@ Text arrives in small pieces, so append, do not replace. The connection can drop
 ## Common mistake
 Setting no timeout. A stuck request that never returns can freeze a worker forever.
 
+## The code
+Streaming prints words as they arrive instead of waiting for the full answer.
+
+```python
+with client.messages.stream(
+    model="claude-sonnet-5-5",
+    max_tokens=300,
+    messages=[{"role": "user", "content": "Explain tokens in two sentences."}],
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+```
+
 ```resources
 docs | Streaming messages | https://docs.anthropic.com/en/docs/build-with-claude/streaming | Anthropic | Event types and handling.
 docs | Message Batches | https://docs.anthropic.com/en/docs/build-with-claude/batch-processing | Anthropic | Lower-cost asynchronous processing.
@@ -149,8 +205,9 @@ article | Why we built the Responses API | https://developers.openai.com/blog/re
 ```
 
 ```quiz
-Why stream tokens? | The answer is cheaper ; Users see output almost immediately ; It improves accuracy | 1 | Streaming reduces the perceived wait.
-How do you handle rate limits? | Ignore them ; Retry with exponential backoff and queue work ; Switch models | 1 | Backoff avoids hammering the API while waiting for capacity.
+Why stream tokens to the user? | The answer costs less ; They see output almost immediately ; The answer becomes more accurate | 1 | Streaming reduces the perceived wait.
+How should you handle rate limits? | Retry immediately in a tight loop until it works ; Switch models over and over until one answers ; Retry with exponential backoff and queue the work | 2 | Backoff gives the limit time to reset without hammering the API.
+You must label 100,000 reviews overnight, and speed does not matter. What fits best? | A batch API at a lower price ; Streaming each request ; A larger model with a longer prompt | 0 | Batch processing trades speed for a discount on non-urgent bulk work.
 ```
 
 ```story
@@ -169,15 +226,6 @@ An API key in browser code is a key anyone can copy. Call the provider from your
 ## Rendering model output safely
 Models often reply in markdown. If you convert it to HTML and insert it into the page, a prompt-injected or odd answer can contain a script tag or a link that runs code. Sanitize the HTML with a library, or render markdown with a safe renderer that does not allow raw HTML. Treat the output like user input, because it can be shaped by user input. Do the same before putting model text into a database query or a shell command.
 
-## Streaming
-When streaming, append text as it arrives, handle a connection that drops mid-answer, and allow the user to stop it.
-
-## A worked example: reading errors
-400 with the message "prompt too long": shorten the input, retrying will not help. 401: wrong or missing key. 429: wait and retry. 500 or 529: provider overloaded, retry up to three times, then show "We are busy, please try again". Log the request id so support can find your call.
-
-## Safe markdown
-Render markdown with a library that does not allow raw HTML, or sanitize the HTML before inserting it. Treat links carefully too: open them in a new tab with rel="noreferrer" and do not auto-load images from addresses the model invented, which can leak data.
-
 ## Common mistake
 Showing raw error text to users. It can reveal internal details and it is unhelpful.
 
@@ -189,8 +237,9 @@ article | Exponential backoff and jitter | https://aws.amazon.com/builders-libra
 ```
 
 ```quiz
-You get a 429 response. What should you do? | Retry immediately in a loop ; Wait with exponential backoff and retry ; Give up | 1 | Backoff gives the limit time to reset without hammering the API.
-Where should an API key live? | In the browser code ; In a server-side environment variable ; In the repo | 1 | Anything shipped to a browser can be copied.
+You get a 429 response. What should you do? | Retry instantly in a loop until it works ; Wait with exponential backoff, then retry ; Give up and show the raw stack trace | 1 | Backoff gives the limit time to reset without hammering the API.
+Where should an API key live? | In the browser code ; In the repository, in a config file ; In a server-side environment variable | 2 | Anything shipped to a browser can be copied by anyone.
+A model's reply contains an HTML script tag and your page inserts it as HTML. What is the risk? | It could run code in other visitors' browsers ; The reply will be cut off before the end ; The model will lose track of the context | 0 | Treat model output as untrusted. Sanitize it or render markdown safely.
 ```
 
 ```story
@@ -207,13 +256,48 @@ You describe tools with a name, a description and a JSON schema for arguments. W
 The description is the interface. Say what the tool does, when to use it and what the arguments mean. Return results the model can read: concise, with clear errors that suggest what to try next. Validate arguments before running anything. Treat tool results as untrusted input, since they can contain text that tries to steer the model.
 
 ## A worked example: one round trip
-1. You send the user question plus a tool description: name track_order, description "Look up the status of an order by id", parameter order_id (string). 2. The model replies with a tool call: track_order(order_id="8123"). 3. Your code runs it: status "shipped, arrives Friday". 4. You send that result back. 5. The model answers: "Your order shipped and should arrive Friday." The model decided when to call and with what. Your code controlled what actually ran.
+1. You send the user question plus a tool description: name track_order, description "Look up the status of an order by id", parameter order_id (string).
+2. The model replies with a tool call: track_order(order_id="8123").
+3. Your code runs it: status "shipped, arrives Friday".
+4. You send that result back.
+5. The model answers: "Your order shipped and should arrive Friday." The model decided when to call and with what. Your code controlled what actually ran.
 
 ## Writing a good description
 Write for a new colleague: what it does, when to use it, what each argument means, and an example. If two tools sound alike, say how they differ.
 
 ## Common mistake
 Letting the model's arguments flow straight into a database query or shell command. Always validate first.
+
+## Where this connects
+Tool arguments come from a model that can be tricked by the text it reads. Read [Prompt injection and the lethal trifecta](/ai/docs/evals-and-safety/prompt-injection) before you connect a tool that can send, delete or spend, and see [Tool errors and validation](/ai/docs/agents/tool-errors-and-validation) for how to check arguments.
+
+## The code
+A tool is a name, a description and a JSON schema for its arguments. The model returns a tool request. Your code runs it and sends the result back.
+
+```python
+tools = [{
+    "name": "track_order",
+    "description": "Look up the status of an order by its id. Use when the customer asks where an order is.",
+    "input_schema": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string", "description": "The order number, such as 8123"}},
+        "required": ["order_id"],
+    },
+}]
+
+messages = [{"role": "user", "content": "Where is order 8123?"}]
+reply = client.messages.create(model="claude-sonnet-5-5", max_tokens=300, tools=tools, messages=messages)
+
+if reply.stop_reason == "tool_use":
+    call = next(b for b in reply.content if b.type == "tool_use")
+    result = "shipped, arrives Friday"  # your real lookup goes here, using call.input["order_id"]
+    messages += [
+        {"role": "assistant", "content": reply.content},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": call.id, "content": result}]},
+    ]
+    final = client.messages.create(model="claude-sonnet-5-5", max_tokens=300, tools=tools, messages=messages)
+    print(final.content[0].text)
+```
 
 ```resources
 docs | Tool use with Claude | https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview | Anthropic | Defining tools, handling calls and parallel tool use.
@@ -222,8 +306,9 @@ article | How to build an agent | https://ampcode.com/how-to-build-an-agent | Th
 ```
 
 ```quiz
-Who executes a tool call? | The model ; Your program ; The API provider always | 1 | The model only emits the request. Your code runs it and returns the result.
-Which part of a tool most affects whether the model uses it well? | The function body ; The name and description ; The language | 1 | The model only sees the description and schema, so they are the real interface.
+Who executes a tool call? | The model ; Your program ; The user's browser | 1 | The model only emits the request. Your code runs it and returns the result.
+What most affects whether the model uses a tool well? | The programming language of the function ; The speed of the function ; The name and description of the tool | 2 | The model only sees the description and schema, so they are the real interface.
+The model asks to run delete_file with path "../../secrets". What should your code do? | Validate the path and refuse it ; Run it, since the model chose it ; Ask the model to try again with a longer path | 0 | Tool arguments come from a model that can be tricked, so validate before running.
 ```
 
 ```story
@@ -258,8 +343,9 @@ docs | OpenAI built-in tools | https://platform.openai.com/docs/guides/tools | O
 ```
 
 ```quiz
-Who runs a server-side web search tool? | Your program ; The provider ; The browser | 1 | You enable it, and the provider executes it and returns results.
-Why be careful combining web search with sensitive tools? | Search is slow ; Pages can contain injected instructions ; It costs nothing | 1 | Untrusted content plus powerful tools is the injection risk.
+Who runs a server-side web search tool? | Your program ; The provider ; The user's browser | 1 | You enable it, and the provider runs it and returns results.
+Why be careful combining web search with sensitive tools? | Search results arrive too slowly to be safe ; Search tools cannot return any links ; Pages can hide instructions that steer the model | 2 | Untrusted content plus powerful tools is the injection risk.
+You need the status of customer 4412's tickets from your own database. Which tool fits? | Your own tool with your permissions ; The provider's web search ; File search over public documents | 0 | Private data and your access rules belong in a tool you control.
 ```
 
 ```story
@@ -293,8 +379,9 @@ article | Code execution with MCP | https://www.anthropic.com/engineering/code-e
 ```
 
 ```quiz
-Why not connect every MCP server you can find? | Servers conflict ; Tool descriptions fill context and each server holds real permissions ; MCP is slow | 1 | Context budget and trust both argue for connecting only what the task needs.
-What does MCP standardize? | Model weights ; How agents discover and call tools and data ; Prompt wording | 1 | It is the protocol between a client app and tool servers.
+Why not connect every MCP server you can find? | MCP servers conflict with each other by default ; Descriptions use context and servers hold real access ; Each extra connection slows the model's training | 1 | Context budget and trust both argue for connecting only what the task needs.
+What does MCP standardize? | The binary format used to store model weights ; The exact wording of every system prompt ; How agents discover and call tools and data | 2 | It is the protocol between a client app and tool servers.
+You install a small server from a stranger and give it access to your files. What is the risk? | It can read or act with the permissions you gave it ; It will slow down your computer's disk ; It will change the model's behavior permanently | 0 | A server runs with real access, so a malicious one can misuse it.
 ```
 
 ```story
@@ -322,6 +409,32 @@ Few tools, clear names, short descriptions that say when to use them. Return sma
 ## Common mistake
 Giving the server broad access "just in case". Point it at one folder and nothing else.
 
+## The code
+With the official Python SDK (`pip install mcp`), a small server is a few lines. Each function with a docstring becomes a tool whose description the model reads.
+
+```python
+from mcp.server.fastmcp import FastMCP
+from pathlib import Path
+
+mcp = FastMCP("notes")
+NOTES = Path("~/notes").expanduser()  # the one folder this server may read
+
+@mcp.tool()
+def search_notes(query: str) -> str:
+    """Search my notes for a word or phrase. Returns up to five matching lines with the file name."""
+    hits = []
+    for path in NOTES.glob("*.md"):
+        for line in path.read_text().splitlines():
+            if query.lower() in line.lower():
+                hits.append(f"{path.name}: {line.strip()}")
+    return "\n".join(hits[:5]) or f"No notes match '{query}'. Try fewer words."
+
+if __name__ == "__main__":
+    mcp.run()  # talks over stdio, so a local app can start it
+```
+
+Test it with `npx @modelcontextprotocol/inspector python server.py`, then add it to your coding agent's MCP settings.
+
 ```resources
 docs | Build an MCP server | https://modelcontextprotocol.io/docs/develop/build-server | MCP project | A complete quickstart.
 repo | MCP Python SDK | https://github.com/modelcontextprotocol/python-sdk | MCP project | Official Python SDK.
@@ -334,8 +447,9 @@ docs | MCP architecture | https://modelcontextprotocol.io/docs/learn/architectur
 ```
 
 ```quiz
-What are the three things an MCP server can expose? | Tools, resources and prompts ; Models, weights and data ; Agents, loops and memory | 0 | They are functions to call, data to read and reusable templates.
-Which transport is simplest for a local server? | Stdio ; WebSockets ; Email | 0 | The host starts the server as a subprocess and talks over standard input and output.
+What are the three things an MCP server can expose? | Models, weights and datasets ; Tools, resources and prompts ; Agents, loops and memories | 1 | They are functions to call, data to read and reusable templates.
+Which transport is simplest for a local server? | WebSockets ; Email ; Stdio | 2 | The host starts the server as a subprocess and talks over standard input and output.
+Your notes server returns every matching line from 400 files. What is wrong? | It floods the context, so cap and shorten results ; Servers are not allowed to return a second line ; The tool should return whole files, not text | 0 | Return small, useful answers, such as five matches, and say what to try next.
 ```
 
 ```story
@@ -374,7 +488,8 @@ article | The lethal trifecta for AI agents | https://simonwillison.net/2025/Jun
 
 ```quiz
 Which is read-only context chosen by the app or user? | A tool ; A resource ; A transport | 1 | Resources are identified data. Tools are actions the model runs.
-Why are a server's tool descriptions a security concern? | The model reads them as instructions ; They are long ; They are slow | 0 | A malicious description can steer the model.
+Why are a server's tool descriptions a security concern? | They make the connection slower ; They are sent to the user's browser ; The model reads them as instructions | 2 | A malicious description can steer the model.
+A server that reads untrusted web pages and one that can send email are both connected. What is the risk? | A page could instruct the model to email private data ; The two servers will compete for system memory ; Email tools cannot run alongside web tools | 0 | Untrusted content plus an exfiltration path is the dangerous combination.
 ```
 
 ```story
@@ -399,9 +514,6 @@ Test with your own images and recordings. Check accuracy on small text, noisy au
 ## A worked example: three requests
 Describe: send a product photo and ask for a one-sentence alt text. Extract: send a receipt and ask for total, date and vendor as JSON. Compare: send two screenshots and ask what changed. Each is one request with an image plus an instruction. Ask for structured output when the result feeds code.
 
-## Costs and quality
-Large images use many tokens, so downscale to what the task needs. Small text, blurry photos and unusual handwriting are the usual failure points. Test with your real images, not clean samples.
-
 ## Common mistake
 Sending private photos or documents to a provider you have not vetted.
 
@@ -415,8 +527,9 @@ course | Multimodal models | https://huggingface.co/learn/computer-vision-course
 ```
 
 ```quiz
-How is video usually given to a model? | As sampled frames plus audio ; As one image ; It cannot be | 0 | Frames are sampled at intervals and sent with the transcript.
-Why downscale large images? | Image tokens are priced by size ; It looks better ; Required | 0 | Smaller images cost less and are often enough.
+How is video usually given to a model? | As one very large image file in a single call ; As sampled frames, often with the transcript ; It cannot be given to a model at all | 1 | Frames are sampled at intervals and sent together with the transcript.
+Why downscale large images before sending? | Models reject images over a megapixel ; Smaller images are always sharper ; Image tokens are priced by size | 2 | Smaller images cost less and are often enough for the task.
+You must extract a total, date and vendor from a receipt photo. What should you ask for? | Structured output, such as JSON with those fields ; A free-text paragraph describing the receipt ; A short poem about the receipt | 0 | Structured output makes the data easy to check and use in code.
 ```
 
 ```story

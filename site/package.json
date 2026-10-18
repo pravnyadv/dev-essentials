@@ -9,10 +9,11 @@
     "prebuild": "npm run content",
     "build": "next build",
     "start": "serve out",
-    "verify": "npm run content && node scripts/verify.mjs && next build",
+    "verify": "npm run content && node scripts/verify.mjs && node scripts/check-ui.mjs && node scripts/lint-ai.mjs --strict > /dev/null && next build",
     "types:check": "next typegen && tsc --noEmit",
+    "check:ui": "node scripts/check-ui.mjs",
     "links": "node scripts/check-links.mjs",
-    "lint:ai": "node scripts/lint-ai.mjs",
+    "lint:ai": "node scripts/lint-ai.mjs --strict",
     "coverage": "node scripts/coverage-roadmap.mjs",
     "ai:stars": "node scripts/ai-stars.mjs",
     "lint": "biome check",
@@ -23,12 +24,14 @@
     "fumadocs-core": "16.17.5",
     "fumadocs-mdx": "15.4.7",
     "fumadocs-ui": "npm:@fumadocs/base-ui@16.17.5",
+    "katex": "^0.19.0",
     "lucide-react": "^1.50.0",
     "next": "16.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/mdx": "^2.0.14",
     "@types/node": "^26.6.4",
@@ -37,7 +40,6 @@
     "postcss": "^8.5.28",
     "serve": "^14.2.6",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2",
-    "@biomejs/biome": "^2.5.15"
+    "typescript": "^7.0.2"
   }
 }
