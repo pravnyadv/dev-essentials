@@ -10,7 +10,7 @@ export function TopicBadges({ level, patterns }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
       <LevelBadge level={level} />
-      {patterns.map(p => <Pill key={p.id} tone="primary" href={`/patterns/${p.id}`}>{p.name}</Pill>)}
+      {patterns.map(p => <Pill key={p.id} tone="primary" href={`/dsa/patterns/${p.id}`}>{p.name}</Pill>)}
     </div>
   )
 }
@@ -21,7 +21,7 @@ export function TopicDemo({ sortAlgo, pattern }) {
   if (!pattern) return null
   return (
     <div className="my-6 rounded-xl border bg-fd-card p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground">Step through it: <a href={`/patterns/${pattern.id}`} className="normal-case tracking-normal text-fd-primary hover:underline">{pattern.name} pattern</a></p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground">Step through it: <a href={`/dsa/patterns/${pattern.id}`} className="normal-case tracking-normal text-fd-primary hover:underline">{pattern.name} pattern</a></p>
       <PatternSteps p={pattern} />
     </div>
   )
@@ -32,7 +32,7 @@ export function Practice({ patterns }) {
   return (
     <section className="mt-10">
       <h2 className="mb-3 text-2xl font-bold tracking-tight">Practice</h2>
-      <div className="space-y-8">{patterns.map(p => <div key={p.id}><h3 className="mb-2 text-lg font-semibold"><a href={`/patterns/${p.id}`}>{p.name}</a></h3><ProblemList problems={p.problems} /></div>)}</div>
+      <div className="space-y-8">{patterns.map(p => <div key={p.id}><h3 className="mb-2 text-lg font-semibold"><a href={`/dsa/patterns/${p.id}`}>{p.name}</a></h3><ProblemList problems={p.problems} /></div>)}</div>
     </section>
   )
 }

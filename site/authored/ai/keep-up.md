@@ -1,0 +1,115 @@
+# sources-to-follow | Sources worth following | 1 | 10
+New releases arrive weekly. A short list of reliable sources beats a feed of everything.
+
+## How to keep up without drowning
+Pick three to five sources and ignore the rest. Prefer people who build and show evidence over accounts that repost excitement. Treat viral threads as pointers: find the primary source (the paper, the docs, the repo) and read that. Check the date, since advice from a year ago may be outdated. When something claims a big win, ask what was measured and on what.
+
+## A starter set
+Lab engineering blogs for how things are built. A practitioner blog with daily links and notes. One weekly newsletter for research. One paper aggregator. A community for local models.
+
+## A worked example: a weekly routine
+Monday, 20 minutes: skim one newsletter for the week's research. Wednesday, 10 minutes: read one engineering blog post fully. Friday, 15 minutes: check the model release tracker and the radar page here. Total under an hour. Anything bigger gets a deeper read, from the primary source.
+
+## Reading a claim
+What was measured, on what, against what? Who benefits from you believing it? Is there a primary source, such as a paper, docs or code, that you can read?
+
+## Common mistake
+Following everything. Sources you do not read are noise.
+
+```resources
+article | Anthropic Engineering | https://www.anthropic.com/engineering | Anthropic | How Claude features and agents are built.
+article | Simon Willison's Weblog | https://simonwillison.net/ | Simon Willison | Daily, careful notes on tools and models.
+article | Latent Space | https://www.latent.space/ | swyx and Alessio | Podcast and newsletter for AI engineers.
+article | Ahead of AI | https://magazine.sebastianraschka.com/ | Sebastian Raschka | Clear research explainers and architecture comparisons.
+article | Interconnects | https://www.interconnects.ai/ | Nathan Lambert | Post-training, open models and policy.
+article | Import AI | https://importai.substack.com/ | Jack Clark | Weekly research summary.
+tool | Hugging Face Papers | https://huggingface.co/papers | Hugging Face | Daily trending papers.
+```
+
+```quiz
+A viral thread claims a huge result. Best next step? | Share it ; Find the primary source and check what was measured ; Ignore it | 1 | Threads are pointers. The paper or docs hold the evidence.
+How many sources should you follow closely? | As many as possible ; A few reliable ones ; None | 1 | Depth on a few beats skimming everything.
+```
+
+```story
+A viral post says a new model is "insane". A careful practitioner posts a test the same day: it improved on one benchmark by two points and got worse on another. The person who follows five trusted sources knows the real picture by lunchtime. The person who follows five hundred accounts knows only that something happened.
+```
+
+# awesome-lists | Curated lists and roadmaps | 1 | 10
+Other people have already organized this field. Use their lists as a map and check what is current.
+
+## How to use a list
+Other people have already sorted this field into lists. A good list saves you weeks. A bad one is a pile of bookmarks. Judge a list in a minute with four checks:
+
+When was the last update? A list untouched for a year is probably stale.
+Does each entry say why it is worth reading, or is it just a link?
+Is it maintained by one person or many?
+Are paid items marked?
+
+## A worked example: judging a list
+Open the repository and look at the commit history. If the last change was eleven months ago, treat the links as hints and check each one. Look at ten entries. If seven of them have a sentence about what you will learn, the list is curated. If none do, it is a dump. Pick the best two or three entries in the section you need and ignore the rest.
+
+## Which list for which goal
+You are new and want an order to follow: the path on this site, then the beginner guides below. You want to build agents: the agentic engineering lists. You want to study the research: the model internals chapter and the papers it cites. You want to keep up weekly: the sources in the previous lesson.
+
+## Use this site's library
+The Resource library page lists every link cited in these lessons, with a sentence on what each one is good for, filterable by type. It is smaller than a giant list and every entry is annotated.
+
+## Common mistake
+Saving lists you never open. Pick one, take three items, and read them this week.
+
+```resources
+repo | Awesome Agentic Engineering Resources | https://github.com/EthicalML/awesome-agentic-engineering-resources | EthicalML | Articles, courses, papers and benchmarks, with monthly updates.
+repo | Agentic Engineering Handbook | https://github.com/keyuchen21/agentic-engineering-handbook | keyuchen21 | A phased roadmap of 200+ resources.
+repo | Awesome Agentic Engineering | https://github.com/fatihkc/awesome-agentic-engineering | fatihkc | Focused on directing coding agents.
+repo | Learn how to build, deploy, evaluate agents | https://github.com/Machine-Learning-Tokyo/agent-resources | Machine Learning Tokyo | Ten free resources ranked by quality.
+repo | Start AI Engineering in 2026 | https://github.com/louisfb01/start-ai-engineering | Louis-François Bouchard | A guide for beginners organized by learning style.
+repo | mlabonne/llm-course | https://github.com/mlabonne/llm-course | Maxime Labonne | Roadmaps for LLM scientists and engineers with notebooks.
+repo | Generative AI for Beginners | https://github.com/microsoft/generative-ai-for-beginners | Microsoft | Structured lessons with code.
+tool | roadmap.sh AI Engineer | https://roadmap.sh/ai-engineer | roadmap.sh | Community map of skills.
+```
+
+```quiz
+What makes a list entry more useful? | A link only ; A reason and a date ; An emoji | 1 | Context tells you whether to read it.
+What does a list of 500 links give you? | A curriculum ; A reference to dip into ; Nothing | 1 | A curated order is what turns links into a path.
+```
+
+```story
+A beginner opens a list titled "500 AI resources" and closes it ten minutes later more confused. Long lists are libraries, not courses. Pairing a list with a path that says "read these five first" is what turns links into learning.
+```
+
+# reading-benchmarks | How to read benchmarks and leaderboards | 2 | 12
+A benchmark is a fixed test with a score. It is useful and easy to misread.
+
+## What to check
+Is the test saturated, with top models all near 100 percent so differences are noise? Could the model have seen the answers in training (contamination)? Does the task look like yours? Was the score measured by the vendor or independently? How many runs, and what was the spread? Human preference arenas measure style and helpfulness in chat, which is not the same as correctness on your task. Benchmarks for agents depend heavily on the harness used, so a score is for a model plus a harness.
+
+## How to use them
+Use leaderboards to shortlist, then run your own examples. Track a small number of benchmarks that resemble your work. Be suspicious of any single headline number.
+
+## A worked example: is the gap real?
+Model A scores 87.3 and model B 86.9 on a test with 500 questions. With that many questions the noise is around plus or minus 1.5 points, so the difference is within noise. Treat them as equal until a larger or different test separates them.
+
+## Questions to ask
+Is the benchmark nearly maxed out? Could the answers have leaked into training? Was the score run by the vendor or independently? For an agent, which harness and tools were used, since the score belongs to the model plus the harness?
+
+## Common mistake
+Quoting a single number without its context.
+
+```resources
+tool | LMArena | https://lmarena.ai/ | LMArena | Human preference rankings.
+tool | Artificial Analysis | https://artificialanalysis.ai/ | Artificial Analysis | Independent quality, speed and price.
+tool | SWE-bench | https://www.swebench.com/ | Princeton NLP | Coding agent benchmark.
+tool | Epoch AI Benchmarking Hub | https://epoch.ai/benchmarks | Epoch AI | Independent runs across many benchmarks.
+article | AI Snake Oil | https://www.aisnakeoil.com/ | Narayanan and Kapoor | Critical reading of AI claims.
+```
+
+```quiz
+All top models score 97 to 99 percent. What does that tell you? | Pick the highest ; The benchmark is saturated and no longer separates them ; They are identical | 1 | Small differences near the ceiling are mostly noise.
+An agent benchmark score reflects | The model only ; The model plus the harness ; The dataset only | 1 | Harness choices change results significantly.
+```
+
+```story
+A new model tops a leaderboard by half a point. A team switches to it and finds it does worse on their documents. The leaderboard measured something real, but not their task. Benchmarks are a starting list, not a verdict.
+```
+

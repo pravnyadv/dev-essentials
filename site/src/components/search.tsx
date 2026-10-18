@@ -12,10 +12,14 @@ import {
 } from 'fumadocs-ui/components/dialog/search';
 import { useStaticSearch } from 'fumadocs-core/search/client';
 import { useI18n } from 'fumadocs-ui/contexts/i18n';
+import { usePathname } from 'next/navigation';
 
 export default function DefaultSearchDialog(props: SharedProps) {
   const { locale } = useI18n(); // (optional) for i18n
+  // Each track has its own index.
+  const track = usePathname().startsWith('/ai') ? 'ai' : 'dsa';
   const search = useStaticSearch({
+    from: `/api/search/${track}`,
     locale,
   });
 

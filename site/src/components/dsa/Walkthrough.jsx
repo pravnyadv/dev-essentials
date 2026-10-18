@@ -4,7 +4,7 @@ import Diagram from './Diagram.jsx'
 import { buttonClass, roundIcon } from './ui.jsx'
 
 // One multi-choice question: pick an answer, see whether it is right and why.
-function Quiz({ quiz, picked, onPick }) {
+export function Quiz({ quiz, picked, onPick }) {
   const right = picked === quiz.answer
   return (
     <div className="w-full">

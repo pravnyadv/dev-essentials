@@ -22,7 +22,7 @@ export function PatternDetail({ p, byId }) {
   const progress = useProgress()
   return (
     <div className="space-y-2">
-      <a href="/patterns" className="text-sm text-fd-primary hover:underline">← All patterns</a>
+      <a href="/dsa/patterns" className="text-sm text-fd-primary hover:underline">← All patterns</a>
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="text-4xl font-extrabold tracking-tight">{p.name}</h1>
         <span className="text-sm text-fd-muted-foreground">{solvedCount(p.problems, progress)}/{p.problems.length} solved</span>
@@ -53,7 +53,7 @@ function Tile({ p }) {
   const progress = useProgress()
   const done = solvedCount(p.problems, progress)
   return (
-    <Card href={`/patterns/${p.id}`} title={<span className="flex items-center justify-between gap-2">{p.name}{p.core && <Pill tone="primary">core</Pill>}</span>}>
+    <Card href={`/dsa/patterns/${p.id}`} title={<span className="flex items-center justify-between gap-2">{p.name}{p.core && <Pill tone="primary">core</Pill>}</span>}>
       <div className="my-3 flex min-h-20 items-center justify-center overflow-hidden"><Diagram d={p.steps[Math.min(1, p.steps.length - 1)].scene} compact /></div>
       <Bar value={done / p.problems.length} />
       <p className="mt-1 text-[11px]">{done}/{p.problems.length} solved</p>
@@ -85,7 +85,7 @@ function List({ patterns }) {
   return (
     <ul className="divide-y divide-fd-border rounded-xl border bg-fd-card">
       {patterns.map(p => (
-        <li key={p.id}><a href={`/patterns/${p.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-fd-accent/60">
+        <li key={p.id}><a href={`/dsa/patterns/${p.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-fd-accent/60">
           <span className="w-52 shrink-0 font-medium">{p.name}</span>
           <span className="hidden flex-1 truncate text-sm text-fd-muted-foreground md:block">{p.signals.join(' · ')}</span>
           <span className="shrink-0 text-xs text-fd-muted-foreground">{solvedCount(p.problems, progress)}/{p.problems.length}</span>

@@ -1,11 +1,11 @@
-// Turns the generated content (.cache/content) into Fumadocs pages under content/docs, plus src/generated data.
+// Turns the generated content (.cache/content) into Fumadocs pages under content/dsa, plus src/generated data.
 // Run scripts/build-content.mjs first (`npm run content` does both).
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const here = new URL('.', import.meta.url).pathname
 const src = join(here, '../.cache/content')
-const out = join(here, '../content/docs')
+const out = join(here, '../content/dsa')
 const index = JSON.parse(readFileSync(join(src, 'index.json'), 'utf8'))
 const LEVEL = { 1: 'Beginner', 2: 'Core', 3: 'Advanced' }
 
@@ -14,7 +14,7 @@ mkdirSync(out, { recursive: true })
 const slugOf = id => id.split('/').slice(1).join('-')
 // Remote images stay plain <img>: the Fumadocs image plugin would fetch each one at build time and fail on dead links.
 const remoteImages = md => md.replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/g, '<img src="$2" alt="$1" />')
-const topicUrl = (c, t) => `/docs/${c.id}/${slugOf(t.id)}`
+const topicUrl = (c, t) => `/dsa/docs/${c.id}/${slugOf(t.id)}`
 const write = (path, text) => { mkdirSync(join(path, '..'), { recursive: true }); writeFileSync(path, text) }
 
 const rootPages = []
@@ -36,12 +36,11 @@ for (const tier of index.tiers) {
     }
   }
 }
-write(join(out, 'meta.json'), JSON.stringify({ pages: ['[Dashboard](/)', '[Problem patterns](/patterns)', ...rootPages] }, null, 2))
+write(join(out, 'meta.json'), JSON.stringify({ pages: ['[Dashboard](/dsa)', '[Problem patterns](/dsa/patterns)', ...rootPages] }, null, 2))
 
 // Data the dashboard, pattern pages and topic extras read: topic urls, learning order, patterns.
 const chapters = index.chapters.map(c => ({ ...c, topics: c.topics.map(t => ({ ...t, sections: undefined, url: topicUrl(c, t), chapter: c.title })) }))
 const topics = Object.fromEntries(chapters.flatMap(c => c.topics.map(t => [t.id, t])))
 const order = chapters.flatMap(c => c.topics.map(t => t.url))
-write(join(here, '../src/generated/urls.json'), JSON.stringify(Object.fromEntries(Object.values(topics).map(t => [t.url, t.id]))))
-write(join(here, '../src/generated/site.json'), JSON.stringify({ tiers: index.tiers, chapters, patterns: index.patterns, groups: index.groups, topics, order }))
+write(join(here, '../src/generated/dsa.json'), JSON.stringify({ tiers: index.tiers, chapters, patterns: index.patterns, groups: index.groups, topics, order }))
 console.log('pages:', readdirSync(out).length, 'entries in root')

@@ -1,0 +1,109 @@
+# One term per line: `term [alias, alias] | plain-language definition`. Matching is case-insensitive on whole words.
+# The build lists each term on the topic pages that use it. Keep definitions to one or two sentences for a newcomer.
+token [tokens] | A piece of text the model reads and writes, usually a word or part of a word. About 4 characters of English on average.
+tokenizer [tokenization] | The program that splits text into tokens and maps each one to an integer id.
+context window | The maximum number of tokens a model can look at in one call: your prompt, the conversation, tool results and the answer together.
+parameter [parameters] | One learned number inside a model. Modern models have billions of them. Training adjusts them.
+weights [weight, open-weight] | The learned numbers that define a trained model. A model whose weights are published is called open-weight.
+prompt [prompts] | The input text you give a model, including instructions, examples and data.
+system prompt | Standing instructions placed at the start of every call that set the model's role and rules.
+LLM [LLMs, large language model] | Large language model: a neural network trained on huge amounts of text to predict the next token.
+neural network | A function built from layers of simple units (neurons) whose weights are learned from data.
+neuron [neurons] | One unit in a network: it multiplies inputs by weights, adds a bias and applies an activation function.
+activation function [activation] | A simple curve such as ReLU applied after a neuron's sum. It lets stacked layers represent complex functions.
+ReLU | An activation function that outputs the input if positive, otherwise 0.
+embedding [embeddings] | A list of numbers that represents the meaning of a piece of text or an image, so similar things sit close together.
+vector [vectors] | An ordered list of numbers. Embeddings and model activations are vectors.
+matrix [matrices] | A grid of numbers. Multiplying a vector by a matrix transforms it. Model layers are mostly matrices.
+tensor [tensors] | A multi-dimensional array of numbers. The basic data type of deep learning libraries.
+dot product | Multiply matching entries of two vectors and add them up. Large when they point the same way.
+cosine similarity | A score from -1 to 1 for how much two vectors point the same way, ignoring their length.
+softmax | A function that turns a list of scores into probabilities that add up to 1.
+logits | The raw scores a model produces for each possible next token, before softmax.
+temperature | A setting that sharpens or flattens the probabilities before sampling. Low is predictable, high is varied.
+top-p | A sampling rule that only considers the smallest set of tokens whose probabilities add up to p.
+sampling | Picking the next token at random according to the model's probabilities.
+inference | Running a trained model to produce output, as opposed to training it.
+training | Adjusting a model's parameters on data so its predictions improve.
+pretraining | The first, large training stage: predict the next token across a huge amount of text.
+fine-tuning [fine-tune, SFT] | Further training on a smaller, targeted set of examples to change behavior or style.
+RLHF | Reinforcement learning from human feedback: tune a model toward answers that people rate higher.
+reinforcement learning [RL] | Learning by trial and error: take actions, get rewards, and favor what earned reward.
+reward | A number that says how good an outcome was. RL tries to maximize it.
+policy | A rule for choosing actions. In a language model, the model itself is the policy.
+loss | A number measuring how wrong the model's output is. Training tries to reduce it.
+cross-entropy | The standard loss for next-token prediction: minus the log of the probability given to the correct token.
+gradient [gradients] | The direction and rate at which the loss changes when each parameter changes. Training steps against it.
+gradient descent | Repeatedly nudging parameters opposite to the gradient to reduce the loss.
+learning rate | How big each gradient descent step is.
+backpropagation [backprop] | The method that computes the gradient for every parameter by applying the chain rule backward through the network.
+optimizer | The algorithm that turns gradients into parameter updates, such as SGD or Adam.
+Adam [AdamW] | The most common optimizer. It smooths gradients and adapts the step size for each parameter.
+overfitting | When a model memorizes training data and does worse on new data.
+GPU [GPUs] | Graphics processing unit. A chip with thousands of cores, ideal for the matrix math in AI.
+batch | A group of examples processed together in one step.
+epoch | One full pass through the training data.
+transformer | The neural network architecture behind modern language models. It uses attention to relate every token to the others.
+attention | The mechanism that lets each token weigh all earlier tokens by relevance when computing its next representation.
+self-attention | Attention where the tokens attend to other tokens in the same sequence.
+KV cache | Stored keys and values of earlier tokens, reused during generation so each new token is cheap to compute.
+RoPE | Rotary position embedding: a way to tell the model where each token sits by rotating its query and key vectors.
+mixture of experts [MoE] | A design with many specialist sub-networks where a router uses only a few per token, so compute is far less than the total size.
+quantization [quantized] | Storing weights with fewer bits (for example 4 instead of 16) to save memory at a small quality cost.
+distillation | Training a small model to imitate a larger one.
+LoRA [QLoRA] | A cheap fine-tuning method that freezes the model and learns small add-on matrices. QLoRA also stores the base in 4-bit.
+benchmark [benchmarks] | A fixed test with a score used to compare models.
+hallucination [hallucinations, hallucinate] | A confident answer that is not supported by the model's knowledge or the provided sources.
+knowledge cutoff | The date after which the model has seen no training data.
+in-context learning | A model picking up a task from examples inside the prompt, without any retraining.
+few-shot | Giving a few worked examples in the prompt.
+chain of thought [chain-of-thought] | Having the model write out intermediate reasoning steps before the final answer.
+reasoning model | A model trained to think at length, often with RL, before answering.
+multimodal | Handling more than one kind of data, such as text, images and audio.
+structured output | Model output that follows a schema, such as valid JSON with fixed fields.
+JSON | A text format for structured data: keys and values in braces, like {"name": "Ada"}.
+schema | A description of the shape of data: which fields exist and what types they have.
+API | Application programming interface: a way for one program to call another, usually over HTTP.
+SDK | Software development kit: a library that wraps an API for a programming language.
+tool use [function calling, tool call, tool calls] | The model asks your program to run a function and reads the result.
+tool [tools] | A function the model can ask your program to run, described by a name, description and argument schema.
+MCP | Model Context Protocol: a standard for plugging tools and data into AI apps.
+agent [agents, agentic] | A model run in a loop that chooses its own tools and steps until the task is done.
+workflow [workflows] | A fixed sequence of steps written in code, with model calls at set points.
+subagent [subagents] | A helper agent started by another agent for a focused job, with its own context.
+orchestrator | The component, often a model, that splits work and delegates it to workers.
+harness | Everything around the model that makes it an agent: prompts, tools, rules, sandboxes, hooks, memory and checks.
+hook [hooks] | A script the harness runs automatically at a fixed point, such as before a tool call. It enforces rules in code.
+skill [skills] | A folder of instructions and scripts an agent loads only when a task needs it.
+sandbox | A restricted environment where code can run with limited access to files and the network.
+compaction | Summarizing older conversation so a long task fits in the context window.
+context engineering | Deciding what goes into the model's context window, and when.
+prompt injection | Untrusted text that contains instructions the model follows, such as a web page telling it to leak data.
+guardrail [guardrails] | A rule or check that limits what a system may do or output.
+human-in-the-loop | A design where a person approves risky steps.
+RAG [retrieval-augmented generation] | Retrieval-augmented generation: look up relevant text first, then give it to the model to answer from.
+retrieval | Finding the most relevant pieces of text for a query.
+chunk [chunks, chunking] | A small piece of a document, sized for indexing and retrieval.
+vector database [vector store] | A database that stores embeddings and finds the nearest ones quickly.
+BM25 | A classic keyword scoring method that ranks documents by matching terms.
+hybrid search | Combining keyword search and vector search.
+reranker [reranking] | A second model that rescores a short list of search results by reading query and passage together.
+eval [evals, evaluation] | A repeatable test of AI output quality, run before and after every change.
+trace [traces, tracing] | The full record of one run: inputs, model calls, tool calls, outputs, timing and cost.
+observability | Being able to see what your system did, through logs, traces and metrics.
+LLM-as-judge [LLM as judge] | Using a model to grade another model's output against a rubric.
+trajectory | The sequence of steps and tool calls an agent took, not just its final answer.
+rubric | A written list of criteria used to grade an output.
+CI [CI/CD] | Continuous integration: automatically running tests on every code change. CD deploys passing changes.
+Docker | A tool that packages software and its dependencies into a portable container.
+repo [repos, repository] | Repository: a project folder tracked by git, usually hosted on GitHub.
+git | The standard tool for tracking changes to code.
+worktree [worktrees] | A second checked-out copy of a git repository on its own branch in its own folder.
+CLAUDE.md | A file at a repo root that Claude Code reads at the start of every session. AGENTS.md is the shared equivalent.
+AGENTS.md | A shared convention for a repo file with instructions for coding agents.
+vibe coding | Building software by prompting and accepting results with little review.
+Hugging Face | A hub for sharing open models, datasets and demos, and the maker of widely used libraries.
+open source | Software whose code is public and can be reused under a license.
+diffusion model [diffusion] | An image generator trained to remove noise step by step. Generation starts from pure noise.
+CNN [convolutional neural network] | A network that slides small filters over an image to detect edges, shapes and objects.
+AGI | Artificial general intelligence: a loosely defined label for AI as capable as people across most tasks. There is no agreed test.

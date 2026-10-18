@@ -1,0 +1,305 @@
+{
+  "asOf": "2026-10-19",
+  "caveat": "Rows marked vendor-confirmed were checked against the lab's own announcement or model page on the date above. Rows marked tracker came only from third-party release trackers. Names, prices and availability move fast, so confirm on the vendor page before relying on one.",
+  "groups": [
+    {
+      "id": "now",
+      "title": "Frontier today",
+      "blurb": "The families to know in October 2026. Each lab ships a large, a mid-size and a small model.",
+      "models": [
+        {
+          "name": "Claude Opus 5.5",
+          "lab": "Anthropic",
+          "released": "2026-09-22",
+          "open": false,
+          "why": "First model of the Claude 5.5 family. Anthropic says it matches Fable 5.1 on most work at lower cost than Opus 5, and positions it for complex work that needs careful judgment.",
+          "verified": "vendor",
+          "tier": "large",
+          "url": "https://www.anthropic.com/claude-opus-5-5"
+        },
+        {
+          "name": "Claude Sonnet 5.5",
+          "lab": "Anthropic",
+          "released": "2026-09-28",
+          "open": false,
+          "why": "The faster, lower-cost partner to Opus 5.5. Anthropic positions it for well-scoped everyday tasks, bug fixes and documents.",
+          "verified": "vendor",
+          "tier": "mid",
+          "url": "https://www.anthropic.com/claude-sonnet-5-5"
+        },
+        {
+          "name": "Claude Haiku 5.5",
+          "lab": "Anthropic",
+          "released": "2026-10-07",
+          "open": false,
+          "why": "Anthropic's cheapest and fastest small model, for high-volume work like classification and summaries, and as a subagent next to the larger models.",
+          "verified": "vendor",
+          "tier": "small",
+          "url": "https://www.anthropic.com/claude-haiku-5-5"
+        },
+        {
+          "name": "Claude Fable 5.1",
+          "lab": "Anthropic",
+          "released": "2026-09-01",
+          "open": false,
+          "why": "A higher tier in the Claude 5 family. Anthropic describes Opus 5.5 as performing at its level on most work.",
+          "verified": "tracker",
+          "tier": "large"
+        },
+        {
+          "name": "GPT-6 family: Astra, Sol, Luna",
+          "lab": "OpenAI",
+          "released": "2026-09-03",
+          "open": false,
+          "why": "Astra (Sep 3) is OpenAI's flagship. Sol and Luna (Sep 22) are cheaper, faster tiers, and GPT-6.1 Sol (Sep 29) is described as near-Astra intelligence at about a fifth of the price.",
+          "verified": "vendor",
+          "tier": "large",
+          "url": "https://openai.com/index/introducing-gpt-6-sol-and-luna/"
+        },
+        {
+          "name": "Gemini 4 Argon",
+          "lab": "Google",
+          "released": "2026-10-13",
+          "open": false,
+          "why": "Google's frontier model. Announced Sep 30 to trusted testers, then generally available on Oct 13 through the API, the Gemini app and Search. Gemini 3.8 Flash is the cheaper fast option.",
+          "verified": "vendor",
+          "tier": "large",
+          "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-argon/"
+        },
+        {
+          "name": "Grok 4.7",
+          "lab": "xAI",
+          "released": "2026-09-21",
+          "open": false,
+          "why": "xAI's current model, listed with a 500K-token context window.",
+          "verified": "tracker",
+          "tier": "large"
+        },
+        {
+          "name": "Muse Wonder",
+          "lab": "Meta",
+          "released": "2026-10-12",
+          "open": false,
+          "why": "The larger closed model in Meta's Muse line, listed by release trackers. Meta's open-weight release is in the next group.",
+          "verified": "tracker",
+          "tier": "large"
+        }
+      ]
+    },
+    {
+      "id": "open",
+      "title": "Open-weight families",
+      "blurb": "Models whose weights you can download and run yourself. Licenses differ, so read them.",
+      "models": [
+        {
+          "name": "Muse Spark Open",
+          "lab": "Meta",
+          "released": "2026-10-15",
+          "open": true,
+          "why": "Meta's open-weight model: 816B parameters in total, 42B active per token, 1M-token context, and text, image, audio and video input. Released under the Muse Model License, which has limited commercial terms.",
+          "verified": "vendor",
+          "tier": "mid",
+          "url": "https://research.meta.ai/blog/muse-spark-open"
+        },
+        {
+          "name": "DeepSeek V4.1 Flash",
+          "lab": "DeepSeek",
+          "released": "2026-09-10",
+          "open": true,
+          "why": "A 552B-parameter multimodal mixture of experts with a 1M-token context, MIT-licensed. A minor update, V4.1-Flash-1017, followed on Oct 17.",
+          "verified": "vendor",
+          "tier": "mid",
+          "url": "https://www.deepseek.com/en/news/deepseek-v4-1-flash/"
+        },
+        {
+          "name": "Qwen3.8",
+          "lab": "Alibaba",
+          "released": "2026-08-12",
+          "open": true,
+          "why": "Open weights for a 2.4T-parameter Max-class model (95B active, Aug 12), a 27B model (Aug 14) and the efficient Flash-Next preview (Aug 26). The first Max-scale open release from Qwen.",
+          "verified": "vendor",
+          "tier": "mid",
+          "url": "https://github.com/QwenLM/Qwen3.8"
+        },
+        {
+          "name": "Mistral Large 4",
+          "lab": "Mistral",
+          "released": "2026-10-06",
+          "open": null,
+          "why": "A 1.05T-parameter multimodal mixture of experts (52B active). Public preview on Oct 6. Mistral says the open weights arrive by the end of October, so check whether they are out yet.",
+          "verified": "vendor",
+          "tier": "mid",
+          "url": "https://mistral.ai/news/mistral-large-4/"
+        },
+        {
+          "name": "Gemma 4",
+          "lab": "Google",
+          "released": "2026-04-02",
+          "open": true,
+          "why": "Google's small open models for local use.",
+          "verified": "tracker",
+          "tier": "small"
+        },
+        {
+          "name": "Kimi K3",
+          "lab": "Moonshot AI",
+          "released": "2026-07-16",
+          "open": null,
+          "why": "Long-context agentic model from Moonshot. Check the license.",
+          "verified": "tracker",
+          "tier": "mid"
+        },
+        {
+          "name": "GLM 5.3",
+          "lab": "Z.ai",
+          "released": "2026-08-14",
+          "open": null,
+          "why": "Zhipu's current family, with a cheap Flash tier. Check the license.",
+          "verified": "tracker",
+          "tier": "mid"
+        },
+        {
+          "name": "Llama",
+          "lab": "Meta",
+          "released": "2023-02-24",
+          "open": true,
+          "why": "The family that started the open-weight wave. Meta's newer releases are in the Muse line.",
+          "verified": "vendor",
+          "tier": "mid",
+          "url": "https://huggingface.co/meta-llama"
+        }
+      ]
+    },
+    {
+      "id": "milestones",
+      "title": "Milestones everyone should know",
+      "blurb": "The models and papers that changed what people thought was possible. Read in order for the story.",
+      "models": [
+        {
+          "name": "Perceptron",
+          "lab": "Cornell (Rosenblatt)",
+          "released": "1958",
+          "why": "The first trainable artificial neuron.",
+          "tier": "",
+          "topic": "ai-origins",
+          "verified": "history"
+        },
+        {
+          "name": "AlexNet",
+          "lab": "Toronto (Krizhevsky, Sutskever, Hinton)",
+          "released": "2012-09",
+          "why": "Deep network on GPUs that won ImageNet and started the deep learning era.",
+          "topic": "ml-and-deep-learning",
+          "verified": "history"
+        },
+        {
+          "name": "Transformer",
+          "lab": "Google",
+          "released": "2017-06",
+          "why": "The architecture behind every modern language model.",
+          "topic": "transformer-era",
+          "verified": "history"
+        },
+        {
+          "name": "BERT",
+          "lab": "Google",
+          "released": "2018-10",
+          "open": true,
+          "why": "Bidirectional pretraining that reset search and language understanding.",
+          "topic": "transformer-era",
+          "verified": "history"
+        },
+        {
+          "name": "GPT-3",
+          "lab": "OpenAI",
+          "released": "2020-05",
+          "open": false,
+          "why": "175B parameters. Showed in-context learning and made prompting a skill.",
+          "topic": "transformer-era",
+          "verified": "history"
+        },
+        {
+          "name": "AlphaFold 2",
+          "lab": "DeepMind",
+          "released": "2020-11",
+          "open": true,
+          "why": "Solved protein structure prediction at near-experimental accuracy.",
+          "topic": "science-breakthroughs",
+          "verified": "history"
+        },
+        {
+          "name": "Stable Diffusion",
+          "lab": "Stability AI",
+          "released": "2022-08",
+          "open": true,
+          "why": "Open image generation that ran on a consumer GPU.",
+          "topic": "vision-and-image-generation",
+          "verified": "history"
+        },
+        {
+          "name": "Whisper",
+          "lab": "OpenAI",
+          "released": "2022-09",
+          "open": true,
+          "why": "Robust open speech recognition across languages.",
+          "topic": "speech-and-multimodal",
+          "verified": "history"
+        },
+        {
+          "name": "ChatGPT",
+          "lab": "OpenAI",
+          "released": "2022-11-30",
+          "open": false,
+          "why": "Instruction-tuned chat at scale. Made LLMs a mass product.",
+          "topic": "chatgpt-and-the-race",
+          "verified": "history"
+        },
+        {
+          "name": "GPT-4 and Claude 1",
+          "lab": "OpenAI, Anthropic",
+          "released": "2023-03",
+          "open": false,
+          "why": "Strong reasoning, image input in GPT-4, and the start of serious competition.",
+          "topic": "chatgpt-and-the-race",
+          "verified": "history"
+        },
+        {
+          "name": "Llama 2",
+          "lab": "Meta",
+          "released": "2023-07",
+          "open": true,
+          "why": "A commercially usable open model with a detailed training report.",
+          "topic": "open-models",
+          "verified": "history"
+        },
+        {
+          "name": "o1",
+          "lab": "OpenAI",
+          "released": "2024-09",
+          "open": false,
+          "why": "First widely used reasoning model that thinks before answering.",
+          "topic": "reasoning-models",
+          "verified": "history"
+        },
+        {
+          "name": "DeepSeek-R1",
+          "lab": "DeepSeek",
+          "released": "2025-01",
+          "open": true,
+          "why": "Open reasoning model trained with reinforcement learning on verifiable rewards.",
+          "topic": "rl-for-llms",
+          "verified": "history"
+        },
+        {
+          "name": "Claude Code and coding agents",
+          "lab": "Anthropic and others",
+          "released": "2025",
+          "open": false,
+          "why": "Terminal agents that read, edit and test code made agentic coding mainstream.",
+          "topic": "agentic-coding-workflow",
+          "verified": "history"
+        }
+      ]
+    }
+  ]
+}

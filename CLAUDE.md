@@ -1,31 +1,60 @@
-# DSA in JavaScript
+# Learn in JavaScript
 
-Interactive reader and progress tracker for data structures and algorithms. Content comes from
-`trekhleb/javascript-algorithms` (MIT) plus original fundamentals, re-arranged into a learning path.
-Fumadocs (Next.js, static export) renders it. No backend.
+Interactive reader and progress tracker with two tracks, picked on the landing page (`/`):
+
+- **DSA** (`/dsa`): data structures and algorithms. Content from `trekhleb/javascript-algorithms` (MIT) plus original fundamentals.
+- **AI** (`/ai`): AI engineering from history and math to agents and evals. Original lessons, curated resources, one imported MIT reference chapter.
+
+Fumadocs (Next.js, static export) renders both. No backend. Each track is its own page tree, sidebar and search index.
 
 ## Layout
 
 - `site/`: the Next.js + Fumadocs app. Run all commands from here.
-- `site/scripts/curation.mjs`: tiers, chapters (learning order), difficulty. **Edit this to re-arrange content.**
-- `site/scripts/patterns.mjs`, `explain.mjs`, `walkthroughs.mjs`: problem patterns (signals, problems, template code, step data).
-- `site/scripts/build-content.mjs`: upstream repo + `site/authored/` into `site/.cache/content/` (generated).
-- `site/scripts/build-docs.mjs`: `.cache` into Fumadocs pages (`content/docs/`), `public/content/` images and `src/generated/*.json` (all generated, gitignored).
-- `site/authored/foundations/`: original topics (Big O, arrays, strings, ...). Edit these directly.
-- `site/src/components/dsa/`: our components (dashboard, pattern pages, walkthroughs, sorting player, progress).
-- `vendor/`: upstream clone (gitignored). `npm run content` clones it if missing.
+- `site/src/app/page.tsx`: track picker. `src/app/dsa/` and `src/app/ai/`: one layout, dashboard and `docs/[[...slug]]` page per track.
+- `site/src/lib/source.tsx`: one Fumadocs loader per track (`dsaSource`, `aiSource`), with the sidebar status dots.
+- `site/src/components/dsa/`: shared UI (dashboard, progress, status dots, walkthrough stepper) plus DSA-only pieces. `site/src/components/ai/`: lesson parts, math demos, story demos, model atlas, library, glossary.
+- `vendor/`: upstream clones (gitignored). `npm run content` clones them if missing.
+
+### DSA track
+- `scripts/curation.mjs`: tiers, chapters (learning order), difficulty. **Edit this to re-arrange content.**
+- `scripts/patterns.mjs`, `explain.mjs`, `walkthroughs.mjs`: problem patterns.
+- `scripts/build-content.mjs` then `build-docs.mjs`: upstream + `authored/foundations/` into `content/dsa/` and `src/generated/dsa.json`.
+
+### AI track
+- `authored/ai/<chapter>.md`: one file per chapter. A topic is a section headed `# slug | Title | level 1-3 | minutes`: first paragraph is the summary, `##` sections are the lesson, a ```resources fence lists `kind | title | url | by | why` lines, a ```quiz fence lists `question | a ; b ; c | answerIndex | why` lines, and a ```story fence holds a 2 to 4 sentence "Picture this" scenario. Every topic needs at least one resource and one quiz line, and every authored lesson should have a story, a worked example and a "Common mistake" note (`npm run lint:ai` reports thin or hard-to-read lessons).
+- `scripts/ai-curation.mjs`: tiers, stages, goals, chapter order, and which demo (`EXPLAINERS`) a topic shows. Each chapter also carries `stage`, `after` (chapters it builds on), `goals`, `outcome` and `story`, which drive the learning map at `/ai/map`. Chapter order in the file is the numbered recommended order on the map.
+- `authored/ai/glossary.txt`: `term [aliases] | definition`. Each lesson lists the terms it uses, so define every new technical word here.
+- `authored/ai/data/`: the parts that change over time: `models.json` (model atlas), `radar.json` (dated news on the dashboard), `stars.json` (GitHub stars snapshot), `meta.json` (`lastUpdated` and the sources to re-check).
+- `scripts/build-ai.mjs`: all of the above into `content/ai/` and `src/generated/ai.json`. It fails on a bad resource kind, quiz answer, duplicate slug or unknown topic reference.
+- `scripts/import-guide.mjs`: imports the DAIR.AI Prompt Engineering Guide technique pages (MIT) as the `prompting-reference` chapter. Do not import roadmap.sh content: its license forbids reuse. Use it only as a checklist (`npm run coverage`).
 
 ## Commands
 
 - `npm run dev`: regenerates content, then dev server.
-- `npm run verify`: regenerate content, check integrity (topics, images, pattern links), production static build. Run before calling work done.
+- `npm run verify`: regenerate content, check integrity, production static build. Run before calling work done.
 - `npm run build`: static export to `site/out/`; `npm start` serves it.
-- Progress lives in `localStorage` key `dsa-progress-v1` (`learning` | `done` per topic id; `lc:<slug>` for problems).
+- `npm run lint:ai`: readability and depth report for the AI lessons (target: about 350 words, grade under 10, no flags).
+- `npm run links`: network check of every AI resource URL (not part of `verify`).
+- `npm run ai:stars`: refresh GitHub star counts (needs `gh`).
+- `npm run coverage`: lists roadmap.sh AI Engineer topics our lessons never mention.
+- Progress lives in `localStorage` key `dsa-progress-v1` (`learning` | `done` per topic id; `lc:<slug>` for problems; AI topic ids start with `ai/`).
+
+## Updating the AI track
+
+When asked to update it:
+1. Read `authored/ai/data/meta.json`. Everything newer than `lastUpdated` is in scope.
+2. Models: check the trackers and lab pages in `meta.json` `watch`, then edit `data/models.json` (set `asOf`). Prices are left out on purpose.
+3. News: add dated entries to `data/radar.json`, newest first, each with a lesson to link. Add or edit lessons the news changes.
+4. Sources the user pasted (X posts, articles): read them, keep only what holds up, and add resources or lessons. X posts: `https://api.fxtwitter.com/<user>/status/<id>` returns the text and article links as JSON.
+5. Run `npm run coverage` and `npm run links`, fix broken URLs, run `npm run ai:stars`.
+6. Set `lastUpdated` to today, run `npm run verify`, and look at the changed pages with `agent-browser`.
 
 ## Rules
 
-- New topic or pattern: add it to `curation.mjs` / `patterns.mjs`; the build throws on unknown ids and warns on unplaced topics.
-- Topic pages are plain `.md` generated from the content build; custom UI goes in `src/app/(site)/docs/[[...slug]]/page.tsx` or components, not in the generated pages.
-- Components in `src/components/dsa` are client components (`'use client'`). Progress access goes through `progress.jsx`, not `localStorage` directly.
+- Writing for newcomers: define any technical word on first use or add it to the glossary. Show a worked number example for any math. No em dashes.
+- Do not claim a resource says something you have not read. Hype posts (X) are pointers: link the primary source, and say what is marketing.
+- Topic pages are plain `.md` generated by the build; custom UI goes in the `docs/[[...slug]]/page.tsx` of each track or in components, not in generated pages.
+- Client components use `'use client'`. Progress access goes through `components/dsa/progress.jsx`, not `localStorage` directly.
+- Demos reserve their height (all states stacked in one grid cell) so stepping never shifts the page. Keep that when adding one.
 - Run Next through `./node_modules/.bin/next` with `PORT=<n>` (the `rtk` wrapper rewrites `-p/--port` on `npx next`).
 - UI changes: check the real page with `agent-browser` (see global instructions), not just the build.

@@ -1,12 +1,9 @@
 'use client'
-import site from '@/generated/site.json'
 import { useProgress } from './progress.jsx'
 import { Bar } from './ui.jsx'
 
-const ids = Object.keys(site.topics)
-
 // Sidebar footer: how much of the whole path is done.
-export default function OverallProgress() {
+export default function OverallProgress({ ids }) {
   const progress = useProgress()
   const done = ids.filter(id => progress[id] === 'done').length
   return (

@@ -1,0 +1,79 @@
+[
+  {
+    "date": "2026-10-17",
+    "title": "DeepSeek-V4.1-Flash-1017 update",
+    "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+    "why": "A minor update to the open MIT-licensed V4.1 Flash with gains in reasoning, coding and agentic tasks.",
+    "topic": "open-models"
+  },
+  {
+    "date": "2026-10-15",
+    "title": "Meta releases Muse Spark Open weights",
+    "url": "https://research.meta.ai/blog/muse-spark-open",
+    "why": "An 816B-parameter (42B active) open-weight multimodal model under the Muse Model License.",
+    "topic": "open-models"
+  },
+  {
+    "date": "2026-10-13",
+    "title": "Gemini 4 Argon generally available",
+    "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-argon/",
+    "why": "Google's frontier model moves from trusted testers to the API, the Gemini app and Search.",
+    "topic": "choosing-a-model"
+  },
+  {
+    "date": "2026-10-13",
+    "title": "How to be more ambitious: a tutorial for humans with models",
+    "url": "https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/",
+    "why": "Altitude, depth and range as ways to ask models for more.",
+    "topic": "being-ambitious"
+  },
+  {
+    "date": "2026-10-07",
+    "title": "Claude Haiku 5.5",
+    "url": "https://www.anthropic.com/claude-haiku-5-5",
+    "why": "A much cheaper small model, suited to high-volume steps and subagent work.",
+    "topic": "choosing-a-model"
+  },
+  {
+    "date": "2026-10-06",
+    "title": "Mistral Large 4 preview",
+    "url": "https://mistral.ai/news/mistral-large-4/",
+    "why": "A 1.05T-parameter model with open weights promised by the end of October.",
+    "topic": "open-models"
+  },
+  {
+    "date": "2026-09-28",
+    "title": "Claude Sonnet 5.5",
+    "url": "https://www.anthropic.com/claude-sonnet-5-5",
+    "why": "The faster, lower-cost partner to Opus 5.5.",
+    "topic": "choosing-a-model"
+  },
+  {
+    "date": "2026-09-22",
+    "title": "Claude Opus 5.5 and GPT-6 Sol and Luna",
+    "url": "https://www.anthropic.com/claude-opus-5-5",
+    "why": "Both labs shipped new model tiers on the same day. GPT-6 Astra had arrived on Sep 3.",
+    "topic": "chatgpt-and-the-race"
+  },
+  {
+    "date": "2026-06-16",
+    "title": "Google: The new SDLC with vibe coding (agentic engineering whitepaper)",
+    "url": "https://addyosmani.com/blog/new-sdlc-vibe-coding/",
+    "why": "Agent = Model + Harness, and verification as the line between vibe coding and engineering.",
+    "topic": "harness-engineering"
+  },
+  {
+    "date": "2026-03-24",
+    "title": "Anthropic: Harness design for long-running application development",
+    "url": "https://www.anthropic.com/engineering/harness-design-long-running-apps",
+    "why": "Planner, generator and evaluator agents with context resets.",
+    "topic": "harness-engineering"
+  },
+  {
+    "date": "2026",
+    "title": "Claude Code dynamic workflows and /deep-research",
+    "url": "https://code.claude.com/docs/en/workflows",
+    "why": "Scripts that orchestrate hundreds of subagents, with intermediate results kept out of context.",
+    "topic": "model-routing-workflows"
+  }
+]

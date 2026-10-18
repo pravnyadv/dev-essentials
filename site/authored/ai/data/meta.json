@@ -1,0 +1,50 @@
+{
+  "lastUpdated": "2026-10-19",
+  "note": "Bump lastUpdated whenever you refresh models.json or radar.json. The next update starts by looking for anything newer than this date.",
+  "watch": [
+    {
+      "name": "Release trackers (models)",
+      "urls": [
+        "https://aireleasetracker.com/",
+        "https://mehmetbaykar.com/posts/top-frontier-llms-release-tracker/",
+        "https://agentleaderboards.com/",
+        "https://artificialanalysis.ai/",
+        "https://claude.com/resources/product-announcements",
+        "https://openai.com/research/index/release/",
+        "https://blog.google/innovation-and-ai/models-and-research/gemini-models/",
+        "https://huggingface.co/deepseek-ai/models"
+      ]
+    },
+    {
+      "name": "Lab engineering and docs",
+      "urls": [
+        "https://www.anthropic.com/engineering",
+        "https://code.claude.com/docs/en/workflows",
+        "https://research.google/pubs/"
+      ]
+    },
+    {
+      "name": "Practitioner blogs",
+      "urls": [
+        "https://simonwillison.net/",
+        "https://www.latent.space/",
+        "https://magazine.sebastianraschka.com/",
+        "https://hamel.dev/blog/",
+        "https://felixrieseberg.com/"
+      ]
+    },
+    {
+      "name": "Curated lists (check recent commits)",
+      "urls": [
+        "https://github.com/EthicalML/awesome-agentic-engineering-resources",
+        "https://github.com/keyuchen21/agentic-engineering-handbook",
+        "https://github.com/fatihkc/awesome-agentic-engineering",
+        "https://github.com/hesreallyhim/awesome-claude-code"
+      ]
+    },
+    {
+      "name": "User-supplied (X posts, articles)",
+      "urls": []
+    }
+  ]
+}

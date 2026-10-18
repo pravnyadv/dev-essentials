@@ -3,7 +3,7 @@
   "version": "0.0.47",
   "private": true,
   "scripts": {
-    "content": "node scripts/ensure-source.mjs && node scripts/build-content.mjs ../vendor/javascript-algorithms/src && node scripts/build-docs.mjs",
+    "content": "node scripts/ensure-source.mjs && node scripts/build-content.mjs ../vendor/javascript-algorithms/src && node scripts/build-docs.mjs && node scripts/build-ai.mjs",
     "predev": "npm run content",
     "dev": "next dev",
     "prebuild": "npm run content",
@@ -11,6 +11,10 @@
     "start": "serve out",
     "verify": "npm run content && node scripts/verify.mjs && next build",
     "types:check": "next typegen && tsc --noEmit",
+    "links": "node scripts/check-links.mjs",
+    "lint:ai": "node scripts/lint-ai.mjs",
+    "coverage": "node scripts/coverage-roadmap.mjs",
+    "ai:stars": "node scripts/ai-stars.mjs",
     "lint": "biome check",
     "format": "biome format --write"
   },
