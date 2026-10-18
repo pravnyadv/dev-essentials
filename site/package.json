@@ -1,11 +1,15 @@
 {
-  "name": "site",
+  "name": "dsa-js",
   "version": "0.0.47",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "content": "node scripts/ensure-source.mjs && node scripts/build-content.mjs ../vendor/javascript-algorithms/src && node scripts/build-docs.mjs",
+    "predev": "npm run content",
     "dev": "next dev",
+    "prebuild": "npm run content",
+    "build": "next build",
     "start": "serve out",
+    "verify": "npm run content && node scripts/verify.mjs && next build",
     "types:check": "next typegen && tsc --noEmit",
     "lint": "biome check",
     "format": "biome format --write"

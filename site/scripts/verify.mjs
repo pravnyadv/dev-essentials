@@ -2,7 +2,7 @@
 // JSON with a README section and code, and every pattern link resolves.
 import { existsSync, readFileSync } from 'node:fs'
 
-const dir = new URL('../public/content/', import.meta.url).pathname
+const dir = new URL('../.cache/content/', import.meta.url).pathname
 const index = JSON.parse(readFileSync(dir + 'index.json', 'utf8'))
 const errors = [], ids = new Set()
 const placed = index.chapters.flatMap(c => c.topics.map(t => t.id))
@@ -15,7 +15,7 @@ for (const c of index.chapters) for (const t of c.topics) {
   if (!topic.sections.length) errors.push('no sections: ' + t.id)
   if (!topic.code.length) console.warn('no code files:', t.id)
   for (const m of JSON.stringify(topic.sections).matchAll(/(?<=\]\()\/content\/[^)"\s]+\.(?:png|jpg|jpeg|gif|svg)/g))
-    if (!existsSync(new URL('../public' + m[0], import.meta.url).pathname)) errors.push(`broken image ${m[0]} in ${t.id}`)
+    if (!existsSync(new URL('../.cache' + m[0], import.meta.url).pathname)) errors.push(`broken image ${m[0]} in ${t.id}`)
 }
 for (const p of index.patterns) for (const id of p.topics) if (!ids.has(id)) errors.push(`pattern ${p.id} -> ${id}`)
 if (errors.length) { console.error(errors.join('\n')); process.exit(1) }

@@ -1,13 +1,13 @@
 // Usage: node scripts/build-content.mjs <path-to-javascript-algorithms/src>
-// Writes public/content/index.json and public/content/topics/<id>.json plus images.
+// Writes .cache/content/index.json and .cache/content/topics/<id>.json plus images. scripts/build-docs.mjs turns that into pages.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { CHAPTERS, DIFFICULTY, GROUPS, PATTERNS, TIERS } from './curation.mjs'
 
 const src = process.argv[2]
-const out = new URL('../public/content/', import.meta.url).pathname
+const out = new URL('../.cache/content/', import.meta.url).pathname
 const GH = 'https://github.com/trekhleb/javascript-algorithms/blob/master/src/'
-const AUTHORED = new URL('../content/', import.meta.url).pathname // topics written for this app (fundamentals)
+const AUTHORED = new URL('../authored/', import.meta.url).pathname // topics written for this app (fundamentals)
 rmSync(out, { recursive: true, force: true })
 mkdirSync(join(out, 'topics'), { recursive: true })
 

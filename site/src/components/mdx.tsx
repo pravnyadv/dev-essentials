@@ -1,11 +1,9 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import type { MDXComponents } from 'mdx/types';
-import PrefixSumExplainer from './dsa/PrefixSumExplainer';
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
-    PrefixSumExplainer,
     ...components,
   } satisfies MDXComponents;
 }

@@ -1,3 +1,4 @@
+'use client'
 import { useState } from 'react'
 import { ActionButton, CellRow, Hint, Line } from './explainerKit.jsx'
 import Walkthrough from './Walkthrough.jsx'

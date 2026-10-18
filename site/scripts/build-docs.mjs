@@ -1,20 +1,20 @@
-// Turns the app's generated content (app/public/content) into Fumadocs pages under content/docs.
-// Run `node app/scripts/build-content.mjs vendor/javascript-algorithms/src` first.
+// Turns the generated content (.cache/content) into Fumadocs pages under content/docs, plus src/generated data.
+// Run scripts/build-content.mjs first (`npm run content` does both).
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const here = new URL('.', import.meta.url).pathname
-const src = join(here, '../../app/public/content')
+const src = join(here, '../.cache/content')
 const out = join(here, '../content/docs')
 const index = JSON.parse(readFileSync(join(src, 'index.json'), 'utf8'))
 const LEVEL = { 1: 'Beginner', 2: 'Core', 3: 'Advanced' }
 
 rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
-cpSync(join(here, '../handwritten'), out, { recursive: true }) // hand-written MDX pages that use custom components
 const slugOf = id => id.split('/').slice(1).join('-')
 // Remote images stay plain <img>: the Fumadocs image plugin would fetch each one at build time and fail on dead links.
 const remoteImages = md => md.replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/g, '<img src="$2" alt="$1" />')
+const topicUrl = (c, t) => `/docs/${c.id}/${slugOf(t.id)}`
 const write = (path, text) => { mkdirSync(join(path, '..'), { recursive: true }); writeFileSync(path, text) }
 
 const rootPages = []
@@ -36,7 +36,12 @@ for (const tier of index.tiers) {
     }
   }
 }
-write(join(out, 'meta.json'), JSON.stringify({ pages: ['index', '---Patterns---', 'patterns', ...rootPages] }, null, 2))
-write(join(out, 'patterns/meta.json'), JSON.stringify({ title: 'Problem patterns', pages: ['prefix-sum'] }, null, 2))
-write(join(out, 'index.mdx'), `---\ntitle: DSA in JavaScript\ndescription: A learning path through data structures and algorithms.\n---\n\nPick a chapter from the sidebar. **Must Know** covers what every developer uses and what interviews ask most. **Advanced** is the extra.\n`)
+write(join(out, 'meta.json'), JSON.stringify({ pages: ['[Dashboard](/)', '[Problem patterns](/patterns)', ...rootPages] }, null, 2))
+
+// Data the dashboard, pattern pages and topic extras read: topic urls, learning order, patterns.
+const chapters = index.chapters.map(c => ({ ...c, topics: c.topics.map(t => ({ ...t, sections: undefined, url: topicUrl(c, t), chapter: c.title })) }))
+const topics = Object.fromEntries(chapters.flatMap(c => c.topics.map(t => [t.id, t])))
+const order = chapters.flatMap(c => c.topics.map(t => t.url))
+write(join(here, '../src/generated/urls.json'), JSON.stringify(Object.fromEntries(Object.values(topics).map(t => [t.url, t.id]))))
+write(join(here, '../src/generated/site.json'), JSON.stringify({ tiers: index.tiers, chapters, patterns: index.patterns, groups: index.groups, topics, order }))
 console.log('pages:', readdirSync(out).length, 'entries in root')

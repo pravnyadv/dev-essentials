@@ -7,14 +7,14 @@ const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {} } 
 let state = null
 const subs = new Set()
 const current = () => (state ??= read())
-const setStatus = (id, status) => {
+export const setStatus = (id, status) => {
   state = { ...current(), [id]: status }
   if (!status) delete state[id]
   try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* private mode */ }
   subs.forEach(f => f())
 }
 const EMPTY = {}
-const useProgress = () => useSyncExternalStore(f => (subs.add(f), () => subs.delete(f)), current, () => EMPTY)
+export const useProgress = () => useSyncExternalStore(f => (subs.add(f), () => subs.delete(f)), current, () => EMPTY)
 
 // status: undefined | 'learning' | 'done'
 export function StatusButton({ id }) {

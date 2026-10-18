@@ -1,4 +1,6 @@
 import { llms, loader } from 'fumadocs-core/source';
+import StatusDot from '@/components/dsa/StatusDot';
+import urls from '@/generated/urls.json';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
 import { defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
@@ -20,7 +22,18 @@ const docs = defineDocs({
 export const source = loader({
   baseUrl: docsRoute,
   source: docs.toFumadocsSource(),
-  plugins: [],
+  plugins: [
+    {
+      name: 'status-dot',
+      transformPageTree: {
+        file(node) {
+          const id = (urls as Record<string, string>)[node.url];
+          if (id) node.icon = <StatusDot id={id} />;
+          return node;
+        },
+      },
+    },
+  ],
 });
 
 export const docsLlms = llms(source, {

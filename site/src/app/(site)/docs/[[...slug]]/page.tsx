@@ -1,20 +1,14 @@
 import { source } from '@/lib/source';
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-  MarkdownCopyButton,
-  ViewOptionsPopover,
-} from 'fumadocs-ui/layouts/docs/page';
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { getPageImageUrl, getPageMarkdownUrl, gitConfig } from '@/lib/shared';
+import { getPageImageUrl } from '@/lib/shared';
 import { StatusButton } from '@/components/dsa/progress';
-import SortVisualizer from '@/components/dsa/SortVisualizer';
+import { MarkDone, Practice, TopicBadges, TopicDemo } from '@/components/dsa/TopicExtras';
 import { SORTS } from '@/components/dsa/sortFrames';
+import site from '@/generated/site.json';
 
 const sortAlgo = (slug?: string[]) => Object.keys(SORTS).find((k) => slug?.at(-1)?.endsWith(k));
 
@@ -24,29 +18,31 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   if (!page) notFound();
 
   const MDX = page.data.body;
-  const markdownUrl = getPageMarkdownUrl(page).url;
+  const url = `/docs/${page.slugs.join('/')}`;
+  const byUrl = Object.fromEntries(Object.values(site.topics).map((t) => [t.url, t]));
+  const topic = byUrl[url];
+  const patterns = site.patterns.filter((p) => (topic?.patterns as string[] | undefined)?.includes(p.id));
+  const next = byUrl[site.order[site.order.indexOf(url) + 1]];
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <div className="flex flex-row gap-2 items-center border-b pb-6">
-        <StatusButton id={page.slugs.join('/')} />
-        <MarkdownCopyButton markdownUrl={markdownUrl} />
-        <ViewOptionsPopover
-          markdownUrl={markdownUrl}
-          githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/docs/${page.path}`}
-        />
+        {topic && <StatusButton id={topic.id} />}
       </div>
-      <DocsBody>
-        <MDX
-          components={getMDXComponents({
-            // this allows you to link to other pages with relative file paths
-            a: createRelativeLink(source, page),
-          })}
+      {topic && <TopicBadges level={topic.level} patterns={patterns} />}
+      {topic && (
+        <TopicDemo
+          sortAlgo={sortAlgo(page.slugs)}
+          pattern={topic.kind !== 'Fundamentals' ? patterns[0] : undefined}
         />
-        {sortAlgo(page.slugs) && <SortVisualizer algo={sortAlgo(page.slugs)!} />}
+      )}
+      <DocsBody>
+        <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>
+      {topic && <Practice patterns={patterns} />}
+      {topic && <MarkDone id={topic.id} next={next && { url: next.url, title: next.title }} />}
     </DocsPage>
   );
 }

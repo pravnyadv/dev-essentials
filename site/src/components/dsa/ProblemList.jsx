@@ -1,4 +1,5 @@
-import { setStatus, useProgress } from './lib.js'
+'use client'
+import { setStatus, useProgress } from './progress.jsx'
 
 const DIFF = { E: 'Easy', M: 'Medium', H: 'Hard' }
 const key = slug => `lc:${slug}`
