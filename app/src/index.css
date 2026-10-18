@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "highlight.js/styles/github-dark.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+body { @apply bg-stone-50 text-stone-900 dark:bg-[#0b0d12] dark:text-stone-100 antialiased; }
+.dark { color-scheme: dark; }
+.prose img { @apply bg-white rounded-xl p-2 max-h-96 object-contain border border-stone-200 dark:border-stone-700; }
+.prose table { @apply text-sm block overflow-x-auto; }
+.prose :where(pre) { @apply bg-transparent p-0; }
+.prose :where(code):not(pre code)::before, .prose :where(code):not(pre code)::after { content: none; }
+.prose :where(code):not(pre code) { @apply rounded bg-stone-200/70 px-1.5 py-0.5 text-[0.85em] dark:bg-white/10; }
+.hljs { background: transparent; font-family: var(--font-mono); }
+html { scroll-behavior: smooth; }

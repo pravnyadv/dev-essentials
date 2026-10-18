@@ -1,0 +1,5 @@
+node_modules/
+dist/
+vendor/
+app/public/content/
+.DS_Store
