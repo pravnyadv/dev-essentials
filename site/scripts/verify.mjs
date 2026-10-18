@@ -17,6 +17,7 @@ for (const c of index.chapters) for (const t of c.topics) {
   for (const m of JSON.stringify(topic.sections).matchAll(/(?<=\]\()\/content\/[^)"\s]+\.(?:png|jpg|jpeg|gif|svg)/g))
     if (!existsSync(new URL('../.cache' + m[0], import.meta.url).pathname)) errors.push(`broken image ${m[0]} in ${t.id}`)
 }
+for (const p of index.patterns) for (const [n, st] of p.steps.entries()) if (st.quiz && !(st.quiz.answer in st.quiz.options)) errors.push(`pattern ${p.id} step ${n + 1}: quiz answer out of range`)
 for (const p of index.patterns) for (const id of p.topics) if (!ids.has(id)) errors.push(`pattern ${p.id} -> ${id}`)
 if (errors.length) { console.error(errors.join('\n')); process.exit(1) }
 console.log(`ok: ${ids.size} topics, ${index.chapters.length} chapters, ${index.patterns.length} patterns`)
