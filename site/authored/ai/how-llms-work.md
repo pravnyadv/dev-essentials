@@ -17,6 +17,28 @@ Paste a paragraph of prose, a JSON blob and some code into a tokenizer viewer an
 ## Worked example: counting tokens and cost
 The sentence "I love learning about AI!" is about 7 tokens. A 1,000-word email is around 1,300 tokens. If a model charges $3 per million input tokens, that email costs about $0.004 to read. Cheap once, but an agent that re-reads a 50,000-token conversation 30 times pays for 1.5 million tokens: about $4.50. Tokens are the unit of cost, speed and memory.
 
+## How text becomes tokens
+A tokenizer holds a fixed list of pieces, built by repeatedly merging character pairs that appear often in training text (this method is called BPE). To encode text it cuts the string into the longest pieces on its list, then replaces each piece with an ID number. The model only ever sees those numbers.
+
+Common words are usually one piece. Rare words split into several. An invented split: "unbelievable" becomes "un", "believ", "able". This also explains why models struggle to count letters. The letters were never given to the model, only piece IDs.
+
+## Why long chats get expensive
+Every turn resends the whole conversation as input. Invented numbers: each turn adds 500 tokens. Turn 1 sends about 500, turn 2 about 1,000, turn 3 about 1,500, and so on. Over 10 turns the total sent is 500 × (1 + 2 + ... + 10) = 500 × 55 = 27,500 tokens, although the conversation holds only 5,000 tokens of text. Cost grows faster than the number of turns. Caching repeated prefixes lowers the price, but the window still fills.
+
+## What goes wrong when the window fills
+Symptoms are easy to spot:
+
+1. The assistant forgets an instruction from the start, because the app trimmed old messages.
+2. A reply ends mid-sentence, because the limit was reached.
+3. Costs per message keep rising during one session.
+
+To confirm, count tokens before sending. Most APIs also report why generation stopped, for example hitting the length limit.
+
+## A second example: when the window is not the problem
+Say you paste three documents of 2,000 tokens each into a model with a far larger window. Everything fits, yet the summary is vague. The window is not the cause here. The prompt probably never said what the summary is for.
+
+Test it. Cut the input down to just the relevant paragraph and ask again. If the answer is still vague, fix the prompt. If it improves, the extra text was the problem, and retrieval or trimming will help.
+
 ## Common mistakes
 Assuming a bigger window means a better answer. More text can bury what matters. Another mistake is forgetting that the answer also uses window space, so a nearly full window leaves little room to reply.
 
@@ -54,6 +76,24 @@ Prompt: "The capital of France is". The model scores possible next tokens: "Pari
 ## Why this explains the weirdness
 The model never plans the whole answer. That is why it can start a sentence confidently and then paint itself into a corner. It is also why asking it to write out its reasoning first often helps. Those reasoning words become part of the context for the final answer.
 
+## Inside one step, with small numbers
+The model first produces a raw score for each token, called a logit. Softmax turns scores into probabilities that sum to 1. Invented scores for three tokens: 2, 1 and 0. Softmax gives about 0.665, 0.245 and 0.090.
+
+Temperature divides the scores first. At temperature 0.5 the scores become 4, 2 and 0, and the probabilities sharpen to about 0.867, 0.117 and 0.016. At temperature 2 they become 1, 0.5 and 0, and flatten to about 0.506, 0.307 and 0.186. Same model, same prompt, different odds.
+
+## What goes wrong: loops
+At low temperature a model can repeat itself. After a phrase has appeared twice, the most likely next token is often the start of the same phrase again, and the loop feeds itself. The symptom is the same sentence repeated until the length limit.
+
+To confirm, rerun with a higher temperature or a repetition penalty, a setting that lowers the score of tokens already used. If the loop disappears, the cause was the sampling, not the prompt.
+
+## Answer order matters
+Because tokens are committed one at a time, the first words steer the rest. If a reply must begin "Yes", the model often ends up justifying yes even when the evidence says no. Asking for the reasoning first and the verdict last lets the verdict rest on that reasoning.
+
+Test it on a yes or no question with a tricky answer. Run it once asking for the verdict first and once asking for reasoning first. Compare the results over about 10 runs each.
+
+## How to measure variability
+For a task you care about, run the same prompt 10 times at your chosen settings and count the distinct answers. One or two means the task is stable. Many means the model is unsure, and a clearer prompt or lower temperature should come before anything else.
+
 ## Common mistake
 Believing the model "looks up" facts. It predicts likely text. When a fact was common in training, the likely text is right. When it was rare, the likely text can be a convincing guess.
 
@@ -90,6 +130,29 @@ Extraction, classification and code: temperature 0 to 0.3. Brainstorming and cre
 
 ## A worked example: same prompt, three settings
 Prompt: "Name a fruit." Temperature 0: "Apple" every time. Temperature 0.7: apple, banana, mango across runs. Temperature 1.5: occasionally "dragonfruit" or something odd. For a form that must name exactly one valid fruit from a list, use 0. For brainstorming ten product names, use 0.9.
+
+## How the settings stack
+Settings act in sequence, and earlier ones change what later ones see. Reuse the probabilities A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Dividing the scores by a temperature of 0.5 is the same as squaring each probability and rescaling so they sum to 1. The squares are 0.25, 0.0625, 0.0225, 0.0049 and 0.0009, which total 0.3408. The new probabilities are about 0.734, 0.183, 0.066, 0.014 and 0.003.
+
+Now apply top-p 0.9. A and B together reach 0.917, so only A and B survive. Earlier, top-p 0.9 alone kept three tokens. Lowering temperature shrank the candidate set as well. Providers differ in the order they apply settings, so test rather than assume.
+
+## Trade-offs and when not to use them
+Low temperature gives repeatable output but can loop and sound flat. High temperature gives variety but more errors. Top-k uses the same cutoff whether the model is sure or unsure, which top-p handles better. A seed helps you debug, but it is not a guarantee of identical output across providers or versions.
+
+Do not tune sampling to fix a bad prompt. If answers are wrong because the instructions are unclear, no setting repairs that.
+
+## What goes wrong
+Match the symptom to the dial.
+
+1. JSON cut off halfway: max tokens is too low. Check why generation stopped.
+2. An answer ends too early: a stop sequence appears inside the content.
+3. Odd or unrelated words: temperature is too high.
+4. The same line repeated: temperature is too low, or no repetition penalty is set.
+
+Log the settings with every request. Then rerun the failing prompt about 10 times, changing one dial at a time.
+
+## Try it yourself
+In any playground that exposes temperature, send "Name a fruit." ten times at 0 and ten times at 1. Count distinct answers. Expect very few at 0, usually one or two, and noticeably more at 1.
 
 ## Common mistake
 Turning both temperature and top-p up at once, which compounds the randomness and produces nonsense. Change one dial, test, then decide.
@@ -131,6 +194,21 @@ Take "The bank of the river was muddy." When the model handles "bank", attention
 
 ## Go deeper
 Watch the 3Blue1Brown chapters first. Then play with an interactive visualization. Then read the original paper or the illustrated walkthrough.
+
+## A trace with small numbers
+Invented numbers for illustration. A token has three earlier tokens to look at. Its query compared with their keys gives scores 3, 1 and 0. Softmax turns these into weights: e^3 is about 20.1, e^1 about 2.7, e^0 equals 1, total about 23.8. The weights are about 0.84, 0.11 and 0.04.
+
+Say the three values are single numbers, 10, 20 and 30. The output is the weighted average: 0.84 × 10 + 0.11 × 20 + 0.04 × 30, about 12.0. Most of the answer comes from the first token, because its key matched the query best. Real models scale the scores before softmax and use long vectors, but the steps are the same.
+
+## Trade-offs and limits
+Each comparison costs work. For 1,000 tokens there are about 500,000 comparisons, and for 2,000 tokens about 2 million, four times more. Doubling the input quadruples this part of the cost.
+
+A model also runs several attention heads in parallel. A head is one independent copy of attention that can focus on a different kind of relationship. Attention weights show where information flowed, but they are only part of the computation, so they are an incomplete explanation of why the model answered as it did.
+
+## A second example: where attention does not help
+Attention can only mix information the vectors already hold. Ask a model how many r letters are in "strawberry". The tokenizer may have hidden the letters inside larger pieces, so there is nothing to attend to. Giving the model a code tool avoids the problem.
+
+A different failure is a fact buried in a very long prompt. Weights spread thin across many tokens, and the model may ignore a line that is present. To confirm, move the fact to the start or end of the prompt and ask again. If the answer changes, position was the cause.
 
 ## Common mistake
 Thinking more layers always means a smarter model. Depth helps, but data and training matter just as much.
@@ -178,6 +256,29 @@ When you need new facts, retrieve them and put them in the prompt. When you need
 ## A worked example: what each stage adds
 Ask a base model "How do I bake bread?" It might continue with "How do I bake a cake? How do I bake cookies?", like a list of search suggestions. After instruction tuning it gives steps. After preference tuning the steps get clearer, safer and better organized. After reasoning training it can work through a long problem, such as scaling a recipe for 37 people.
 
+## What one training example looks like
+In pretraining, one sentence produces many practice questions. Take the six tokens "The cat sat on the mat" (invented split). The model is shown "The" and must predict "cat". Then "The cat" and must predict "sat". That gives 5 predictions from one sentence, each scored by how much probability the right token got. Billions of such sentences make up the run.
+
+Fine-tuning uses the same scoring, but on conversations, and usually only the assistant's reply counts. Same mechanism, different data.
+
+## Trade-offs: prompt, retrieve or fine-tune
+Match the tool to what is missing.
+
+Missing facts that change often: retrieve them. A company with 200 policy pages updated weekly cannot re-tune each week, and retrieval can show its sources.
+
+Missing behavior you can describe: write a clearer prompt first, since it is free and instant.
+
+Missing consistency at huge scale: fine-tune a small model. A brand voice in a fixed three line format, millions of times a day, is a good fit. The costs are collecting good examples and the risk of side effects.
+
+## What goes wrong after tuning
+Symptoms to watch for:
+
+1. A tuned model gets worse at unrelated tasks, because the update shifted weights it needed.
+2. Answers have the right format but wrong facts. Format can be taught. Knowledge mostly cannot.
+3. Reinforcement learning on checkable tasks can be gamed. A coding model might special-case the exact tests instead of solving the problem.
+
+To confirm, test on examples that were not used in tuning. Also rerun a small set of general tasks before and after the change.
+
 ## Common mistake
 Fine-tuning a model to "teach" it your company facts. Facts are better supplied when the question is asked, through retrieval. That keeps them up to date and shows the sources.
 
@@ -217,6 +318,21 @@ Task: summarize a customer's contract. Rail one: give the model the contract tex
 
 ## Where models are weak
 Exact arithmetic with long numbers, precise dates and names that are rare, anything after the knowledge cutoff, and counting letters in words (tokens hide letters). Where possible give the model a tool: a calculator, a search, a code runner.
+
+## Why a model makes things up
+Think about what happens with a rare fact. Ask for the author of an obscure book. The model has seen little about it, so its probabilities spread across many plausible names. Invented numbers: 12 percent for one name, 10 percent for another, 9 percent for a third. The sampler must still pick something, and the top choice at 12 percent is printed in the same confident tone as a name with 95 percent behind it.
+
+Nothing in that loop separates "I know" from "this looks right". Bigger models tend to make fewer such errors, but none are immune.
+
+## A second example: matching checks to stakes
+Guard rails cost time and money, so scale them to what a mistake costs. Rewriting an email to sound politer has few facts to get wrong, and a quick read by you is enough. Summarizing a legal contract needs the full set of rails.
+
+Even a good rail can mislead. A required quote might exist in the contract but not support the claim it is attached to. Checking that the quote exists is not the same as checking that it says what the model claims.
+
+## How to tell it is working
+Build a small test set of about 30 questions with known answers. Include some whose answers are not in the provided document. Count three things: right answers, wrong answers, and times the model said the answer is not available.
+
+A well-grounded setup should say "not stated" when asked, for example, the notice period of a contract that never mentions one. If it invents a number, your rails are not yet working. Rerun the set after every change to the prompt or model so you see whether the wrong-answer rate moved.
 
 ## Common mistake
 Reading confidence as accuracy. The tone is equally fluent when the answer is wrong.

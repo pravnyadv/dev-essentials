@@ -16,6 +16,15 @@ Before: "Summarize this report." You get a generic paragraph. After: "Summarize 
 ## One example beats a paragraph of description
 If you want a specific style, paste one example of it. Showing is faster and clearer than explaining. If the output is still wrong, ask what the prompt failed to say, not what the model did wrong.
 
+## Why vague prompts fail
+A model predicts the most likely useful answer given your words. When the words leave gaps, it fills each gap with the most typical choice. "Write a birthday message" leaves open who it is for, the tone, the length and the relationship. The result is the average birthday message. Every detail you add removes one guess. That is why a prompt with an audience, a length and a purpose beats a clever phrase.
+
+## A second example: when more words cannot help
+Ask "What was our revenue last quarter?" with no document attached. No wording can fix this, because the model does not have the number. The symptom is a confident, specific figure that is invented. The fix is to supply the input, such as the report itself, or to accept that the model cannot know. If you see made-up details, check first whether the prompt gave the model what it needed to answer.
+
+## Change one thing at a time
+To see whether a rewrite helps, keep the test inputs fixed and change only one part of the prompt. Use ten inputs and mark each answer pass or fail against the same three rules. Invented example: version one passes 4 of 10 and version two passes 7 of 10. Run each version twice, because the same prompt can give different answers on different runs. If two changes happen together, you cannot tell which one helped.
+
 ## Common mistakes
 Writing very short prompts and expecting mind-reading. Stacking many unrelated tasks in one prompt. Testing on only one input.
 
@@ -60,6 +69,15 @@ Anything in a system prompt can leak or be overridden by a determined user or by
 ## Testing it
 Try to break it: ask about a competitor, ask for a refund promise, paste a message telling the assistant to ignore its rules. Anything that slips through becomes a new line in the prompt or, better, a rule enforced in code.
 
+## How the model treats it
+The system prompt is text placed at the start of the context, and the model reads it together with everything else. There is no lock around it. Models are trained to follow it more closely than ordinary user text, but that is a learned habit, not a guarantee. This is why a long chat or a pasted message can still pull the model away from it.
+
+## A second example: when it is the wrong place
+Some jobs do not belong in a system prompt. A rule such as "never refund more than $10" belongs in code, because code cannot be talked around. A fact that changes daily, such as stock levels, belongs in the user message or a lookup. A whole product catalog does not belong there either, because every call pays for it. Invented numbers: a 1,500 token prompt on 10,000 calls a day is 15 million tokens a day before any user has said a word.
+
+## What goes wrong
+The symptoms are specific. A rule is ignored late in a long chat, because it sits far from the latest message. The tone becomes stiff, because the prompt has too many "always" lines. Behavior flips between runs, because two rules contradict each other. To find the cause, write one test case per rule and run each five times. The rule that fails sometimes is the weak one. Then search the prompt for another line that argues against it.
+
 ## Common mistakes
 Putting secrets or private data in the system prompt. Writing a very long list of rules that contradict each other.
 
@@ -103,6 +121,18 @@ Zero-shot: "Classify this review: 'The battery died in two days.'" The model ans
 ## A worked example: chain of thought
 Question: "A shop sells pens at 3 for $2. How much do 12 pens cost?" A model might blurt "$12". Asking it to "work step by step" gives: 12 pens is 4 groups of 3; 4 × $2 = $8. Writing the steps made the answer more reliable.
 
+## Why each technique works
+Few-shot works because the examples become part of the text the model continues. It predicts what comes next in the pattern you set up. Chain-of-thought works for a different reason. The model produces one token at a time, and each token is computed from all the text before it. Writing the steps down puts intermediate results on the page where later tokens can use them. Zero-shot relies only on what training taught.
+
+## The cost of each
+Each technique spends tokens. Invented numbers: three examples of 40 tokens each add 3 × 40 = 120 tokens to every call, which is 1,200,000 extra tokens over 10,000 calls. Chain-of-thought changes the output side: a reply of 5 tokens may become 120. Choose the cheapest technique that passes your tests, and move up only when a test fails.
+
+## What goes wrong
+With few-shot, the model may copy surface details. If your last example is "negative", it may lean toward "negative". To check, shuffle the examples. If results change a lot, the prompt is fragile. With chain-of-thought, fluent steps can still be wrong, and the written steps are not a reliable record of how the model really got its answer. Check the final answer independently rather than trusting a convincing explanation.
+
+## Try it yourself: zero-shot against few-shot
+Write 10 short reviews and decide the right label for each. Run them zero-shot and count the correct labels. Then add three examples and run the same ten. Expect the biggest gain on labels and format, and little change on clearly positive or negative reviews. If there is no gain, the first prompt was already enough, and the examples only added cost.
+
 ## Common mistakes
 Adding step-by-step instructions to reasoning models that already think, which can make them worse. Using examples that all look the same, so the model copies the pattern without learning the range.
 
@@ -138,6 +168,18 @@ Schema: name (string), years_experience (number), skills (list of strings), seni
 ## Tips
 Use enums for fixed choices. Make fields optional when the information may be missing, so the model is not pushed to invent a value. Describe each field in one sentence. Log every validation failure and read them weekly.
 
+## How the constraint works
+With schema-constrained generation, the system filters the model's choices at every token. The model scores all possible next tokens, and the system removes those that would break the schema. After `{"years":` only digits are allowed. After `"seniority":` only the start of junior, mid or senior is allowed. The model picks among what remains. The result always has a valid shape. It is not guaranteed to hold the right value.
+
+## Valid is not correct
+Suppose the resume says 15 years and the model returns 5. The JSON is valid, validation passes and the data is wrong. Another case: a resume with no seniority stated, and the model picks "mid" because the schema forced a choice. The symptom is no errors but bad data. To confirm, sample 20 outputs, compare each field with the source by hand, and compute accuracy per field.
+
+## Trade-offs in schema design
+A schema that is too strict forces an invented answer. Add an "unknown" option to enums and make uncertain fields optional. Deeply nested schemas fail more often, so flatten them when you can. If you ask for only a final answer, you may lose the benefit of thinking first. A common fix is a "reasoning" field placed before the "answer" field, so the model writes its working before it commits.
+
+## Try it yourself: five messy emails
+Collect five event emails. Write a schema with four fields: name, date, place and a type chosen from a fixed list. Ask a chat model to fill it for each email and check the JSON in any free online validator. Count how many are valid and how many are correct. Expect most to be valid and a few wrong, usually dates written in an unusual way.
+
 ## Common mistake
 Asking for JSON in prose and then parsing with string tricks. Use the provider's structured output feature or a validation library.
 
@@ -168,6 +210,18 @@ Do not copy old prompting habits blindly. "Think step by step" is unnecessary fo
 
 ## A worked example: when it pays off
 A bug takes three files to understand. A fast model guesses a fix and often misses. A reasoning model reads, forms a hypothesis, checks it against the code and adjusts, then proposes a fix. For a typo fix, the same model is overkill and ten times slower. Match effort to difficulty.
+
+## How the thinking works
+Before the final answer, the model writes hidden reasoning tokens. Some providers show a summary of them. Those tokens are usually billed as output. The effort setting limits how many it may use. Invented numbers: 2,000 thinking tokens plus a 100 token answer is 2,100 tokens, which is 21 times the answer alone. Because you pay for the thinking, the question is whether it buys a better answer.
+
+## A second example: when thinking does not help
+Take "Rewrite this sentence more politely". There are no steps to plan, so extra thinking adds delay and cost with no gain. Take a question about a private fact the model never saw. More thinking cannot create missing knowledge. It can only produce a longer, more polished wrong answer. Thinking helps most when the task has several steps and the model knows the facts.
+
+## What goes wrong
+The symptoms are slow replies, large bills, and answers to easy questions that arrive after long deliberation. Sometimes the final answer contradicts the reasoning that came before it. To confirm the cause, log the token usage of each call (most APIs report it) and run the same 20 test questions at low and high effort. Compare accuracy and tokens. If accuracy does not rise, lower the setting.
+
+## Try it yourself: easy against hard
+Write 10 questions: five easy lookups and five that need several steps, such as a small scheduling puzzle. Run each at low effort and at high effort, or on a normal model and a reasoning model. Record correctness and waiting time. Expect the easy questions to have the same accuracy but slower answers, and the hard ones to improve. That gap is what you are paying for.
 
 ## Common mistake
 Telling a reasoning model exactly how to think. State the goal and constraints, and let it find the route.
@@ -202,6 +256,15 @@ List what your agent sees on its tenth step. Mark each item as needed, maybe, or
 
 ## A worked example: the six kinds
 Customer support agent. Instructions: tone, limits. Knowledge: the refund policy retrieved for this question. Memory: the customer said earlier they bought the red model. Examples: two model replies to similar tickets. Tools: look up order, issue refund up to $10. Guardrails: never reveal other customers' data. The question is not "how do I word the prompt", it is "what does this agent need on its desk right now?"
+
+## How the model uses the window
+The model keeps no memory between calls. Each step, the whole context is sent again, and the model reads all of it. An agent's memory is only what you choose to resend. Invented numbers: the first step has 2,000 tokens, and each step adds 1,500 tokens of tool output. Step 10 holds 2,000 + 9 × 1,500 = 15,500 tokens. Over 10 steps the model reads 87,500 tokens in total, because each step re-reads everything before it.
+
+## A second example: a coding agent
+An agent fixing one bug does not need the whole repository. Instructions: the repo's rules file. Knowledge: only the failing file. Memory: the output of the last test run, not all earlier runs. Tools: read a file, edit a file, run the tests. Compare this with the support agent above. The same six kinds apply, but the content is picked for the task. A one-off question to a chat assistant needs none of this. A good single prompt is enough.
+
+## What goes wrong
+The symptom is an agent that ignores a rule you gave early, repeats a step, or picks the wrong tool. The most useful check is to print the exact context at the failing step and read it as the model would. Often the needed item is missing, or it is buried under pages of old output. Fix what you find there before changing the wording of any instruction.
 
 ## Common mistake
 Adding more and more in case it helps. Every extra line competes for the model's attention.
@@ -242,6 +305,20 @@ Your context holds the old spec ("orders ship in 5 days") and a newer message ("
 ## Testing for rot
 Take a task the model does well with a short prompt. Add unrelated paragraphs in steps of 5,000 tokens and watch the accuracy. The point where it dips is your practical limit for that task.
 
+## Telling the failures apart
+Work through a short test to find which failure you have.
+1. Run the failing step again with a minimal, clean context. If it now succeeds, the cause is clutter: distraction, confusion or rot.
+2. If the wrong fact appears in the output, search the context for where it first appeared. If it came from an earlier step, that is poisoning.
+3. If the context holds two versions of the same thing, that is clash.
+4. If it still fails with a clean context, the problem is the task or the model, not the context.
+Each answer points to a different fix, so diagnose before you trim anything.
+
+## A second example: confusion from too many tools
+An agent has 40 tools. A user asks for last month's sales total, and the agent calls "get_customer" because its description mentions sales. Many descriptions overlap, so the model cannot tell them apart. The fix is to expose only the five tools the step needs and rewrite each description so it says clearly what it does and when not to use it. Symptom to watch for: the right tool exists, but the wrong one gets called.
+
+## Trimming has a cost
+Removing old turns can remove something that still matters. Suppose the user said early on, "never use PDFs". After trimming, the agent produces a PDF. The symptom is a broken earlier constraint. Keep standing rules in a separate stable block that is never trimmed, and trim only the history around it.
+
 ## Common mistake
 Blaming the model for forgetting when the real problem is clutter in the window.
 
@@ -278,6 +355,20 @@ After two hours the agent writes: "Goal: fix login bug. Done: found cause in aut
 
 ## Isolation in practice
 Ask a subagent to "find every place the config is read and report file names". It reads fifty files and returns ten lines. Your main context stays tidy. For work that depends on shared decisions, isolation is harder, so keep tasks that must agree in one context.
+
+## Writing a good compaction, step by step
+Compaction works best as a routine, not an emergency.
+1. Stop at a clean point, such as after a test run, not in the middle of an edit.
+2. Write down the goal, what is done, what was tried and failed, what is next, and the key files.
+3. Save the note to a file as well as the context.
+4. Start the new context with only that note.
+5. Ask the new context what it will do next and compare it with your plan. If they differ, the note is missing something.
+
+## A second example: contract question, paste or retrieve
+You need an answer from a very long contract. Pasting it all costs more, slows the reply and can hurt accuracy. Retrieving the three relevant sections is cheaper and usually better. But if the task is to find contradictions between any two clauses, you cannot know in advance which parts matter. Here a long context is the right tool, and prompt caching helps if you ask many questions about the same text.
+
+## What goes wrong
+After a poor compaction, an agent redoes finished work because the note lacked a "done" list, or retries an approach that already failed because the note lacked a "tried" list. To confirm, ask the fresh context what has been decided and compare it with your log. With isolation, the failure is conflicting choices: two subagents invent different names for the same function, and the merge breaks. Keep one context in charge of shared decisions.
 
 ## Common mistake
 Summaries that lose the one detail you need later. Save critical facts to a file as well.

@@ -19,6 +19,18 @@ Task: answer customer questions. Prompt era: write a clever instruction. Retriev
 ## A habit worth keeping
 When you meet a new term, find the mechanism, find the measurement, and find the old name. If you cannot find all three, wait.
 
+## Running the three questions on a new term
+Take an invented term, "intent engineering", from a vendor post. Apply the checks in order.
+1. Mechanism: read for what the system does differently. Suppose the post says the app rewrites a vague request into a clear goal before the model sees it. That is a concrete step.
+2. Measurement: ask for a before and after. Suppose the vendor reports 62 of 100 test requests solved before, and 71 of 100 after. That is 9 points better, but 100 requests is a small test. Random luck alone can move a score by several points, so ask for more runs.
+3. Old name: rewriting a request before processing it is called query rewriting, and search engines have done it for years.
+Verdict: a real technique with a small, uncertain gain, applied in a new place. It is not a new discipline.
+
+## When the mechanism is real but the claim is not
+A pitch says: "Harness engineering lets any model act like a top engineer." The mechanism behind it is real. Tests catch wrong answers, and permissions stop bad actions. The claim goes too far, because a harness checks and limits a model. It cannot add knowledge or reasoning the model lacks.
+
+You can test the claim. Keep the harness fixed and swap in a weaker model, then run the same twenty tasks and count passes. If the count drops a lot, the model still matters. Expect that result. A good harness raises the floor, so fewer runs fail badly, but it does not remove the gap between models.
+
 ## Common mistake
 Thinking you must learn the newest name to be current. The mechanisms underneath last longer than the labels.
 
@@ -57,6 +69,19 @@ Prompts are now treated as code: versioned, tested against examples and reviewed
 ## What became of the job title
 Writing prompts turned into one of many skills. Today it is usually bundled with building the whole system: data, tools, tests and monitoring.
 
+## How few-shot works, with a tiny trace
+Invented prompt: "Review: great -> positive. Review: awful -> negative. Review: fine ->". The model has seen no training on this exact list. It reads the pattern and continues it, so the next word is likely "positive" or "neutral" in the same one-word style.
+
+Without the two examples, the same model might answer with a full sentence. The examples teach the format as well as the task. To measure it, run twenty inputs both ways and count outputs in the right format. Invented result: 11 of 20 without examples, 19 of 20 with.
+
+## What goes wrong: tuning to your test cases
+You rewrite a prompt until three test inputs all pass. On twenty new inputs it fails half of them. The prompt learned your three cases, much like a student who memorizes the practice exam.
+
+To confirm, split your inputs into two groups. Tune the prompt on the first group only, then score the second group once, without changing anything. If the second score is far lower, you overfit the prompt. Keep the second group hidden until the end.
+
+## When a technique is not needed
+Chain of thought helps on multi-step problems, such as a bill with a discount and tax. It adds cost to a one-step lookup like "What is the capital of France?", because the model writes extra tokens it does not need. Reasoning models are trained to think before they answer. Adding "think step by step" to one may change nothing. Run both versions on your task before you keep the phrase.
+
 ## Common mistake
 Copying prompts from a social media thread without testing them on your own task.
 
@@ -94,6 +119,27 @@ Click through the parts in the diagram. Then take your own agent and list which 
 
 ## A worked example: one failure, one harness change
 Failure: the agent says "done" but half the feature is missing. Cause: no way to check. Harness change: give it the test suite and require passing tests before it can finish. Failure: it edited a config file it should not touch. Harness change: a permission rule blocking that folder. Each change is small and measurable.
+
+## How a hook stops a bad action
+A hook is code that runs at a fixed point, so the model cannot talk its way past it. Trace for a secrets check:
+1. The agent finishes a change and asks to run the commit command.
+2. The harness pauses the call and runs the hook first.
+3. The hook scans the staged files for text shaped like a password or key.
+4. It finds one and returns a refusal that names the file.
+5. The agent reads the refusal, removes the key, and tries again.
+
+A rule in the prompt, "never commit secrets", works most of the time. The hook works every time, because the check does not depend on the model remembering.
+
+## What goes wrong: a harness that grows too heavy
+A rules file grows to 300 lines. Some rules contradict each other, and the agent starts ignoring parts of it. The symptom is an agent that obeys rules early in a session and drops them later, as the rules compete with the task for space in the context window.
+
+To confirm, trim the file to the ten rules that matter. Run the same task ten times with each version and compare the passes. If the short file passes as often or more, the extra rules were noise.
+
+## How to tell a checker works
+An evaluator that approves everything adds cost and no safety. Plant a known bug in a copy of the code and ask the evaluator to review it. If it misses an obvious bug, tighten its instructions or give it the tests to run. Repeat with three different bugs before you trust it.
+
+## When a harness is the wrong tool
+Renaming twenty files once does not need sandboxes, tracing and a second agent. Write a short script and check the result by eye. A harness pays off when the task repeats, runs unattended, or can do real damage.
 
 ## Common mistake
 Adding harness parts without a way to measure whether they help.
@@ -151,6 +197,20 @@ Pitch: "Our multi-agent swarm autonomously builds your product." Translation: se
 
 ## A quick glossary of caution
 Real mechanism with a hype halo: agents, reasoning models, context engineering, skills, memory. Mostly packaging: "swarm", "autonomous employee". Undefined: AGI.
+
+## A second example: "our assistant has memory"
+Mechanism, with an invented example:
+1. After a chat, a step asks the model which facts are worth keeping, such as "user prefers metric units".
+2. Those facts are saved to a file or database.
+3. In the next chat, a search finds the notes that match the new message and pastes them into the window.
+
+That is memory: a notebook the system reads before it answers. The failure is a stale note. You tell the assistant you moved from London to Paris, but the old note stays, so it keeps suggesting umbrellas for London. To confirm, change a fact and ask a question that depends on it in a new chat.
+
+## When the buzzword is the wrong tool
+A task has three steps: fetch a page, pull out a date, write one sentence. A swarm of four agents is overkill. Invented cost count: each agent reads the same 8,000-token brief and adds 2,000 tokens of its own work. That is 4 times 10,000, or 40,000 tokens, before the agents send each other messages. One agent doing all three steps might use 10,000. Use several agents only when subtasks are independent and large enough to pay for the overhead.
+
+## Checking that reasoning helps
+Reasoning models spend extra tokens thinking before they answer. Collect ten multi-step questions and ten one-step lookups. Run each set with reasoning on and off. Expect a clear gain on the multi-step set, little on the lookups, and a higher token bill both times. If you see no gain on your own task, switch it off.
 
 ## Common mistake
 Rejecting a whole idea because the marketing is silly. Look for the mechanism underneath.

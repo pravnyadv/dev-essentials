@@ -16,6 +16,33 @@ Explore: "Read the code around the checkout total and explain how the total is c
 ## Keeping the agent honest
 Ask for the diff, not a summary. Ask "what did you not verify?" Treat it like a very fast junior colleague: confident, tireless, sometimes wrong.
 
+## How the loop works
+A coding agent repeats a cycle. It reads the situation, picks an action such as opening a file or running a command, sees the result, and decides the next step. This continues until it thinks it is done or you stop it. Each result is added to its context window, so the agent can react to real output instead of guessing.
+
+Here is a short trace with invented details. You ask it to fix a failing test.
+1. It runs the tests and sees one failure in a price function.
+2. It opens that function and the test.
+3. It edits one line, then runs the tests again.
+4. A different test now fails, so it opens that one and adjusts.
+5. All tests pass and it reports.
+
+The checks in step 1 and step 3 are what steer it. Without them it would stop at step 2 with a guess.
+
+## A second example: when the plan is not needed
+Not every task needs four phases. Renaming a variable in one file, or fixing a typo in a message, takes a single instruction and a glance at the diff. Writing a plan for it costs more than doing it. Use the full routine when the change touches several files, when you do not understand the code, or when a mistake would be costly.
+
+## What goes wrong
+The typical failure is the agent saying "fixed" when it is not. You will see passing output from a test it rewrote to be easier, or a change that solves the example but breaks a nearby case. To confirm, read the diff and check whether any test file changed. Then run the tests yourself. A second failure is drift: after many steps the agent forgets an early rule. Starting a fresh session with a short summary usually helps.
+
+## Try it yourself
+Pick a small project with tests, or write a tiny function with two tests.
+1. Introduce a bug on purpose.
+2. Ask the agent to explain the code, not change it.
+3. Ask for a plan, and approve it.
+4. Let it fix the bug, then read the diff.
+
+Expect the diff to be short. If it touched test files, ask why.
+
 ## Common mistakes
 Starting with implementation. Letting the diff grow to hundreds of lines before looking. Skipping tests because the code "looks right".
 
@@ -62,6 +89,21 @@ Pick one tool. Use it for real tasks for two weeks. Keep a short log: where it s
 ## Things to check
 Does it let you pick the model? How does it ask permission before running commands? Where does your code go? Can it be run on a branch or worktree so it cannot damage your main work?
 
+## What actually differs between tools
+The model underneath matters, but the wrapper around it matters just as much. The wrapper decides what the agent can see, which commands it can run, how it asks permission, and how it edits files. Two tools using the same model can feel very different. Compare on four things: where it runs (your machine or a remote one), how it handles your files, how much you must approve, and whether you can see and undo each change.
+
+## A second example: choosing for a small task
+You want to understand what a function does, with no changes. A chat app is enough: paste the function and ask. A coding agent would work too, but it brings permissions and file access you do not need. For a task that spans many files, such as renaming a concept everywhere, the chat app fails because it cannot see the whole project. The size of the job picks the tool.
+
+## Trade-offs
+Terminal agents give control and scripting but have a learning curve. Editor agents are comfortable and show changes inline, but can encourage quick accepting without reading. Cloud agents work while you are away, but you only see the result at the end, and the code runs on a machine that does not have your local setup. No option is best in every case.
+
+## What goes wrong
+A common failure is trusting a demo. Marketing shows an agent building an app in minutes on a clean project. Your project is older, bigger and has unusual rules. Symptoms of a bad fit are constant corrections, edits in the wrong files, and tests that the tool cannot run. Those usually mean the tool lacks context about your project, which a memory file can fix, or that the task is too large for one pass.
+
+## How to tell it is working
+During your trial, count two things per task: minutes until you had a result you would accept, and number of corrections you made. Compare with how long you would have taken alone. If the numbers do not improve after a week of learning the tool, change your approach before changing the tool.
+
 ## Common mistake
 Changing tools every week. Depth in one beats shallow tries of five.
 
@@ -103,6 +145,27 @@ Work through this list once, before any real task.
 ## A worked example: sorting commands
 You ask the agent to fix a failing test. It wants to run seven commands. Allow `npm test` and `git diff` for the rest of the session, because they only read or check. Approve `npm install lodash` once after looking at the package. Refuse `rm -rf build` unless you read the path, and refuse `git push --force` outright. Four commands never interrupt you again, one needed a decision, two were blocked. That is a few seconds of attention instead of a prompt on every step.
 
+## How the approval check works
+Before the agent runs a command or edits a file, the harness, the program that wraps the model, compares the request with your rules. A rule can allow it, block it, or ask you. The model does not decide this. That is the point: the check is ordinary code, so a clever prompt cannot talk its way past it. A sandbox adds a second layer, enforced by the operating system or a container, so even an approved command is limited to a small area.
+
+## A second example: where approvals are not enough
+The agent reads a web page to learn about a library. Hidden in the page is a line telling it to send your files to an address. This is prompt injection: text from outside that tries to give the agent orders. Your approval prompt may catch an obvious command. A harmless-looking command could still pass. A sandbox with no secrets inside and no network access to unknown sites limits the harm even if you click yes. Permissions reduce mistakes. Isolation limits the damage from the ones that slip through.
+
+## Trade-offs
+More prompts mean more safety and more interruptions. After the fifth identical question, people start clicking yes without reading, which defeats the system. Allow narrow, repeatable commands so the prompts that remain are rare enough to read. Broad rules, such as allowing any command that starts with a common word, can include dangerous cases, so keep them specific.
+
+## What goes wrong
+Look for these symptoms. The agent stalls on a prompt you did not see because it is in another window. A command is blocked, and the agent tries a workaround that you did not intend. A change lands on the wrong branch because you forgot to switch. To confirm, read the log of commands the tool ran and check your branch name before starting.
+
+## Try it yourself
+Create a throwaway folder with a git repository and one small file.
+1. Ask the agent to read the file and add a comment.
+2. Approve the edit and view the diff.
+3. Ask it to delete the file, and decline.
+4. Restore with git if anything changed.
+
+Expect to see exactly what it asked and be able to undo it.
+
 ## Common mistake
 Turning off all approvals to go faster, in a folder that contains secrets or production access. The speed is real, and so is the damage when the agent follows a bad instruction hidden in a web page or a file.
 
@@ -135,6 +198,26 @@ Commands (install, test, lint, run), architecture in a few lines, conventions th
 ## A worked example: a good file
 Run: pnpm install, pnpm test, pnpm dev. Layout: app code in src/, tests in spec/. Conventions: functional components, no default exports. Never: edit src/generated, commit .env. Gotcha: tests need Docker running. Eight lines. Every line prevents a repeated correction.
 
+## How the file is used
+When a session starts, the harness reads the file and puts its text at the top of the model's context. The model does not remember earlier sessions by itself. Each one begins empty, so this file is the only memory it has of your project. Because the text sits in the context window, every line uses space and competes with your actual task.
+
+## A second example: a file that makes things worse
+Imagine a file of 300 lines with the full history of the project, old decisions, and a tutorial for the framework. The agent now has to weigh all of it on every task. Important rules, like "never edit generated files", are buried. A shorter version keeps only what the agent cannot discover by reading the code: commands, traps and rules. The history can live in a docs folder that the file links to. Instructions in the file are also advice, not a lock. For a rule that must never break, use a permission setting or a hook.
+
+## What goes wrong
+Files go stale. A command in the file changes, nobody updates it, and the agent keeps running the old one. You will see errors about a missing script or a wrong folder. Contradictions cause trouble too: one line says use tabs, another says spaces, and the agent picks one at random. Over-long files lead to ignored rules.
+
+## How to tell it is working
+Run a simple test. Start a fresh session and ask: "What commands would you run to test this project, and what must you never do?" The answer should match your file. If it guesses, the file is not being loaded or the wording is unclear. Then give the agent a real task and count how many corrections you make. Add a line for each repeated correction and remove one that never matters.
+
+## Try it yourself
+Write a file of ten lines or fewer for a project you own.
+1. List the install, test and run commands.
+2. Add one convention and one thing to avoid.
+3. Start a new session and ask the test question above.
+
+Expect the first answer to be mostly right and to reveal one missing line.
+
 ## Common mistake
 Pasting the whole architecture document. The file loads every session, so only keep what changes behavior.
 
@@ -165,6 +248,29 @@ If the agent should know how to do something when relevant, write a skill. If so
 
 ## A worked example: choosing
 Goal: always format files after the agent edits them. Not a skill (the agent might forget) and not a command. A hook runs the formatter after every edit, guaranteed. Goal: teach the agent your release checklist, only when someone says "prepare a release". A skill, because it loads only when relevant. Goal: you often type "review the last commit for security issues". Make it a command and run it with one word.
+
+## How each one runs
+A skill works by loading on demand. At the start, the agent sees a one-line description of each skill. When your request matches, it reads the full file and follows it. The match is a judgment by the model, so a vague description may never trigger, or may trigger at the wrong time.
+
+A hook is different. The harness, not the model, runs it when an event happens, such as "after a file is edited". The model cannot skip it. If the hook script exits with an error, the harness can block the action and show the message to the agent.
+
+A command is a saved prompt that you start yourself, so it runs when you type its name and not otherwise.
+
+## A second example: choosing wrongly
+You want to stop the agent from ever committing a file called secrets.env. You write a skill saying "never commit secrets". This relies on the model remembering and matching. One day it does not load. A hook that checks the staged files before each commit and fails if that file appears is the right tool, because it runs every time. Now the opposite: you want the agent to know your team's review style. A hook cannot teach style. That is a skill.
+
+## Trade-offs
+Hooks are strict, so a faulty one blocks work, such as a formatter that crashes and stops every edit. Keep hooks fast and test them by hand. Skills cost little context but need precise descriptions. Too many skills with similar descriptions confuse the choice.
+
+## What goes wrong
+Skill never triggers: the description does not match how you phrase requests, so rewrite it using your own words. Hook does nothing: the event or the file pattern is wrong, so run the script by hand and check its exit code. Hook slows everything: it does heavy work on every edit, so move that work to a commit-time check.
+
+## Try it yourself
+Create a command or skill that does one small job, such as summarising the last commit in three lines.
+1. Run it.
+2. Change the wording of the description and see whether it still gets picked.
+
+Expect small wording changes to change when a skill triggers.
 
 ## Common mistake
 Using the prompt for rules that must never break. Prompts ask. Hooks enforce.
@@ -203,6 +309,28 @@ Job 1 (worktree A): add a search feature. Job 2 (worktree B): fix a login bug. J
 ## When not to
 For a five-minute change, one session is simpler. Each agent adds startup cost and one more thing to review.
 
+## How the pieces fit
+When the main agent starts a subagent, it hands over a written task. The subagent works in its own fresh context, reads whatever it needs, and sends back a final message. Everything it read along the way is discarded from the main chat. If it read fifty files and replied with five lines, the main agent only carries the five lines.
+
+A worktree is made with git, the version control tool. Both folders share one history but have separate files and branches. Changes in one do not appear in the other until you merge.
+
+## A second example: where it does not help
+You ask three agents to refactor the same module, each in its own worktree. All three change the same functions. When you merge, you hit conflicts, and you must decide among three versions of the same code. Worktrees prevent overwriting, not overlapping work. Divide tasks so they touch different files. If two jobs need the same file, run them one after the other. Similarly, a subagent that must understand the whole conversation gains nothing, because its summary will lose context.
+
+## Trade-offs
+Parallel work saves your waiting time but adds review time, since you read several diffs. It also multiplies the cost, because each agent has its own usage. The summary a subagent returns can leave things out. If a decision depends on a detail, ask for it explicitly, or check the source yourself.
+
+## What goes wrong
+Merge conflicts, as above. A subagent that reports success without evidence. Forgotten worktrees that pile up on disk and old branches that confuse you later. To check a subagent's claim, ask which files it read and which command proved the result, then run that command. Clean up with the list command for worktrees and remove finished ones.
+
+## Try it yourself
+In a repo you own, make a second worktree on a new branch, edit a file there, and look at the original folder.
+1. Confirm the original file is unchanged.
+2. Merge the branch.
+3. Remove the extra worktree.
+
+Expect the change to appear in your main folder only after the merge.
+
 ## Common mistake
 Running two agents in the same folder. Their half-finished edits collide and tests fail for confusing reasons.
 
@@ -240,6 +368,20 @@ Stage 1: a small, cheap model reads every file and flags suspicious ones (fast, 
 ## A note on the hype
 Posts describing this as a trick that "saves huge amounts" are exaggerated. The saving is real when the work is large and parallel. For small tasks it is overhead. Measure cost and quality on your own task.
 
+## How a routed run is built
+Think of it as a small factory with stations. A script, written once by a strong model, lists the stations and passes each station's output to the next. Each station is a call to a model chosen for that job. Because the script is ordinary code, loops and conditions happen exactly as written, not as the model remembers them.
+
+Here is a cost sketch with invented numbers for illustration. Say there are 100 files. A small model reads each at a cost of 1 unit, so scanning costs 100 units. It flags 10. A mid-size model fixes each flagged file at 5 units, so 50 units. A large model reviews the 10 results at 20 units each, so 200 units. Total: 350. If the large model had read all 100 files at 20 units each, it would cost 2000. The saving comes from the large model seeing only 10 percent of the work.
+
+## A second example: when routing loses
+Take 4 files, all closely linked, where a change in one affects the others. Splitting work among agents means each sees only part of the picture, and you pay to combine the parts. One strong session with all four files in view is cheaper and more accurate. Routing fits work that splits into independent pieces.
+
+## Trade-offs
+A cheap model scans fast but may miss problems that a stronger one would catch. The pipeline is only as good as the weakest station. Debugging also gets harder, because an error could arise at any step. Add logs, and keep the intermediate outputs so you can see where things went wrong.
+
+## What goes wrong
+Common symptoms: the final answer ignores a real issue the first station missed, costs end up higher than a single session, or results differ between runs. To confirm a missed issue, plant a known bug in a test repo and see whether the pipeline finds it. To confirm cost, compare the usage of a single-session run with the pipeline on the same task.
+
 ## Common mistake
 Using the pattern for a focused change. One session is cheaper.
 
@@ -270,6 +412,29 @@ Most agent failures are underspecified tasks. A spec forces the missing decision
 
 ## A worked example: a tiny spec
 Feature: password reset by email. Behavior: user enters email, receives a link valid for 30 minutes, link works once. Edge cases: unknown email shows the same message as a known one, so attackers cannot discover accounts. Checks: a test for expired links, a test for reuse, a test for unknown email. The agent now knows what done means.
+
+## How a spec guides the agent
+The agent works from the text it is given. A vague request leaves gaps, and the model fills each gap with the most likely choice, which may not be yours. A spec closes the gaps in advance. The usual flow is a short chain.
+1. Write the behavior and the checks.
+2. Ask the agent for a plan from the spec and read it.
+3. Let it implement in steps, running the checks.
+4. When something is wrong, edit the spec, not the code.
+
+Step 4 keeps the spec as the source of truth. If you patch the code by hand, the next agent run will undo your change or contradict it.
+
+## A second example: when a spec is too much
+You want a button to change colour. Writing a spec with edge cases would take longer than the change itself. Skip it. A spec pays off when the feature has rules that are easy to get wrong, such as money, permissions or time limits, or when several people or agents will touch it. Equally, a spec cannot capture everything: for a visual design, you may only know it is right when you see it. In that case iterate with the agent and look at the result.
+
+## What goes wrong
+Vague words are the main failure. "Fast", "secure" and "user-friendly" cannot be tested. Replace them with something measurable, such as "the page responds in under one second on the test data". Another failure is a spec that contradicts itself, which shows up as the agent asking questions or making an arbitrary choice. A third is checks that pass without testing anything, such as a test that always succeeds. To confirm a test has value, break the code on purpose and see whether it fails.
+
+## Try it yourself
+Choose a small feature, such as a function that checks whether a password is strong enough.
+1. Write five lines of rules, each testable.
+2. Ask the agent to write tests from the rules before any code.
+3. Break one rule in the code and watch a test fail.
+
+Expect to find at least one rule that was ambiguous when you tried to write its test.
 
 ## Common mistake
 Specs nobody can check. If you cannot say how you would test a line, rewrite the line.
@@ -304,6 +469,26 @@ raw/ holds the originals: pdfs, transcripts, saved pages. wiki/ holds pages the 
 
 ## Keeping it trustworthy
 Summaries can drift from their sources. Keep the raw files, require sources on every claim, and open a few pages a week to compare against the originals.
+
+## How the compile step works
+Think of it like building notes from a pile of readings. When you ingest a source, the agent reads it, finds the topics it covers, and then edits the matching wiki pages or creates new ones. It adds links between related pages and records where each claim came from. Later, a question is answered from the wiki pages, which are short, instead of from the full sources. That saves effort and gives a consistent view across documents.
+
+## A second example: when a wiki is the wrong tool
+You have three short articles and want an answer about one detail. Building a wiki is overkill. Paste the articles into a chat and ask. The wiki is worth it when the material is large, grows over time, or you will return to it for months. A wiki is also a poor fit for exact lookups, such as the precise wording of a contract clause, because a summary can change the wording. For those, search the raw file.
+
+## Trade-offs
+Compiling saves reading time but puts a layer between you and the source. Each summary is a chance for error. Updating also costs usage each time you ingest. A looser setup, a folder of raw files that the agent searches when asked, has less upkeep and less drift, but each question is slower and may miss links between documents.
+
+## What goes wrong
+Look for pages that cite no source, two pages that disagree, and old pages that new material should have changed but did not. A wrong claim can spread, since new pages build on old ones. To check, pick a random page, open the source it names, and compare the claim. Also run a question you know the answer to and see whether the wiki gets it right.
+
+## Try it yourself
+Make a raw folder with three short articles on one topic, and a rules file.
+1. Ask the agent to ingest them.
+2. Open each page and check one claim against its source.
+3. Ask a question that needs two articles.
+
+Expect good answers, plus at least one small error or missing link to fix.
 
 ## Common mistake
 Trusting the wiki without ever checking it against the raw sources.

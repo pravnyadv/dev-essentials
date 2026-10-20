@@ -10,6 +10,33 @@ Write a short brief with the story beats, the style and the length. Ask the agen
 ## A worked example: a scene as code
 A scene is a function of the frame number. Frames 0 to 30: a title fades in (opacity = frame / 30). Frames 30 to 90: a bar chart grows (height = value × progress). Because it is plain code, the agent can change a number, re-render and compare. Timing constants live in one file so you can retime the whole video in a minute.
 
+## Step by step: a 10-second video
+Start with arithmetic, since everything in the code runs on frame numbers.
+1. Choose a frame rate. At 30 frames per second, 10 seconds is 300 frames.
+2. Split the story into three scenes: 90, 120 and 90 frames. That is 3, 4 and 3 seconds, and the total is 300.
+3. Put these numbers in one constants file, so retiming means editing one place.
+4. Ask the agent to build scene one only. Remotion's Sequence component places a scene at a start frame, and its interpolate helper turns a frame number into a value.
+5. Render one frame as an image, near the middle of the scene. Check the layout, then ask for fixes.
+6. Repeat for scenes two and three, then render the whole video.
+
+## How the timing math works
+A progress value runs from 0 to 1 across a range of frames. A bar chart grows between frame 30 and frame 90, a span of 60 frames. At frame 60, progress is (60 - 30) / 60 = 0.5. If the final bar height is 80 pixels, the bar is 40 pixels tall at that moment. A title that fades in over frames 0 to 30 has opacity 0.5 at frame 15. Easing changes the curve, but the idea stays the same: the picture is a pure function of the frame number.
+
+## What goes wrong: a preview that flickers
+Preview looks fine, but the final render has parts that jump or flicker. A common cause is timing that does not come from the frame number, such as CSS transitions, a timer, or random values. Rendering draws frames one at a time and does not wait for real time to pass.
+
+To confirm, render the same frame twice, then compare the two images. A correct scene produces identical stills. If they differ, find the code that reads the clock or a random number, and replace it with a value computed from the frame.
+
+## When code video is the wrong tool
+Cutting footage you filmed, or tuning a short logo animation by dragging keyframes, is faster in an editor with a timeline. Code video suits scenes made of text, charts and shapes, and videos you want to regenerate from changing data.
+
+## Giving feedback the agent can act on
+Vague notes get vague fixes. "Make it punchier" could mean ten things. Name the frame, the element and the change. Compare:
+1. Weak: "The title feels slow."
+2. Strong: "In scene one the title fades in over 30 frames. Make it 15, and hold it on screen for 45 frames before the chart starts."
+
+The strong note maps to two constants, so the agent edits two numbers and you compare a new still. If a change makes things worse, undo it by restoring the old numbers. This is why keeping timing in one file matters.
+
 ## Common mistake
 Asking for a whole video in one prompt. Build and check scene by scene.
 
@@ -44,6 +71,28 @@ Claim: "Filings fell 8 percent in 2024 [3]." Click source 3. Does the page reall
 
 ## Writing a good question
 Specific scope, time frame and what counts as evidence. "Compare 2023 and 2024 filing counts using government statistics" is better than "is the tax rule working?"
+
+## How verification voting works
+A verifier is a separate agent that checks one claim. Take the claim "Filings fell 8 percent in 2024." Three verifiers each search for support on their own. One rule, an invented policy, keeps a claim only if at least 2 of 3 find a source that states it. Here two find it and one finds a figure of 6 percent for a smaller group. The claim stays, perhaps with the dispute noted.
+
+The weakness: votes are only independent if the sources are. If all three verifiers land on the same blog post, three votes are really one.
+
+## Step by step: running a question you can trust
+1. Write the question with a scope, a period and the kind of evidence you accept.
+2. Ask for the plan of sub-questions first. Add any angle that is missing.
+3. Run the research.
+4. Mark the three claims your decision depends on.
+5. Open each cited page and search it for the exact figure and group.
+6. For any that fail, ask for a re-run that uses primary sources only.
+
+## What goes wrong: citations that trace to one origin
+Sources 2, 3 and 5 all state the same figure in similar words. They look like three confirmations. Often two of them quote the third, and that one quotes an old press release. To confirm, open each source and follow its own citation backward. If the trail ends at one page, you have one source. Also check dates: a page from 2022 cannot support a claim about 2024.
+
+## When deep research is the wrong tool
+A single fact, such as a city's population, needs one search. A question whose answer lives in your own private files needs retrieval over those files, because the web has nothing on it. A decision due in five minutes cannot wait for a run that costs many times a normal answer. Use it for open questions where several sources must agree.
+
+## What the cost looks like
+Parallel gathering reads a lot. Invented numbers: 5 sub-questions, 10 pages each, about 3,000 tokens a page. That is 5 x 10 x 3,000 = 150,000 tokens of reading, before the verifiers fetch pages of their own. A normal chat answer might use 1,000 tokens of output. You pay for breadth, so a narrower question is both cheaper and easier to check. Cutting the scope from five sub-questions to two cuts the reading to 60,000 tokens.
 
 ## Common mistake
 Treating a long cited report as proof. Check the sources that matter.

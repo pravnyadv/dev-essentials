@@ -10,6 +10,19 @@ Can you list the steps ahead of time? Use a workflow. Does the task branch in wa
 ## A worked example: choosing
 Task: tag each incoming support email as billing, bug or other. Steps are fixed: one model call per email. Use a workflow. Task: investigate why a customer's invoice is wrong. The steps depend on what is found. Use an agent with tools for invoices and account history, with limits and a person to approve changes.
 
+## What the extra autonomy costs
+Take the email tagger and give it an agent loop. Invented numbers for illustration. The email is 500 tokens. Each tool result adds 300 tokens, and every call resends everything so far.
+
+The workflow makes one call and sends 500 tokens. The agent makes four calls and sends 500, 800, 1,100 and 1,400 tokens, which is 3,800 in total. That is 7.6 times the input for a task that needed one call.
+
+Cost is only part of it. The agent might also take a different route on each run, so the same email can get two different tags.
+
+## What goes wrong: an agent where a workflow would do
+The symptom is a system that works in the demo and disagrees with itself in testing. Run the same 20 emails twice and count how many get a different tag. A fixed workflow with the randomness turned down (temperature near zero) should disagree far less. If the agent disagrees often, the freedom it has is not buying anything.
+
+## A middle path: one loop inside a workflow
+You do not have to pick one side. Keep the fixed steps in code and allow a loop in only the step that needs it. For the invoice question, fetching the invoice and the account can be two fixed calls. Only the step "work out why the totals differ" needs a loop. The loop then has a small job, a short step limit and a narrow set of tools, so it is cheap to test and hard to derail.
+
 ## Common mistake
 Building an agent because the word is exciting.
 
@@ -46,6 +59,17 @@ Idea: "An agent that books meetings by email." Can success be tested automatical
 
 ## Questions that save months
 What does one run cost? What is the pass rate on twenty realistic cases? Who reviews the output? What is the rollback?
+
+## Why coding works and market research does not
+Picture a coding agent fixing a bug. It edits a function and runs the tests. Three tests fail. It reads the output, edits again, and one test fails. It edits once more and all pass. At every step something outside the model said whether it was right.
+
+Now ask an agent to write a market analysis. No test exists. The agent stops when the text sounds finished, and that is a feeling, not a check. The agent is the same in both cases. What differs is whether the task has a verdict that does not come from the model.
+
+## What goes wrong: a confident wrong finish
+The symptom is a run that ends with "done" and a tidy report, where a figure in it does not exist in any source. Confirm it by taking ten finished runs and checking every claim against its source by hand. Count the runs with at least one unsupported claim. Do this before anyone trusts the agent, and again after every change to the prompt or model.
+
+## How much to trust twenty runs
+Suppose 17 of 20 test tasks pass. That is 85 percent, but with only twenty runs the true rate could plausibly sit anywhere from about 65 to 95 percent. A second batch might give 14 of 20. Treat a small test as a rough warning light, not a measurement. To tell two versions apart, you need many more runs or a very large gap between them.
 
 ## Common mistake
 Starting with the most ambitious use case instead of the most checkable one.
@@ -98,6 +122,23 @@ messages = [user goal]. Repeat up to 10 times: reply = model(messages, tools). I
 
 ## What to add in practice
 A step limit and a cost limit. Logging of every call. A clear final answer format. A way for a person to interrupt.
+
+## A trace of three turns
+Goal: "What is the total for order 8123 including shipping?" Invented token counts. The goal plus the tool definitions take 450 tokens.
+
+Turn 1 sends 450 tokens. The model replies with a call to get_order, which is 30 tokens. The result adds 100.
+
+Turn 2 sends 450 + 30 + 100 = 580 tokens. The model calls get_shipping (30 tokens) and the result adds 120.
+
+Turn 3 sends 580 + 30 + 120 = 730 tokens. The model writes the final answer and the loop stops.
+
+The new information was about 280 tokens, but the loop sent 450 + 580 + 730 = 1,760. Each turn resends the whole history, so a long run costs far more than the sum of its parts.
+
+## What goes wrong: the repeat spiral
+The symptom is a log showing the same tool with the same arguments five times in a row, each returning the same result. The model does not see progress and tries again. Confirm it by logging every call and checking for identical pairs of tool name and arguments. A simple fix is for the harness to notice a repeat and either stop the run or return the message "You already tried this and got this result. Try something different."
+
+## When the loop is the wrong tool
+Read the logs of twenty runs. If every run makes the same three calls in the same order, the model is not deciding anything. Write those three calls as plain code and skip the loop. It will be faster, cheaper and easy to test.
 
 ## Where this connects
 Agents need tests of their own, and the loop needs limits for cost and steps. See [Trajectory evals for agents](/ai/docs/evals-and-safety/agent-evals) and [Human approval](/ai/docs/production/human-in-the-loop).
@@ -154,6 +195,17 @@ Run realistic tasks, read the transcripts, and look for confusion. Common signs 
 ## A worked example: a tool description
 Weak: "search - searches stuff". Better: "search_orders - find orders for a customer. Use when the user asks about past purchases. Input: customer_email (required), status (optional: open, shipped, cancelled). Returns up to 5 orders as id, date, total, status." The better one tells the model when to use it, what to pass and what comes back.
 
+## How the model sees your tools
+The model never sees your code. It sees each tool's name, description and argument schema as text, and your program sends all of them on every call. Invented numbers: 30 tools at 150 tokens each is 4,500 tokens of definitions per call. A task with 10 calls resends 45,000 tokens of tool text before any real work.
+
+Size is only one side. With 30 similar options, the model has more chances to pick the wrong one. This is part of why fewer, clearer tools work better.
+
+## What goes wrong: overlapping tools
+You have search_customers and find_user, and both can look up a person by email. The symptom is that the model picks one on Monday and the other on Tuesday, or picks whichever name sounds nicer. Confirm it by asking the same ten questions and tallying which tool is called. If one question splits close to evenly, the tools overlap. Merge them, or write in each description when it should not be used.
+
+## When fewer tools goes too far
+Taken to the extreme, you could offer one tool, do_anything(action, params). Its schema says nothing about what is valid, so you cannot validate arguments. You also cannot allow reading while blocking deleting, because every action looks the same. Merge tools that do the same job. Keep separate the ones with different risks, such as read_order and cancel_order.
+
 ## Common mistake
 Returning raw database dumps. Shape the result for a reader with limited attention.
 
@@ -193,6 +245,23 @@ Tool delete_file(path). The model passes "../../etc/passwd". Validation checks t
 ## Limits on retries
 Three attempts is a typical cap. After that, stop and report what was tried. An agent that retries forever burns money.
 
+## Three kinds of failure, three messages
+Not every problem should be handled the same way.
+
+A bad argument is the model's fault. Return "order_id must be digits only, got '#8123'". The model fixes it and retries.
+
+A broken tool is the world's fault, such as a timeout. Return "The order service timed out. Retrying once may work." The harness can retry once itself.
+
+An empty result is not a failure at all. Return "No order with id 8123 exists." Retrying will not help. The model should tell the user, not try again.
+
+If all three return the same vague "Error", the model guesses, and often retries the one case that cannot work.
+
+## What goes wrong: the silent empty result
+A tool catches every exception and returns an empty string. The model reads "nothing came back" as "no order exists" and tells the user their order is missing. The symptom is a confident wrong answer, while the logs show the tool returning empty at the same moment the database was down. Confirm it by switching off the service the tool depends on and reading what the tool returns. It should say it failed.
+
+## Check the value, not just the type
+A schema can say quantity is an integer, and 1,000,000 is an integer. Types are only the first filter. Add checks on meaning: a refund must not exceed the order total, a date must not be in the past, a path must stay in the project folder. Put these checks in code beside the tool, where the model cannot talk its way around them.
+
 ## Common mistake
 Trusting that arguments will be shaped as described. Models make typos and can be manipulated.
 
@@ -227,6 +296,19 @@ Task: write a product page. Step 1: extract key facts from the spec as bullets. 
 ## A worked example: routing
 An incoming message is classified as billing, technical or sales. Each category goes to a prompt (or model) tuned for it. A cheap model does the classification, a stronger one handles the technical cases.
 
+## Parallelization with a vote
+Ask the model three times to label a message. The labels come back bug, bug, billing. The majority is bug. That costs three calls instead of one.
+
+Invented math: if one call is right 80 percent of the time and the three runs make independent mistakes, the majority is right when at least two are right. That is 3 × 0.8 × 0.8 × 0.2 + 0.8³ = 0.384 + 0.512 = 0.896, about 90 percent. The catch is the word independent. If the model misreads a kind of message the same way every time, three votes give the same wrong answer.
+
+## How evaluator-optimizer stops
+The loop needs an exit. A common version is: draft, then a critic checks the draft against written criteria, then the writer revises. It stops when every criterion passes or after three rounds, whichever comes first.
+
+Two failures to watch for. A critic with vague criteria always finds something to improve, so the loop runs to the cap. Or the revisions flip back and forth between two versions. Confirm either one by saving every round and comparing round 2 with round 4. If they are near identical, cut the loop and fix the criteria.
+
+## When one prompt beats all of them
+Before adding a pattern, run the single plain call on your test set. If it gets 90 of 100 right, a three-step chain has to beat 90 to justify three times the calls. Often the better fix is a clearer prompt, not more structure.
+
 ## Common mistake
 Adding patterns without measuring. Each extra call adds cost, time and failure points.
 
@@ -258,6 +340,17 @@ Start with plain files: a progress notes file, a decisions log and the project m
 ## A worked example: a notes file
 After each session the agent appends to notes.md: "User prefers metric units. Project uses PostgreSQL 15. Decision 3 May: use queue for emails." At the next session it reads the file first. Plain text, readable by you, editable by you. Later, if the file grows, add search over it.
 
+## How a note gets back into the window
+The model does not read your notes file by itself. At the start of each session your harness reads the file and pastes it into the prompt, so the text is in the window again.
+
+That has a price. Invented numbers: the file is 2,000 tokens and grows by 200 tokens a session. Every call carries it. After 50 sessions it is 10,000 tokens on every call, even when most lines are irrelevant. That is the point where search over the notes starts to pay for itself.
+
+## What goes wrong: stale memory
+A note says "The project uses PostgreSQL 15." The team has since moved to 16. The agent reads the note, trusts it, and writes code for the old version. The symptom is an agent acting confidently on a fact that was once true. Confirm it by asking the agent where it got the fact, then checking the date on that note. Fix it by dating every entry and having the agent check anything it can look up, such as a version, before acting on it.
+
+## When memory is the wrong tool
+Do not copy into notes what the agent can read from the source. A list of files in the repo goes out of date on the next commit, while the repo itself is always right. Use memory for what cannot be recovered: what the user prefers, which approach was chosen and why, and which attempts already failed.
+
 ## Common mistake
 Building a complicated memory system before trying a notes file.
 
@@ -288,6 +381,22 @@ Keep each conversation private to its owner. Redact secrets and personal data yo
 
 ## A worked example: what a saved record looks like
 conversation_id, user_id, created_at, model "sonnet-5-5", prompt_version "v14", messages: [ {role: user, text: ...}, {role: assistant, tool_call: search(...)}, {role: tool, result: ...}, ... ]. When the user returns, load the list, add the new message and send. If it is too long, summarize the oldest part and keep the last few turns.
+
+## Resuming, step by step
+1. Load the saved messages by conversation id.
+2. Check the owner is the current user.
+3. Check the format version and convert old records if needed.
+4. Append the new user message and save it right away.
+5. Count tokens. If over budget, trim or summarize.
+6. Send, then save each reply and tool result as it arrives, not once at the end.
+
+Saving as you go matters. If the process dies midway, you lose one step, not the whole conversation.
+
+## What goes wrong: a crash between call and result
+The assistant's tool call was saved, then the server crashed before the tool result was written. On resume, the history has a call with no result. Many providers reject that, so the symptom is an error that only affects conversations that were interrupted. Confirm it by scanning saved conversations for tool calls without a matching result. On load, either drop the dangling call or add a result saying "interrupted before finishing".
+
+## Trimming without losing the goal
+Suppose a conversation has 40 messages and is too long. Keep the first message, since it holds the original goal. Replace messages 2 to 33 with one summary message. Keep the last 7 turns as they are. That is 1 + 1 + 7 = 9 messages instead of 40. Check that a tool call and its result are kept or dropped together, never split.
 
 ## Common mistake
 Trimming messages by cutting in the middle of a tool call, leaving a result with no matching call.
@@ -323,6 +432,16 @@ Question: "Compare five competitors' pricing." Five subagents each research one 
 ## A case where it hurts
 Two agents editing different parts of the same program must agree on the interface between them. If they decide separately, the pieces do not fit. Keep tightly coupled work in one context.
 
+## The token arithmetic
+Invented numbers. One agent researches five competitors alone and uses 100,000 tokens in one long run.
+
+With five subagents, each reads about 60,000 tokens of its own sources, so 300,000 in total. The lead adds 20,000 for planning and merging, which makes 320,000. That is 3.2 times the tokens. In return the five readings happen at once, so waiting time drops to roughly one subagent's run.
+
+The lead does not see the 300,000. It sees five summaries of about 300 tokens each, 1,500 tokens in total.
+
+## What goes wrong: summaries lose detail
+The lead can only use what a subagent chose to report. If the lead later needs a number that the subagent read but left out, it is gone. A second symptom is vague task wording. If you tell two subagents "research pricing", both may cover the same competitor while a third is skipped. Confirm it by reading the task text each subagent received, then checking the merged table for duplicates and gaps. Give each one a distinct slice, a fixed output format, and a list of the fields you need.
+
 ## Common mistake
 Choosing multi-agent because it looks impressive. Use it when the work splits cleanly.
 
@@ -356,6 +475,25 @@ progress.md: "Goal: build the invoicing app. Features done: login, customer list
 
 ## Evaluator agents
 A separate agent runs the app and tests it, then writes what it found. The worker agent fixes those issues. Splitting the roles stops the worker from marking its own homework generously.
+
+## Compaction versus reset in numbers
+Invented numbers. The window holds 100,000 tokens and after hours of work 90,000 are used.
+
+Compaction replaces the history with a 5,000-token summary and the same agent carries on. It is quick, but each summary is made from the last one, so small errors and lost details stack up.
+
+A reset starts a new agent with a 1,000-token handoff plus the files it reads itself. It costs more effort to write the handoff, but the new agent sees the real files, not a retelling.
+
+## What goes wrong: declaring victory early
+The symptom is an agent that announces "done" with five of twenty features working. The cause is that it judges completion by feel. Confirm it by comparing its claim with the feature list and the test results. The fix is to make the list the definition of done. Each feature has a status, and only a passing test may change it to done. The run ends when the list is complete, not when the agent says so.
+
+## What a handoff must contain
+The example progress file lists goals and state. Good handoffs also hold three more items:
+
+1. The exact next step.
+2. What was tried and failed, so the next agent does not repeat it.
+3. How to run the tests.
+
+Without the second item, a fresh agent often rebuilds the same dead end.
 
 ## Common mistake
 Letting a single context run for hours. Quality drops. Reset with a handoff.

@@ -9,6 +9,28 @@ A good habit is to say what you want it to do for your thinking, not instead of 
 ## A worked example: learning fractions
 Version one: "Give me the answers to my fractions homework." You get answers and learn nothing. Version two: "Explain adding fractions with a pizza example. Then give me five practice questions, one at a time. After each of my answers, tell me if I am right and why." In ten minutes you have practised five problems, found the step you get wrong, and can try a fresh set tomorrow. The same tool, used differently, is a tutor or a shortcut.
 
+## Why the way you ask matters
+A model has no idea what you already know. It sees only the words in the conversation, so the quality of its help depends on what you put in them. Tell it your level, your goal and the format you want. "I am 16, I understand whole numbers, explain fractions" gets a different answer from a bare "explain fractions".
+
+The model also keeps track of the conversation only inside its context window, the amount of text it can see at once. In a very long chat, early instructions can fade. If the helper starts ignoring your rules, restate them or open a fresh chat.
+
+## A second example: when AI is the wrong tool
+Suppose you want to know whether a bus leaves at 7:40 tomorrow. A chatbot may give a confident time, but it has no live timetable and may be guessing. Open the transport site instead. The same goes for today's weather, a score from last night, or the current rules of your school. Use a model for explaining, drafting and practising. Use the real source for facts that change or that you will act on.
+
+## What goes wrong
+The most common failure is agreement. A model often praises a weak draft or accepts your wrong answer, because friendly replies are common in the text it learned from. You will see this as feedback that is always positive. To test it, paste in a paragraph you know is flawed and ask for problems. If it finds none, ask again with "list three specific weaknesses".
+
+Another failure is a plausible but wrong explanation. If a step does not make sense to you, say so and ask for a different example. Do not nod along.
+
+## Try it yourself
+Spend ten minutes on a topic from your next test.
+1. Ask the model to explain one idea with an analogy.
+2. Ask for four questions, one at a time, and answer each before it replies.
+3. Note which answer you got wrong, and ask for a new explanation of only that part.
+4. Check one fact it gave you in your textbook.
+
+Expect to find at least one gap you did not know about. That gap is the useful result.
+
 ## Common mistakes
 Copying the output without reading it. Asking for facts you cannot check. Treating a first answer as final: ask for a second version, ask what it is unsure about, and tell it what to change.
 
@@ -42,6 +64,18 @@ You ask for "three studies showing that sleep improves memory", and the answer l
 ## How much to check
 Low stakes, such as a joke or a recipe idea: a quick glance. Medium, such as a homework fact or a work email: confirm the key claims. High, such as health, money, law or safety: use an authoritative source or a professional, and treat the model as a starting point only.
 
+## Why models get things wrong
+A language model writes the most likely next words given your question. It does not look facts up unless it is connected to a search tool. When it has little reliable pattern to draw on, such as a rare name or a recent event, it still produces fluent text. That is called a hallucination. The sentence sounds the same whether it is true or invented, so tone tells you nothing.
+
+## A second example: a wrong calculation
+You ask: "A jacket costs $80 with 15% off. What do I pay?" A model might answer $65. Check it yourself: 15% of 80 is 12, and 80 minus 12 is 68. The model was close, which makes the slip easy to miss. Models do arithmetic by predicting text, not by calculating, so numbers deserve a calculator. If a model can run code or a calculator tool, results improve, but still look at what it did.
+
+## What goes wrong when you check
+Checking can fail too. A search that only repeats the same claim is not independent. Ten websites copying one source count as one source. Also beware asking the model to confirm itself: "Is this accurate?" tends to produce agreement. Instead, search for the specific name, number or quote in a place the model did not write.
+
+## How to tell your checking is working
+Run a small test. Ask a model five questions where you already know the answers, including one trick question about something that does not exist, such as a made-up book title. Count how many it gets right and whether it admits it does not know the made-up one. That gives you a rough feel for how far to trust it on that kind of question. The sample is tiny, so treat it as a hint, not a measurement.
+
 ## Common mistake
 Asking the model "are you sure?" and accepting the reply. It will often agree or reverse itself without checking anything. Check against the world, not against the model.
 
@@ -72,6 +106,26 @@ Passwords and security codes. Government ID, bank or card numbers. Medical recor
 
 ## A worked example: redacting
 Before: "Dear Maria Lopez, your account 4421-8830 is overdue by $240. Please call 555-0142." You want help making it politer. After redacting: "Dear [customer], your account [number] is overdue by [amount]. Please call [phone]." The model improves the wording just as well. You paste the real details back in yourself.
+
+## What happens to your message
+Your text travels over the internet to the provider's computers, where the model reads it and writes a reply. The provider may store the conversation, let staff review some of it for safety, or use it to improve future models. Which of these applies depends on the service and plan. That is why the settings page matters more than the logo on the app.
+
+## A second example: when redacting is not enough
+Redacting works when the details are separate from the question. Imagine you paste a story about a classmate's family problem with the name removed. People who know your school could still guess who it is from the events. Details such as a rare job, a small town or a date can identify someone without a name. The safer move is to describe the situation in general terms or not share it at all.
+
+## Trade-offs
+Strict privacy has a cost. The more context you give a model, the better its help, so withholding everything makes answers vague. Pick the level by risk. A recipe or a poem needs no care. Health, money and other people's secrets need a lot. Some tools can run on your own computer, so the text never leaves it. Those models are usually smaller and less capable, which is the trade.
+
+## What goes wrong
+Data leaks mostly through habit, not hacking. You paste a whole document when two paragraphs would do. You upload a screenshot with notifications visible. You use a work account on a personal device. You will not see any symptom, which is the problem. Prevention is the only fix, because you cannot take text back once it is sent.
+
+## Try it yourself
+Open the privacy or data settings of one AI tool you use.
+1. Find whether your chats can be used to train models.
+2. Find how to delete history or start a temporary chat.
+3. Write down what you found in one line.
+
+Expect the answers to be in different places than you guessed. Repeat the check every few months, because policies change.
 
 ## Common mistakes
 Using a personal account for work documents. Assuming deleted chats vanish everywhere at once. Pasting a screenshot that contains tabs, names or messages you did not mean to share. When in doubt, ask yourself whether you would be comfortable if this text appeared in a stranger's inbox.
@@ -104,6 +158,21 @@ Tools that claim to detect AI writing are unreliable. OpenAI launched its own te
 ## A worked example
 Two students write on the causes of the French Revolution. Student A pastes the prompt and submits the reply. Student B writes an outline, asks the model "what is missing from my argument?", rewrites two paragraphs herself, checks the dates, and adds a note: "I used an AI assistant to critique my outline." Student B can answer any follow-up question. Student A cannot answer the first one.
 
+## Where the line sits
+Think of three levels. Allowed help is like asking a classmate to explain a topic or check your spelling. Gray help is like having someone restructure your essay. Not allowed is submitting work you cannot explain as yours. Your teacher decides where each task falls, so the same use can be fine in one class and cheating in another.
+
+## A second example: a coding assignment
+You must write a function that sorts a list. A student asks a model for the code, pastes it in and passes the tests. In the next lesson the class builds on that function and the student is lost. Another student writes her own attempt, gets stuck, and asks the model to explain the error message. She fixes it herself. Both finished the task. Only one can now write the next one. The test is the same as before: could you redo it alone?
+
+## Trade-offs
+Using AI heavily saves time now and costs skill later. Avoiding it entirely keeps the skill but means you do not learn a tool that employers expect. A middle path works for most courses: use it for explanations, practice questions and feedback on your own draft, and do the graded thinking yourself.
+
+## What goes wrong
+The common failure is a gap between your marks and your ability. You score well on homework and badly on a closed-book exam. That pattern, which teachers and students both notice, suggests the homework was done by the tool, not by you. A second failure is invented sources in an essay, which a teacher can check in a minute.
+
+## How to tell you are using it well
+After a session, close the chat and write three sentences about what you learned. If you cannot, you borrowed rather than learned. Keep dated drafts and a short note on how you used the tool, so you can show your process if asked.
+
 ## Common mistakes
 Assuming that because no one can see it, it is allowed. Using AI to skip the exact skill the course is trying to build. Citing nothing: where the rules allow AI, say what you used it for.
 
@@ -134,6 +203,26 @@ A deepfake is fake audio, video or imagery that looks real. A few seconds of a p
 
 ## A worked example
 You receive a voicemail in your cousin's voice: "I lost my wallet abroad, please wire $800." The voice is perfect. You hang up and call your cousin's saved number. She is at home and answers right away. The voicemail was a clone. The check cost one minute.
+
+## How a voice or face gets cloned
+Voice-cloning software learns the pattern of a person's voice from a recording, then produces new speech in that voice from typed text. Image and video fakes work in a similar way: a model learns what a face looks like and generates new frames. The quality depends on the tool and on how much material it has. Public videos and voice notes are the usual source, which is why scams often target people who post a lot.
+
+## A second example: a fake that is not malicious
+A classmate posts a photo of a shark in a flooded street, made by an image tool and shared as a joke. Many people believe it for a day. No one meant harm, but it spreads as news. Look for signs: a source you cannot trace, no other photos of the same event, odd details such as warped text or extra fingers. These signs are fading as tools improve, so the source check matters more than the pixel check. Search for the event in news outlets you trust.
+
+## Trade-offs
+Detection is not a solution. Tools that claim to spot fakes make mistakes in both directions, and a real photo can be wrongly called fake. People also use the doubt as an excuse, saying a real recording is "just AI". So judge claims by evidence around the media: who posted it first, whether others confirm it, and whether it fits what else is known.
+
+## What goes wrong
+Two failures are common. One is believing a fake because it matches what you expected. Another is sharing before checking, which spreads it further. Both come from speed. If something makes you angry or afraid, that is the moment to wait.
+
+## Try it yourself
+Ask three friends to agree on a family code word. Then pick a viral image from this week and trace it.
+1. Run a reverse image search with a search engine.
+2. Find the earliest post you can.
+3. Note whether a trusted outlet reports it.
+
+Expect to find some images are older photos with a new caption, not AI at all.
 
 ## Never do this
 Do not make or share fake sexual images or videos of real people. It does serious harm, and it is a crime in many places.

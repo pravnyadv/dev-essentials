@@ -15,6 +15,26 @@ Take 50 real support emails with the correct category. Run model A (large), B (m
 ## Open or closed?
 A closed model is used through the lab's API. An open-weight model can be downloaded and run by you, which helps with privacy and cost at scale. The [open-weight models lesson](/ai/docs/breakthroughs/open-models) covers the trade-offs, and the Model atlas lists both kinds.
 
+## How a fair comparison runs
+1. Write down the task and what a wrong answer costs you.
+2. Collect 20 real inputs and the answer you want for each.
+3. Run every candidate model on all 20 with the same prompt.
+4. Score each output as right or wrong, and note the cost and the wait for each call.
+5. Pick the cheapest model that clears the quality bar you set in step 1.
+
+Invented numbers for illustration: your bar is 90 percent, so at least 18 of 20. The small model gets 17 right (85 percent) and fails the bar. The mid-size model gets 19 (95 percent) and passes. You choose the mid-size model without ever looking at a leaderboard.
+
+## A second example: the big model is the wrong pick
+You must tag 10,000 product reviews as positive or negative every night. The task is easy, so a small model may score almost the same as a large one. At an invented $0.0005 per review, the small model costs 10,000 x 0.0005 = $5 a night. At an invented $0.02, the large one costs $200 a night. Unless your own test shows a real quality gap, the extra $195 buys nothing.
+
+## What goes wrong
+A test set of 10 examples is too small. One flipped answer moves a score by 10 points, so rankings change from run to run. To check, run the same models twice. If the order changes, add more examples.
+
+A test set of only clean, easy inputs makes every model look good. The symptom is a model that scores well in your test and fails in production. To confirm, pull 20 fresh inputs from real use and score them too.
+
+## Try it yourself
+Write 10 questions from a subject you know well, with the correct answers beside them. Ask two different chat apps or models each one and mark them right or wrong. Expect both to get the easy ones right and to differ on the hardest two or three. That gap is what a larger test set would measure.
+
 ## Common mistake
 Choosing by popularity or by one benchmark number. Always test on your own data.
 
@@ -52,6 +72,28 @@ You send: a model name, a system message ("You suggest gifts in two sentences") 
 
 ## Setting up safely
 Create an API key in the provider's dashboard. Store it in an environment variable on your machine, never inside the code file. Add the file that holds it to .gitignore. If a key ever lands in a public repository, assume it is stolen and revoke it.
+
+## How one request travels
+1. Your code builds a JSON message (a plain-text format of labeled values) holding the model name, system prompt, messages and a length cap.
+2. It sends that message over HTTPS (the encrypted version of the web protocol) with your key in a header.
+3. The provider checks the key, counts the input tokens and queues your request on its hardware.
+4. The model writes the answer one token at a time until it finishes or hits your cap.
+5. You get back the text, a stop reason (the model finished, or your length cap cut it off) and the usage counts.
+
+## What goes wrong
+The answer stops mid-sentence. Your length cap was too low. To confirm, read the stop reason in the response: it says the cap was reached.
+
+You get a 401 error, the code for a rejected key. Often the environment variable is set in one terminal window and your script runs in another. Check whether the variable exists by printing only "set" or "missing", never the key itself.
+
+The bill is higher than you expected. Look at the logged input tokens per call. A long system prompt or a growing history is usually the cause.
+
+The same question gives slightly different answers on two runs. This is normal, because the model samples its words. It is not a bug.
+
+## A second example: a call that should not exist
+Your app must add up a customer's cart total. A model can do this, but it is slower, costs money and can make an arithmetic slip. Three lines of ordinary code give the exact answer every time. Use a model for fuzzy language work such as summarizing or classifying. Use plain code when the rule is exact.
+
+## How to tell it is working
+Send a very short prompt and check that the input token count is small. Then paste in a page of text and watch the count jump. Finally set the length cap to 5 and confirm the answer is cut off after a few words. If all three behave as described, you understand what you are paying for and what the cap does.
 
 ## Common mistakes
 Putting the key in browser code. Forgetting a max output length. Not logging the request and the usage, which makes every later bug harder to find.
@@ -114,6 +156,25 @@ Say the first question is 100 tokens, every later question is 50 and every reply
 
 ## Where to put what
 System message: rules that never change. User messages: this turn's request. Assistant messages: what the model said before. Do not paste secrets into any of them if you would not want them in logs.
+
+## How the model sees the list
+Behind the API, your list is turned into one long piece of text, with markers showing who said each part. The model predicts what comes next after the final marker. There is no hidden memory slot. The exact markers differ by provider.
+
+Roles are labels the model was trained to respect, not locks. A user message can still try to talk the model out of its system message. Never rely on a system prompt alone to protect a secret or enforce a rule.
+
+## A second example: forgetting on purpose
+A user pastes a password into turn 2 by mistake. If your code drops that message from the list, later calls no longer carry it. Be clear about the limit: the provider and your own logs may still hold the copy from call 2. Removing a message from history stops future use, not past exposure.
+
+## Trade-offs when the list gets long
+Dropping the oldest turns is cheap, but the model loses facts from the start, such as the user's budget. Summarizing old turns keeps the gist but costs an extra model call and can drop details. A common middle path keeps the system message, a short summary and the last few turns.
+
+## What goes wrong
+The model forgets something you told it. Either your code trimmed it or rebuilt the list from scratch. Print the list just before each call and look for the missing line.
+
+Two users see each other's context. The example above keeps history in one global list. A web server handling many visitors must keep one list per session. To confirm, print the length of the list for two different users.
+
+## How to tell it is working
+Tell the model your name in turn 1. In turn 2 ask "What is my name?" with the full list: it answers. Send the same question alone: it cannot. That difference is the whole mechanism.
 
 ## Common mistake
 Using a model alias such as "latest" in production. A silent upgrade can change behavior. Pin a dated version and upgrade on purpose after testing.
@@ -178,6 +239,28 @@ Your app sends 300 requests a minute and the provider allows 200. The extra 100 
 ## Streaming gotchas
 Text arrives in small pieces, so append, do not replace. The connection can drop halfway: keep what you have and offer a retry. Let the user press Stop.
 
+## How streaming works
+The server keeps the connection open and sends small events as tokens are produced. Your code reads each event and appends its text to the screen. A final event carries the usage counts.
+
+Two times matter. Time to first token is the wait before anything appears. Total time is how long the whole answer takes. Streaming improves the first and leaves the second unchanged.
+
+## Trade-offs and when not to stream
+Skip streaming when code, not a person, consumes the answer. A JSON reply cannot be parsed until it is complete. Skip it when you must check the full answer before anyone sees it, such as a safety filter.
+
+Batch jobs give a discount but you wait, so they suit work nobody is waiting on. Prompt caching only helps when the start of the prompt is identical between calls. Anything that changes early, such as a timestamp at the top of the system prompt, breaks the match.
+
+## What goes wrong
+Errors arrive in waves. Many clients hit the limit together and retry at the same moment. Add random jitter, then log retry times to see the waves spread out.
+
+A worker freezes. No timeout (a maximum wait you set) was configured. Look for requests that have been open for minutes.
+
+Costs do not drop after you enable caching. Check the usage fields your provider returns for cached tokens, and look at what changes at the top of your prompt.
+
+An answer ends halfway. The connection dropped. Keep the partial text and offer a retry button.
+
+## Try it yourself
+Stream a request that asks for a long answer. Print the time when the first piece arrives and the time when the stream ends. Typically the first comes within a second or two and the second several seconds later. Then run it without streaming and confirm the total time is about the same.
+
 ## Common mistake
 Setting no timeout. A stuck request that never returns can freeze a worker forever.
 
@@ -226,6 +309,27 @@ An API key in browser code is a key anyone can copy. Call the provider from your
 ## Rendering model output safely
 Models often reply in markdown. If you convert it to HTML and insert it into the page, a prompt-injected or odd answer can contain a script tag or a link that runs code. Sanitize the HTML with a library, or render markdown with a safe renderer that does not allow raw HTML. Treat the output like user input, because it can be shaped by user input. Do the same before putting model text into a database query or a shell command.
 
+## How retry with backoff works
+1. Send the request. It fails with a retryable error such as 429 or 529.
+2. Wait about 1 second plus a small random amount, then try again.
+3. If it fails again, wait about 2 seconds, then about 4.
+4. Stop after a fixed number of tries and show the user a plain message.
+
+Without jitter, the waits total 1 + 2 + 4 = 7 seconds across the three retries. Jitter adds a random fraction so many clients do not retry together. Always cap the number of attempts and the longest wait.
+
+## A second example: retrying makes it worse
+A request fails with 400 because the prompt is too long. Retrying five times sends the same oversized prompt five times and fails five times. The fix is to shorten the prompt. A 401 behaves the same way: the key is wrong, and repeating the call changes nothing. Retry only errors that can pass on their own: rate limits, overload and timeouts.
+
+## What goes wrong when you render output
+Markdown converted to HTML with raw HTML allowed can carry a script tag. Symptom: odd pop-ups or a changed page layout after one particular answer. To confirm, test your renderer with a harmless string such as an image tag with a broken source and an alert handler. If the alert fires, the renderer is unsafe.
+
+Links can use a "javascript:" address that runs code when clicked. A safe renderer blocks that address type.
+
+Model text placed into a database query can change the query. Pass values separately from the query text (a parameterized query) so the database treats them as data.
+
+## Try it yourself
+Write a function that returns the wait before each of 5 attempts. Without jitter it should return 1, 2, 4, 8, 16 seconds. Add jitter and run it three times to see the lists differ. Then feed your page the harmless test string above and check that nothing runs.
+
 ## Common mistake
 Showing raw error text to users. It can reveal internal details and it is unhelpful.
 
@@ -264,6 +368,29 @@ The description is the interface. Say what the tool does, when to use it and wha
 
 ## Writing a good description
 Write for a new colleague: what it does, when to use it, what each argument means, and an example. If two tools sound alike, say how they differ.
+
+## How the loop works
+Think of a short loop. Your code sends the messages and tool list. If the reply contains a tool call, your code runs it, adds the result and sends everything again. If the reply is plain text, the loop ends.
+
+Trace for the question "Is order 8123 late, and what is the refund policy?" The model calls track_order. Your code returns "shipped, arrives Friday". The model calls get_policy. Your code returns the policy text. The model then writes the final answer. That is three model calls, and each one resends the earlier messages and results. More tools and longer results mean more tokens. Always set a maximum number of loop steps.
+
+## A second example: when a tool is not the answer
+A tool that adds two numbers invites mistakes in the wrong direction: for exact math, a tool or code run is more reliable than the model's own guess. A tool that returns the capital of France wastes a round trip, because the model already knows. Add a tool when the answer needs live data, private data or an action. Skip it when the model can answer alone.
+
+## Narrow versus broad tools
+A broad tool such as run_sql(query) can answer many questions, but it can also delete a table. A narrow tool such as get_order(id) is limited by design. Prefer narrow tools for anything with side effects.
+
+## What goes wrong
+The model picks the wrong tool because two descriptions sound alike. Log every call during tests and count the wrong picks.
+
+The arguments are slightly off, such as "#8123" instead of "8123". Validate and return an error that shows the expected format, so the model can correct itself.
+
+The loop never ends because the model keeps calling tools. The step cap stops it.
+
+A huge result floods the context. Return only what the model needs.
+
+## Try it yourself
+Define two tools with nearly identical descriptions and ask five questions that need one or the other. Count wrong choices. Rewrite the descriptions to say when each applies, and rerun. Expect fewer wrong choices.
 
 ## Common mistake
 Letting the model's arguments flow straight into a database query or shell command. Always validate first.
@@ -333,6 +460,30 @@ Question: "What did the central bank announce today?" Built-in web search fits: 
 ## Watch the cost and the trust
 Each search or code run can add charges. Search results can contain hidden instructions written by strangers, so do not combine web search with tools that can send emails or move money without a human check.
 
+## How a server-side tool runs
+1. You switch the tool on in the request.
+2. The model decides it needs a search and writes a query.
+3. The provider runs the search on its own servers and feeds the results to the model.
+4. The model may search again, then writes its answer.
+5. You receive one response containing the answer, usually with citations and often a record of the searches made.
+
+The difference from your own tools is that you never run the loop. That saves work and also means you control less.
+
+## A second example: where it fails or is not needed
+You ask "What is 4,817 x 3,296?" A model guessing digits can slip. Code execution computes it exactly: 15,876,832. Web search would be pointless here. Now ask about your company's internal wiki. Web search cannot see it, so the model either says it cannot find anything or, worse, guesses. The right choice is file search over your own documents or a tool of your own.
+
+## What goes wrong
+A citation does not support the claim next to it. Symptom: a confident answer with a link whose page says something different. To confirm, open the link and find the sentence.
+
+The sources are weak: a forum post or an out-of-date page. The model rarely judges source quality well, so show the source name to the user.
+
+The cost climbs because one question triggered many searches. Check your usage logs for tool counts per answer.
+
+A page contains hidden instructions. See the caution above and keep write-capable tools away from browsing.
+
+## How to tell it is working
+Prepare five questions: three about recent events and two timeless ones, such as "What is a prime number?" The search tool should fire for the first three and stay quiet for the others. Open every cited link and look for the exact claim. Expect to find at least one weak citation, which is why checking matters.
+
 ## Common mistake
 Presenting search-backed answers without showing the sources. Users should be able to check.
 
@@ -366,6 +517,31 @@ You add a "filesystem" server to your coding agent, pointing at one folder. The 
 
 ## Be selective
 Every server's tool descriptions are loaded into the model's context. Ten servers can use thousands of tokens before you ask a question, and they confuse tool choice. Add the ones you need today.
+
+## How a connection works
+1. The host app starts a local server or connects to a remote one.
+2. Client and server exchange a handshake saying which features each supports.
+3. The client asks for the list of tools, resources and prompts.
+4. The tool descriptions are added to the model's context.
+5. When the model asks for a tool, the client forwards the call. The server runs it and returns the result.
+
+MCP is plumbing. It makes connecting easy, but it does not make the model better at choosing tools. Results still depend on how clear the descriptions are.
+
+## What the context cost looks like
+Invented numbers for illustration: 8 servers with 6 tools each is 48 tool descriptions. At about 150 tokens each, that is 7,200 tokens spent before you type a word. In a 100,000 token window, that is 7.2 percent. It also gives the model 48 choices, and more choices raise the chance of a wrong pick.
+
+## A second example: when MCP is not needed
+Your own app has two tools and nobody else will use them. Plain functions in the same codebase are simpler. MCP pays off when many apps share an integration, or when you want a third-party server that someone else maintains.
+
+## What goes wrong
+The tools never appear. The server failed to start because of a wrong path or a missing runtime. Run the server command by hand in a terminal and read its error.
+
+A local server using stdio breaks silently if it prints debugging text to standard output, because that channel carries the protocol. Log to standard error instead.
+
+Two servers expose tools with similar names and the model confuses them. Disable one and test again.
+
+## Try it yourself
+Connect one reference filesystem server to a folder holding three small text files. Ask the agent to summarize them, then ask about a file outside that folder. Expect the first to work and the second to fail or be refused. That boundary is the scope you set.
 
 ## Common mistake
 Installing servers from strangers without reading what they can do. A server can read files or act with your accounts.
@@ -405,6 +581,32 @@ Name: notes. Tool 1: search_notes(query) returns up to five matching snippets wi
 
 ## Design tips
 Few tools, clear names, short descriptions that say when to use them. Return small answers: five snippets, not the whole folder. Return helpful errors: "No notes match 'taxes'. Try fewer words."
+
+## How a call reaches your code
+The SDK reads each function when the server starts. It takes the name, the docstring (the text in quotes under the function line) and the type hints, and builds the description and argument schema the model sees.
+
+1. A client connects and asks for the tool list.
+2. The model picks search_notes and sends the query.
+3. The SDK checks the arguments against the schema.
+4. Your function runs and returns text.
+5. The SDK wraps that text in a protocol message and sends it back.
+
+So a vague docstring means a vague tool. The model never sees your code, only that description.
+
+## A second example: adding a tool that writes
+Add add_note(title, text). A title like "../../.bashrc" could point outside your notes folder. Build the path, resolve it, and refuse the call unless the result still sits inside the notes folder. Also require the host to ask for approval before any write. Reading a few lines is low risk. Writing files is not.
+
+## What goes wrong
+The tool does not show up in the client. The server crashed at startup. Run it directly in a terminal and read the error before blaming the client.
+
+The client connects but replies are garbled. A stray print statement went to standard output, which carries the protocol. Send debug text to standard error.
+
+The model never uses your tool. The description does not say when to use it. Try five different prompts in the Inspector and rewrite the description until it triggers.
+
+The reply floods the context. Cap results, as the example does with five lines.
+
+## Try it yourself
+Add a second tool, list_notes, that returns up to 20 file names. Open the Inspector and confirm it lists two tools. Call each with an empty notes folder. Expect friendly messages, not crashes. Then ask your agent "what notes do I have?" and check which tool it chooses.
 
 ## Common mistake
 Giving the server broad access "just in case". Point it at one folder and nothing else.
@@ -477,6 +679,32 @@ Server A reads private notes (sensitive). Server B browses the web (untrusted). 
 ## A review checklist
 Who wrote it, and can you read the code? Is the version pinned? What credentials does it hold and are they the minimum? Does it write or only read? What happens if its tool descriptions change? If you cannot answer, do not connect it to anything sensitive.
 
+## How a description attack works
+A tool description is text that goes into the model's context, so the model treats it somewhat like an instruction. A "rug pull" uses this in four steps.
+
+1. You review a server and approve its clean descriptions.
+2. The author later publishes an update that changes one description.
+3. Your client loads the new text the next time it connects.
+4. The model now sees an instruction you never reviewed.
+
+Defenses: pin the version, compare descriptions after any update and re-approve. Whether a given client warns you about changes varies, so check yours.
+
+## A second example: a low-risk setup
+A read-only local server pointed at one folder of public documents, with no web access and no way to send anything out, needs little ceremony. Risk rises with three conditions: the agent can see private data, it reads content strangers wrote, and it can send data outside. All three together is the dangerous mix. Remove any one and the worst case shrinks a lot.
+
+## Trade-offs of approvals
+Asking before every action feels safe but trains people to click yes without reading. Fewer, narrower tools mean fewer prompts, so each prompt means more. Require approval for writes and sends. Let read-only calls on a scoped folder run freely.
+
+## What goes wrong
+Credentials are broader than needed. A token with full account access turns a small bug into a big incident. Check the token's scopes in the provider's dashboard.
+
+Two servers expose the same tool name, and the model calls the wrong one. Rename or disable one.
+
+You cannot remember what you approved. Keep a list.
+
+## Try it yourself
+List every server you have connected. For each, write who made it, the version, the credentials it holds, whether it writes, and what it can reach. Expect at least one row you cannot fill in. Disconnect that server until you can.
+
 ## Common mistake
 Approving everything the first time and never looking again.
 
@@ -513,6 +741,26 @@ Test with your own images and recordings. Check accuracy on small text, noisy au
 
 ## A worked example: three requests
 Describe: send a product photo and ask for a one-sentence alt text. Extract: send a receipt and ask for total, date and vendor as JSON. Compare: send two screenshots and ask what changed. Each is one request with an image plus an instruction. Ask for structured output when the result feeds code.
+
+## How an image becomes tokens
+The provider cuts the image into patches and turns each patch into vectors that the model reads like tokens. A larger image means more patches and a higher bill. The exact rule differs by provider.
+
+Invented rule for illustration: one token per 1,000 pixels. A 1000 by 1000 image is 1,000,000 pixels, so 1,000 tokens. Halve each side to 500 by 500 and you get 250,000 pixels, so 250 tokens. Halving each side cuts the cost to a quarter.
+
+## A second example: where vision fails
+Counting many small objects, reading tiny or blurry text, handwriting and judging exact positions are common weak spots. Take a receipt photographed at an angle in dim light. The model may return a total that looks right but is wrong. For printed text at scale, a dedicated OCR tool can be more reliable and cheaper. Use a vision model when you also need understanding, such as what the receipt is for.
+
+## What goes wrong
+Plausible but wrong numbers. Symptom: totals that look fine and are off by a digit. To confirm, check 20 samples by hand. In code, test that the line items add up to the total.
+
+Audio with noise, overlapping speakers or strong accents produces mistakes and sometimes invented words. Test with recordings like the real ones, not clean demos.
+
+Private data leaves your control. Photos can include faces, addresses or documents in the background. Check where the provider stores them.
+
+Generated images often garble text inside the picture. Add text yourself afterward.
+
+## Try it yourself
+Photograph one printed paragraph three times: sharp, from far away, and slightly blurred. Send each to a vision model and ask it to copy the text. Compare the results. Expect it to read the sharp one well and to start making errors as the quality drops. Note the point where it breaks.
 
 ## Common mistake
 Sending private photos or documents to a provider you have not vetted.

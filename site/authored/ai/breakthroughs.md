@@ -16,6 +16,18 @@ A small filter, say 3 by 3 pixels, slides across the image. Where the pixels loo
 ## A worked example: diffusion in four steps
 Start with a clean photo of a dog. Add a little random noise, then more, until it is pure static. Train a network to guess the noise that was added at each step. To generate, start from static and repeatedly subtract the guessed noise, steered by your text prompt "a dog wearing a hat". After about 20 to 50 steps an image appears.
 
+## How the filters get their values
+A filter is a small grid of numbers. At the start those numbers are random. The network sees a labelled photo, makes a guess and measures how wrong it was (the loss). Gradient descent then nudges every filter number a little in the direction that shrinks the loss. After millions of photos, the early filters turn into edge detectors, because edges help with almost every recognition task. Nobody types them in. A 3 by 3 filter holds 9 numbers, so a layer of 32 such filters on a black-and-white image holds 9 × 32 = 288 numbers.
+
+## Why drawing takes many small steps
+Removing all the noise in one jump gives a blurry average of everything the model has seen. Small steps let it commit to details gradually. Early steps tend to settle the rough layout and colors, and later steps add texture and sharp edges. A guidance setting controls how strongly your text pulls on each step. Too low and the image ignores your words. Too high and images often look harsh and overdone.
+
+## When the result is wrong
+The symptom is a hand with six fingers, a sign with scrambled letters, or three apples when you asked for four. The cause is that the model learned what these things usually look like, not the rules behind them. A recognition model that only saw bright daytime photos can also fail at night, because the pixels look unlike its training data. To check whether a flaw is a model limit or bad luck, repeat the prompt with ten different random seeds (the seed fixes the starting noise). If most of the ten share the flaw, it is the model.
+
+## Try it yourself: count the apples
+Open any free image generator. Ask for "a hand holding four red apples" five times. Count the fingers and the apples in each image. Then add detail ("on a white table, daylight, photo") and repeat. Most people find that counting errors persist while the style changes. That shows the model copies appearance and does not count.
+
 ## Common mistake
 Believing the image model understands what it draws. It captures how things usually look. That is why hands, text and counting objects were hard for early versions.
 
@@ -51,6 +63,22 @@ Self-play and reward signals let a system exceed its teachers. The limit is that
 ## A worked example: learning a tiny game by reward
 A robot in a 3-cell corridor starts in cell 1. Cell 3 holds a reward of +10. Moving costs -1. At first it moves randomly. After a few hundred tries, it notices that moving right from cell 2 usually leads to +10 and records a high value for that action. Soon the value spreads backward: moving right from cell 1 is good too, because it leads to cell 2. This is the core idea of Q-learning.
 
+## How the value spreads: a trace
+Q-learning keeps a score for each action in each cell. After every move it updates that score with a simple rule: new score = old score + learning rate × (reward + best score of the next cell − old score). These are invented numbers for illustration. Use a learning rate of 0.5, all scores starting at 0, and a net reward of +9 for the move that reaches cell 3 (+10 minus the move cost of 1).
+1. From cell 2 the robot moves right and reaches the goal. The score for "right in cell 2" becomes 0 + 0.5 × (9 + 0 − 0) = 4.5.
+2. From cell 1 it moves right to cell 2, paying -1. The score for "right in cell 1" becomes 0 + 0.5 × (-1 + 4.5 − 0) = 1.75.
+3. Next time it reaches the goal from cell 2, that score becomes 4.5 + 0.5 × (9 − 4.5) = 6.75.
+Each pass moves the scores toward 9 for cell 2 and 8 for cell 1. Good news travels backward one cell per visit.
+
+## Explore or exploit
+The agent must choose between the best action it knows and a new one. If it always picks the best known action, it can lock onto a mediocre habit and never find a better route. A common fix is to try a random action a small share of the time. Too much random play wastes effort. Too little leaves better routes undiscovered. In the corridor this is trivial. In Go the number of possible positions is so large that the balance matters a great deal.
+
+## What goes wrong
+A reward that arrives only at the end of a long game gives the agent almost nothing to learn from early on. The symptom is a score curve that stays flat for a long time. Adding small rewards along the way helps, but each one is a new chance to be gamed. Another symptom is a rising score with strange behavior. Confirm it by watching replays of the agent, not only the score chart.
+
+## Try it yourself: three more updates
+On paper, repeat the trace above for the cell 2 score. Apply the rule again and again. You should get 4.5, then 6.75, then 7.875. Then update the cell 1 score once using the new cell 2 value. The numbers climb toward 9 and 8 but never jump there at once. Ten minutes is enough, and it shows why learning takes many tries.
+
 ## Common mistake
 Expecting the same method to work where there is no clear score. Defining the reward is the hard part. A badly chosen reward gets exploited: a cleaning robot rewarded for "no visible mess" may learn to hide the mess.
 
@@ -85,6 +113,18 @@ These systems are tools in a pipeline. Predictions need lab or expert verificati
 
 ## A worked example: why folding is hard
 A short protein of 100 building blocks has an astronomical number of possible shapes. Trying them all is impossible. AlphaFold learned from about 170,000 known structures which blocks tend to sit near each other, and predicts the shape directly. The result is not magic. It is pattern knowledge from known proteins, applied to a new one.
+
+## How the prediction works
+Related proteins from different species are lined up next to each other. If two positions tend to change together across species, they are probably close in 3D, because a change at one spot needs a matching change at the other to keep the protein stable. The network learns to read these paired signals and turns them into a predicted shape. This is a simplified picture, but it shows why the method needs many known proteins to learn from.
+
+## A second example: weather as repeated guessing
+A learned weather model takes the state of the atmosphere now and predicts the state a short time ahead. To forecast further, it feeds its own output back in and repeats. If each step covers 6 hours, a 10-day forecast takes 10 × 24 ÷ 6 = 40 steps (invented step size). A small error in one step is carried into the next, so errors can grow. A physics simulation solves equations instead. A learned model copies patterns, which is why it is fast once trained but can struggle with situations that rarely appeared in its data.
+
+## Where it breaks
+The symptom is a smooth, confident answer that is wrong for an unusual case, such as a rare extreme storm or a protein unlike any known one. Flexible protein regions that have no single fixed shape are another weak spot. To check, test the model on past events it did not train on, and report the error on the extreme cases separately from the average. A good average can hide poor results on the cases that matter most.
+
+## Try it yourself: read a confidence map
+Open the AlphaFold Protein Structure Database and search for a protein you have heard of, such as insulin. The viewer colors each region by how confident the model is. Find a region with low confidence and note where it sits. Many readers see that flexible ends and loose loops are less certain than the core. This shows that the tool reports its own doubt, and that you should read it.
 
 ## Common mistake
 Treating a predicted structure as a measured one. It is a strong hypothesis. Check with experiments before relying on it for a drug.
@@ -124,6 +164,18 @@ A 224 by 224 pixel image cut into 16 by 16 pixel patches gives 14 × 14 = 196 pa
 ## Costs to plan for
 Images and audio use many more tokens than the text that describes them. A single high-resolution photo can cost as much as a few thousand words. Downscale before sending, and send audio in short segments.
 
+## How speech becomes text
+Sound is a stream of numbers, for example 16,000 a second (a common rate). The model first turns a short clip into a spectrogram, a picture showing which pitches are loud at each moment. It then reads that picture much like image patches and writes out text tokens one at a time. Many modern speech models, including Whisper, work in roughly this way. One second of audio at that rate is 16,000 numbers, which is why audio is heavy to process.
+
+## A second example: invoice, image or text?
+You need to pull the total from a scanned invoice. Option one: run OCR (software that turns a picture of text into text) and send only the text. It is cheap, but it loses layout, so a total in a table can be confused with a subtotal. Option two: send the image directly. The model sees the layout and stamps, but you pay for more tokens. Option two is not needed for a clean typed contract where plain text is enough. Try both on ten real documents and compare.
+
+## When it goes wrong
+With speech, the symptom is confident but wrong words, mostly names, jargon and accents, and sometimes text invented for silent or noisy stretches. With images, the symptom is a description of details that are not there, or small print that became unreadable after downscaling. To confirm, ask the model to quote the exact text it relied on and compare it with the source. For speech, measure the word error rate: wrong words divided by total words, checked against a transcript you wrote by hand.
+
+## Try it yourself: measure your own error rate
+Record a 30 second clip that includes two names and some background noise. Run it through any speech-to-text tool. Write down what you actually said and count the wrong, missing or extra words. With invented numbers, 6 wrong out of 100 words is 6 ÷ 100 = 6 percent. Most readers find that names cause the largest share of errors, so those are the words to double-check.
+
 ## Common mistake
 Trusting speech recognition on names, jargon and noisy audio. Always check those parts.
 
@@ -161,6 +213,24 @@ Suppose a model attempts 1,000 coding problems with hidden tests. Each attempt e
 ## What benchmarks tell you
 SWE-bench uses real issues from open-source projects. A model is scored on how many it resolves with all tests passing. The number rose quickly from 2023 to 2025, which tells you the trend, but your own codebase is different. Always try a candidate tool on your own code.
 
+## How a test becomes a training signal
+The loop is simple enough to follow step by step, using invented numbers.
+1. Give the model a problem and keep the tests hidden.
+2. Ask for 8 different attempts.
+3. Run every attempt against the tests.
+4. Score each one 1 for pass and 0 for fail. Suppose 3 pass, so the pass rate is 3 ÷ 8 = 37.5 percent.
+5. Adjust the model so the 3 passing styles become more likely.
+Repeat over thousands of problems. No human has to read the attempts, which is why this scales.
+
+## A second example: where checking is weak
+Ask a model to write a friendly welcome email. There is no test that says the email is good. Even in code, tests can be weak. If the tests only check one input, a function that hardcodes the expected answer passes. The symptom is green tests and wrong behavior on real data. Confirm it by adding a test the model never saw, with a different input, and reading the diff for special-case code.
+
+## Reading a benchmark honestly
+A high score on a public test shows the trend, but three things can inflate it. The problems may have leaked into the training data, so the model remembers answers. The test may cover only some kinds of work, such as small bug fixes. The agent may have been given many attempts. Ask what a score measures and how many tries were allowed before you compare tools.
+
+## Try it yourself: tests first
+Pick a small function, such as one that applies a discount to a price. Before asking a chat model to write it, write five tests: three normal cases and two edge cases, such as a price of zero and a negative discount. Paste the description, run the tests on the answer and count passes. Models often pass the normal cases and miss an edge case. The lesson is that your tests, not the model's confidence, decide whether the code is right.
+
 ## Common mistake
 Accepting generated code because it compiles. Read it, run the tests and look for unrequested changes.
 
@@ -194,6 +264,18 @@ Open weights give privacy, control, predictable cost at scale and the ability to
 
 ## A worked example: choosing
 You need to classify 5 million support tickets a month. A closed API at $0.50 per million tokens with 300 tokens per ticket costs about 1.5 billion tokens × $0.50/million = $750 a month. A small open model on one rented GPU may cost around $400 a month and keep data in-house, but you must run it and keep it updated. If volume is small, the API is easier. Here the saving is only $350 a month, which an hour or two of engineer time a week could use up, so hosting pays off only when volume is much larger or privacy matters.
+
+## What you actually download
+An open-weight release is a large file of numbers plus a program that runs them. The file size is roughly the number of parameters times the bytes stored for each one. Invented numbers: a model with 7 billion parameters stored at 2 bytes each is 14 GB. Quantization (storing each number with less precision) at half a byte each cuts that to 3.5 GB, at some cost in quality. The model also needs extra memory while it works, so a file that fits on your disk may not fit in memory.
+
+## A second example: when the API wins
+A team builds a feature that gets 200 requests a day with no privacy rule. Suppose each request uses 1,000 tokens. That is 200 × 1,000 × 30 = 6 million tokens a month. At the invented price of $0.50 per million tokens, the API costs about $3. A rented GPU is billed by the hour whether it is busy or idle, so it would cost far more. At low volume the API is the clear choice, and you also get the strongest model without running anything.
+
+## What goes wrong
+The symptom is a model that runs but crawls, because it did not fit in fast memory and spilled to slower storage. Another is answers that look worse than the online demo. Common causes are heavy quantization or the wrong chat format for that model. To confirm, run the same 20 prompts on the local model and on a hosted one and compare the results side by side. A license surprise is a third failure, so read the terms before you build.
+
+## Try it yourself: run one locally
+Install Ollama and download a small model. Ask it five questions you have already asked a hosted assistant, including one hard one. Note how fast it answers and whether your computer slows down. Expect simple questions to work well and the hard one to be weaker or slower. That is the real shape of the trade: control and privacy on one side, raw capability on the other.
 
 ## Common mistake
 Assuming open means free. You pay in hardware, time and maintenance.

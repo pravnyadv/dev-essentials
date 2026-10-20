@@ -12,6 +12,21 @@ Ask four questions. How often does the task happen? A task done once a year is n
 ## A worked example: start with a baseline
 A shop wants to predict which customers will cancel. Before any model, write the simplest rule: "customers who have not logged in for 30 days will cancel". Say it catches 40 of the 100 who cancel. That rule is your baseline. A model is only worth its cost if it beats the baseline by enough to matter. Many projects find that the rule gets most of the value.
 
+## Scoring a task before you build
+Count the hours first. Frequency times minutes per case gives the yearly or monthly load. Tagging 300 support tickets a month at 2 minutes each is 10 hours. Reviewing 40 contracts a month at 90 minutes each is 60 hours. The second is the bigger prize, but a mistake there costs more and needs a lawyer to check. Neither wins on size alone.
+1. Write the task as input and output.
+2. Multiply frequency by time per case.
+3. Name the cost of a wrong output.
+4. Find 50 past cases with known right answers.
+
+If step 4 is impossible, you cannot tell whether a model works, so stop there.
+
+## A second example: when a rule is enough
+A store wants to flag refunds over $500 for a manager. That is a threshold, not a prediction. One line of code does it, never tires and can be explained to an auditor. A model adds cost and uncertainty with nothing to gain. Use learned models when the pattern is too fuzzy to write down, such as spotting a likely cancellation from dozens of weak signals.
+
+## What goes wrong: a good score nobody can use
+A shop's cancellation model is better than the 30 day rule. It catches 55 of the 100 who cancel, against 40. But the retention team can phone only 50 customers a month. What matters is how many real cancellations sit in the 50 names the model ranks highest, not the overall score. To confirm, rank by the model's score, take the top 50, and count the real cancellations among them. Test against the capacity you actually have.
+
 ## Common mistake
 Starting with "we should use AI" instead of "this task costs us 200 hours a month". A tool searching for a problem usually finds a demo, not a result.
 
@@ -46,6 +61,18 @@ A user is the vector [0.9, 0.1]: loves action, barely cares about romance. Movie
 ## What goes wrong
 The cold start problem: a new user or a new item has no history, so there is nothing to match. Systems fall back to popular items or ask a few questions. A feedback loop: if you only show what people already click, you never learn what else they would like. The target matters too: optimizing clicks can promote sensational items, while optimizing "watched to the end" rewards something different.
 
+## How collaborative filtering finds a match
+Three users and four movies. Ana liked movies 1 and 2. Ben liked 1, 2 and 3. Cy liked only 4. Ben shares both of Ana's likes, Cy shares none. So Ben is Ana's nearest neighbor, and the system suggests movie 3 to Ana, which Ben liked and she has not seen. Embeddings do the same job with numbers and scale to millions of users.
+
+## Why two stages
+Invented numbers: a careful model takes 2 milliseconds per item. Scoring 5,000,000 items takes 10,000 seconds, nearly three hours, for one page view. The cheap first stage cuts that to 500 candidates, and the careful model then scores them in 1 second. The cost is that anything the first stage drops can never be recommended, so a weak first stage caps quality.
+
+## What goes wrong: counts are not rates
+Two videos are equally liked: half of the viewers click either one. The system shows video X to 900 users and video Y to 100. X gets 450 clicks, Y gets 50. Ranked by click count, X looks nine times better, and gets shown even more tomorrow. Compare clicks per view instead, and both are 50 percent. To confirm, check whether the top items are simply the ones shown most. Showing a small share of random items keeps feeding the system fresh evidence.
+
+## How to tell a new ranking is better
+Split 20,000 users in two equal groups. Version A gets a click rate of 4.0 percent and version B 4.3 percent. The random wobble in the difference between two groups of 10,000 is about 0.28 percentage points. The measured gap is 0.3, barely more than one wobble, so it could be luck. You would need more users or a longer test before shipping B.
+
 ## Common mistake
 Measuring only accuracy on past data. What counts is what happens when real users see the new ranking, so teams run A/B tests that compare two versions on live traffic.
 
@@ -78,6 +105,15 @@ Actual sales over three days: 100, 120, 110. Forecast: 105, 115, 120. Errors: 5,
 
 ## A worked example: rare events
 Out of 100,000 card payments, 100 are fraud. A model that always says "not fraud" is 99.9 percent accurate and catches nothing. This is class imbalance. Use precision (of the cases flagged, how many were right) and recall (of the real cases, how many were found). Say a model flags 200 payments and 80 are truly fraud. Precision is 80 / 200 = 40 percent. Recall is 80 / 100 = 80 percent. Which matters more depends on what a miss costs against what a false alarm costs. Try it in the demo above: slide the threshold and watch the false alarms rise as you catch every fraud.
+
+## A second example: a better naive forecast
+Shop sales last week, Monday to Sunday, were 80, 90, 85, 95, 140, 200, 120. This week they were 84, 92, 88, 100, 150, 210, 126. Forecast Tuesday to Sunday two ways. "Same as yesterday" is off by 8, 4, 12, 50, 60 and 84, an average of 36.3. "Same day last week" is off by 2, 3, 5, 10, 10 and 6, an average of 6.0. The weekly pattern is the signal, so repeat the season, not the last value. Any model must beat 6.0.
+
+## How an anomaly score works
+A customer's daily spending over five days was 30, 45, 38, 52 and 35 dollars. The mean is 40 and the standard deviation, a measure of typical spread, is about 7.7. A payment of 130 sits (130 - 40) / 7.7 = 11.7 spreads above the mean, a clear outlier. A payment of 55 sits 1.9 spreads away and is normal. The threshold is a choice. Flag everything beyond 3 spreads and, if spending were bell-shaped, about 0.3 percent of ordinary payments still trip it. On 100,000 payments that is roughly 270 false alarms.
+
+## What goes wrong: information from the future
+A model reports 99 percent recall on test data, then collapses live. One cause is leakage: a feature that is only known after the answer. For fraud, a field like "chargeback filed" is filled in after fraud is found, so the model just reads it. Symptom: one feature dominates and the score is too good. To confirm, drop that feature and watch the score fall. Ask of each column, "would I know this at the moment I must decide?"
 
 ## Common mistake
 Using accuracy on rare events, or testing on data from before the model's training period. Test on later data than you trained on, since the model will always be used on the future.
@@ -112,6 +148,15 @@ A hospital screens 1,000 scans. Ten show disease. The model finds 9 of the 10 (r
 
 ## What goes wrong
 Models learn shortcuts. A classifier trained on photos from one hospital may be reading the scanner's label, not the disease. A model trained in good light fails at night. Always test on images from a different place and time than the training set, and keep checking after launch because cameras and conditions change.
+
+## How a detection gets scored
+A detector draws a box. To grade it, compare with the true box using intersection over union, or IoU: the overlap area divided by the combined area. Say the true box covers x from 0 to 10 and y from 0 to 10, and the prediction covers x from 5 to 15. The overlap is 5 × 10 = 50. The union is 100 + 100 - 50 = 150. IoU is 50 / 150 = 0.33. Teams choose a cutoff, often 0.5, and count a box as correct only above it. This is why a box that "looks about right" can still count as a miss.
+
+## Routing by confidence
+A model gives each image a score between 0 and 1. Invented example with 1,000 images: 800 score above 0.9 and pass automatically, of which 4 are wrong (0.5 percent). The other 200 go to a person, and 30 of them are wrong, which the person fixes. People handle 20 percent of the load, and the final error rate is 0.4 percent. The catch is calibration: whether a score of 0.9 really means 90 percent right. To check, group past predictions by score and compare each group's true accuracy with its score. Models are often too sure of themselves.
+
+## When a simple sensor wins
+A packing line needs to know whether a box has a bottle in it. A weight sensor or a light beam answers in a fraction of a millisecond, costs little and does not care about lighting. Use vision when the question depends on appearance, such as a scratch or a label. If a cheaper signal answers the question, use that.
 
 ## Common mistake
 Training and testing on images from the same camera session. The score looks great and falls apart in the real world.
@@ -150,6 +195,15 @@ Transcribing takes 0.3 seconds, the model 0.6 and speech 0.3. Total 1.2 seconds 
 ## Where it is used
 Meeting notes and captions, call-centre assistants, voice control in cars, language practice, and tools that read text aloud for people with low vision. Accents, background noise, and names are the usual failures, so test with the speakers you will actually serve.
 
+## What WER hides
+WER counts every word equally. "Take fifteen milligrams twice a day" heard as "take fifty milligrams twice a day" has one error in six words, a WER of 17 percent. The same score applies if the system just drops "a". The first is dangerous and the second is harmless. Report WER on the words that matter, such as names, numbers and drug names, as well as overall.
+
+## Averages hide groups
+Invented numbers: 80 speakers have a WER of 6 percent and 20 speakers with a regional accent have 18 percent. Overall: 0.8 × 6 + 0.2 × 18 = 8.4 percent. That looks fine, yet one in five users has a poor experience. To confirm, split your test audio by accent, microphone and noise, and compute WER for each group.
+
+## The wait before the delay budget
+The 1.2 second budget starts after the user stops talking, but the system must first decide they have stopped. It waits for a pause, typically a fraction of a second (say 0.7 seconds). Add that and the total becomes 1.9 seconds. A shorter wait makes the assistant talk over people who pause to think. A longer wait feels slow. Streaming helps the other end: if speech starts when the model has written its first sentence, say 0.2 seconds into its 0.6, the first sound arrives 0.3 + 0.2 + 0.1 = 0.6 seconds after the pause ends, or 1.3 seconds after the user stopped talking. The 0.1 second speaking start-up is invented.
+
 ## Common mistake
 Testing with clean studio audio. Real users talk in cars and kitchens, and the error rate there can be several times higher.
 
@@ -186,6 +240,15 @@ A robot completes each of 10 steps in a task with 95 percent success. All ten su
 ## Where it is used
 Warehouse picking, vacuum robots, surgical assistance under a surgeon's control, crop harvesting, and automated invoice handling in finance teams. Start with the cases where the environment is controlled and a person can step in.
 
+## Retries change the multiplication
+The worked example assumes one failed step ruins the task. If the robot can notice a failed grasp and try once more, a 95 percent step succeeds with probability 1 - 0.05 × 0.05 = 0.9975. Over ten steps that gives 0.9975 to the power 10, about 0.975, instead of 0.60. This holds only if failures are independent and detectable. A robot that does not know it dropped the part cannot retry, so sensors that check each step are worth as much as better arms.
+
+## The loop has a delay
+Invented numbers: a belt carries parts at 0.5 meters per second, and the camera-decide-move loop takes 0.3 seconds. The part moves 0.5 × 0.3 = 0.15 meters, 15 centimeters, before the arm acts. The arm must aim where the part will be, not where it was seen. Slower loops or noisy timing show up as grasps that miss by a steady distance in the direction of travel.
+
+## A second example: automation that fails quietly
+A model reads invoices and fills the total. One supplier writes "1.250,00", with a dot for thousands and a comma for decimals. The model reads it as 1.25. The symptom is totals wrong by a factor of 1,000 for one supplier, with no error message. A cheap check catches this: add up the line items and compare with the total, and send any mismatch to a person. Where invoices come in one fixed template, a plain parsing rule is cheaper and exact.
+
 ## Common mistake
 Treating a smooth demo video as proof. Ask how many attempts it took and how often the robot failed.
 
@@ -219,6 +282,15 @@ Rate each task on two lines: cost of a mistake, and how easily a person can chec
 ## What goes wrong
 Bias in data becomes bias in decisions. In 2018 Reuters reported that Amazon dropped a hiring tool trained on past resumes, because it had learned to mark down resumes that mentioned women's groups. In 2023 two New York lawyers and their firm were fined $5,000 after submitting a brief with court cases a chatbot had invented. Neither failure was about intelligence. Amazon's team tested the tool, found it was biased and shut the project down. The lawyers did not check their citations.
 
+## How a bias check works
+Take 1,000 loan applicants in each of two groups. The model approves 600 in group A (60 percent) and 420 in group B (42 percent). The ratio is 42 / 60 = 0.70. A gap this size does not prove unfairness, since the groups may differ in income or debts. It is a prompt to look closer. Compare applicants with similar finances: if group B is still approved less often at the same income and debt, the model is treating them differently and the data needs inspection. Ask which inputs act as stand-ins for the group, such as a postcode.
+
+## Explaining one decision
+A person denied credit is owed reasons. With a simple scoring model each input adds or subtracts points, so the biggest negatives become the explanation. Invented example: debt ratio -40, two late payments -25, short history -5. The reply says the main factors were debt and late payments. Models that cannot produce reasons like this are hard to use in lending.
+
+## Why human review fails
+Putting a person after the AI does not guarantee checking. People skim when the tool is usually right. Say an assistant drafts 1,000 summaries and 50 are wrong. A reviewer who catches 60 percent lets 50 × 0.4 = 20 errors through. To test, secretly seed the queue with 20 known errors and count how many get caught. If the catch rate is low, change the process: show sources next to the draft, ask the reviewer to confirm specific facts, and rotate the work.
+
 ## Common mistake
 Copying a success from another industry without its safeguards. A tool that is fine for retail support is not automatically fine for medicine.
 
@@ -251,6 +323,15 @@ A support team gets 10,000 tickets a month. Each takes 4 minutes at a cost of $3
 
 ## After launch
 Watch quality, cost and usage. Data drift means real inputs slowly change from what the system was tested on, so scores slide without any code change. Keep a test set, rerun it monthly, and keep an easy way for users to report a bad answer. A company answers for what its tools say: in 2024 a Canadian tribunal ordered Air Canada to pay a customer who relied on wrong refund advice from its website chatbot.
+
+## Find the break-even before you build
+Using the invented numbers above, fixed costs are $500 for calls plus $1,000 for checking, $1,500 a month. Each percent of tickets handled saves $200. Break-even is 1,500 / 20,000 = 7.5 percent. Below that, the assistant loses money every month. The estimate is only as good as the 30 percent figure, so measure it before launch.
+
+## Putting error bars on the shadow-mode result
+Run the assistant in shadow mode on 200 past tickets and see 60 drafts need no edits, which is 30 percent. With only 200 tickets the result has a margin of about 6 points either way. The true rate could be 24 or 36 percent. At 24 percent the net saving is $3,300 a month and payback takes 9.1 months. At 36 percent it is $5,700 and payback takes 5.3 months. The project clears break-even either way, so the decision is safe. A range that crosses 7.5 percent would mean testing more tickets.
+
+## What goes wrong: costs the estimate misses
+The example counts the 30 percent of tickets drafted well. The other drafts cost time too. Suppose 20 percent are wrong, and each takes an extra minute to read and discard. That is 10,000 × 0.2 × 1 minute = 2,000 minutes, about $1,000 a month, which cuts the net saving to $3,500. The symptom is that agents accept many drafts but tickets per hour barely moves. Confirm by measuring total handling time per ticket before and after, not how many drafts were accepted.
 
 ## Common mistake
 Declaring victory after a demo. Adoption, review time and drift decide the real return.

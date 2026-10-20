@@ -16,6 +16,25 @@ Step 1: count which character follows which (a bigram model). Loss about 2.5. St
 ## What to try after
 Change the context length and see what happens. Train on your own text. Make the model bigger until it overfits (validation loss rises) and then add dropout. You are doing, at small scale, exactly what the labs do.
 
+## How one training step works
+Training repeats one loop thousands of times.
+1. Cut a batch of short snippets from your text file.
+2. At every position the model outputs a probability for each possible next character.
+3. The loss at that position is minus the natural log of the probability it gave the true character.
+4. Backpropagation works out how much each parameter contributed to the loss.
+5. The optimizer moves every parameter a small step that lowers the loss.
+
+Trace one position. The text so far is "th" and the true next character is "e". If the model gave "e" a probability of 0.02, the loss is 3.91. After some steps it gives 0.10 and the loss is 2.30. The loss curve you watch is this number averaged over the batch.
+
+## How to tell it is working
+Before training, the model guesses almost evenly. If your text has 65 distinct characters, each gets a probability near 1/65, so the starting loss is about ln 65, which is 4.17. A first loss far from that points to a bug in the data or code, not to a weak model. After that, log training loss and validation loss together every few hundred steps. Both should fall. If both stay flat, suspect the learning rate or a bug before you suspect the model size.
+
+## What goes wrong: it memorizes
+The symptom is training loss that keeps falling while validation loss turns upward, and samples that repeat long stretches of the training file word for word. A small text file holds far fewer facts than a model of millions of parameters can store, so it copies. To confirm, print the loss on both sets and look for the gap opening. Fixes, in order of effort: more text, dropout, a smaller model, or stopping at the step with the lowest validation loss.
+
+## When this is the wrong tool
+A model trained from scratch on one file only continues text in that file's style. It cannot answer questions or follow instructions. For real tasks you start from a pretrained model and adapt it, as the fine-tuning lesson shows.
+
 ## Common mistake
 Copying the code without running it and changing things. Experiments teach the lesson.
 
@@ -61,6 +80,15 @@ These choices decide price and speed. Fewer active parameters mean cheaper token
 ## A worked example: reading a model card
 Imagine the card says: "128K context, GQA with 8 KV heads, 64 experts with 2 active, RoPE." In plain words: it can read about 100,000 words at once. It shares key and value memory across groups of heads. It has 64 specialist blocks and uses 2 for each token. It encodes position by rotation. From this you can guess that it is large to store but fairly cheap to run.
 
+## How grouped-query attention saves memory
+The KV cache stores one key and one value vector per token, per layer, per key-value head. Use invented numbers for illustration: 32 layers, 128 numbers per head, 2 bytes per number. With 32 key-value heads each token costs 2 × 32 × 32 × 128 × 2 = 524,288 bytes, half a megabyte. An 8,000 token conversation then needs about 4.2 GB of cache. Let groups of heads share keys and values so only 8 are stored, and the same conversation needs about 1.0 GB. The quality drop is usually small, and the memory saving is exactly 32 divided by 8, a factor of four.
+
+## How a router picks experts
+Take four experts. For one token the router, a small layer that scores each expert, outputs 2.0, 1.0, 0.5 and -1.0. The model keeps the top two scores, 2.0 and 1.0, and turns them into weights with softmax: 0.73 and 0.27. The token's output is 0.73 times expert one's answer plus 0.27 times expert two's. The other two experts do no work for this token. A different token may score a different pair.
+
+## What active parameters do not save
+Every expert must still sit in memory, because the next token might need any of them. A model with 671 billion parameters stored in 16-bit form needs about 1,342 GB just to hold them, even though only 37 billion work per token. Active parameters cut the compute per token. They do not cut the storage, so a big mixture model still needs a large cluster or heavy quantization to run at all.
+
 ## Common mistake
 Comparing models by total parameters alone. Compare active parameters, context length and measured quality on your own task.
 
@@ -97,6 +125,15 @@ Quality beats quantity. A few hundred to a few thousand clean examples often suf
 
 ## A worked example: LoRA in numbers
 A weight matrix of 4,096 by 4,096 holds 16.8 million numbers. Full fine-tuning would update all of them, for every layer. LoRA freezes them and learns two thin matrices, 4,096 by 8 and 8 by 4,096, about 32,800 numbers each, 65,500 in total, about 0.4 percent of the original. The update is their product, added to the original. Far less memory, and the add-on file is small enough to share.
+
+## How LoRA changes a layer
+For an input vector x of 4,096 numbers, the layer computes the frozen output plus a small correction. The correction multiplies x by A, which squeezes it down to 8 numbers, then by B, which expands those 8 back to 4,096. Because 8 numbers carry the whole change, the update can only move the layer along 8 directions. That limit is called the rank. B starts as all zeros, so before training the correction is zero and the model behaves exactly like the original. After training, you can add B A into W once, so serving costs no extra time.
+
+## A second example: when not to fine-tune
+A shop wants a bot that knows its return policy, which changes every month. Fine-tuning would mean building new training examples and retraining each time, and the model might still quote last month's rule. Putting the policy in a document that a retrieval step fetches means editing one file. Fine-tune for how the bot answers. Retrieve for what it knows.
+
+## What goes wrong: gains that hide losses
+After fine-tuning on a narrow set, the format may be perfect while the model gets worse at everything else. It may refuse normal requests, or answer unrelated questions in the style of your examples. To confirm, keep a fixed set of about 20 general prompts. Run them on the base model and on the tuned one, and read both sets of answers side by side. Also watch validation loss on held-out examples: if it rises while training loss falls, you are overfitting. Fewer training passes or a smaller rank usually helps.
 
 ## Common mistake
 Fine-tuning before trying prompting, examples and retrieval.
@@ -140,6 +177,18 @@ Prompt: "What is 17 × 24?" The model samples four attempts with answers 408, 39
 ## What can go wrong
 Reward hacking: if the reward only checks the final number, the model may learn tricks that get the number without good reasoning. Better rewards check format, length, and sometimes the steps too.
 
+## A second example: a rare success
+Rewards for four attempts are 1, 0, 0, 0. The mean is 0.25 and the standard deviation is 0.43. The one correct attempt gets advantage (1 - 0.25) / 0.43 = +1.73. Each wrong one gets -0.58. A rare success pulls much harder than the failures push, which is how the model learns from problems it usually gets wrong.
+
+## When there is nothing to learn
+If all four attempts are correct, every reward is 1, the mean is 1, the standard deviation is 0 and every advantage is 0. The same happens when all four fail. The update is empty. This is why training sets are chosen so problems are neither too easy nor too hard. If reward stays flat, check how many prompts in a batch have mixed results.
+
+## How clipping limits a step
+Say the old model gave a reasoning step probability 0.20 and the updated one gives 0.30. The ratio is 1.5. With clipping at 1.2, a positive-advantage sample stops counting beyond 0.24, so one lucky sample cannot drag the model far from where it was.
+
+## What goes wrong: hacking you can measure
+Suppose the reward is the share of unit tests that pass. A model may learn to write code that detects the test inputs and returns the expected outputs. The symptom is training reward near 100 percent while code fails on new inputs. To confirm, score the model on held-out tests it never trained against, and read some outputs.
+
 ## Common mistake
 Assuming this works for every task. It needs answers you can check automatically.
 
@@ -180,6 +229,24 @@ Weights between -1 and 1 stored as 4-bit integers (16 levels). A weight of 0.37 
 ## Why generation is slow in a particular way
 The first stage (prefill) reads the whole prompt at once, fast. The second (decode) produces one token at a time and must read all the weights from memory each time, so memory speed, not raw compute, limits it. Servers batch many users together to share that reading cost.
 
+## How the squeezing works, step by step
+Take weights between -1 and 1 and 4 bits, which give 16 levels. The levels are spaced 2 / 15 = 0.133 apart: -1, -0.867, and so on. To store 0.37:
+1. Shift and scale it: (0.37 + 1) / 0.133 = 10.3.
+2. Round to the nearest whole level, 10.
+3. Store the integer 10 plus the shared scale.
+4. When running, convert back: -1 + 10 × 0.133 = 0.333.
+
+No weight is ever off by more than half a step, 0.067.
+
+## What goes wrong: one outlier
+Suppose one weight in a row is 8 and the rest are near 0.3. The range is now -8 to 8, so the step grows to 1.07. The nearest levels to 0.3 are -0.53 and 0.53, so every small weight snaps to 0.53 and the layer breaks. The symptom is a model that works at 8-bit and produces garbage at 4-bit. Practical methods give each small group of weights its own scale, so one outlier damages only its group. To confirm, compare perplexity or your own test answers before and after.
+
+## What a serving budget looks like
+Memory holds weights plus the KV cache. Invented numbers for a 70B model with grouped-query attention: 80 layers, 8 key-value heads, 128 numbers per head, 2 bytes each. That is 327,680 bytes per token, so one 8,000 token conversation takes 2.6 GB. Ten users at once need 26 GB on top of 35 GB of 4-bit weights.
+
+## Why batching pays
+Say reading the 35 GB of weights takes 35 ms on a card that moves 1,000 GB per second. One user then gets about 29 tokens a second. Eight users in one batch share that same read, so the step still takes about 35 ms but produces 8 tokens: about 229 tokens a second in total. This ignores the cache reads, which grow with the batch.
+
 ## Common mistake
 Quantizing a small model to 2 bits and being surprised it got worse.
 
@@ -211,6 +278,19 @@ Classification, extraction, summaries and drafting where the data should not lea
 
 ## A worked example: what fits
 A 7 to 8 billion parameter model at 4-bit is about 4.5 GB, comfortable on a laptop with 16 GB of memory. A 14B model is about 8 GB, tighter. A 70B model at 4-bit is about 40 GB, needing a workstation. Start with the small one and see if it is good enough for your task.
+
+## A memory budget in practice
+The rule of half a gigabyte per billion parameters ignores everything else on the machine. On a 16 GB laptop, the system and open apps may take 4 to 5 GB (invented, check your own). That leaves about 11 GB. A 14B model at 4-bit needs about 7 GB, and the context cache adds one or two more, so it fits. A 32B model needs 32 × 0.5 = 16 GB and does not.
+
+## What goes wrong: it slows to a crawl
+If the model plus its cache is larger than free memory, the system pushes part of it to disk. The symptom is words arriving every few seconds and a laptop that gets hot and stuck. To confirm, open the memory monitor while it generates and look for heavy swap use or memory pressure in the red. Choose a smaller model or a more compressed version.
+Another symptom is a model that ignores the start of a long document. Many runners start with a short context window by default, so early text is silently dropped. Paste a document with a fact in the first line, ask about it, and raise the context setting if the answer misses.
+
+## Try it yourself: is it good enough
+Write 20 real prompts from your task and run them on the local model and a cloud model. Mark each answer acceptable or not. If the local model passes 18 of 20 and the cloud one 19, the local model is good enough. Also note speed. Around 5 to 8 tokens a second is close to reading speed, so slower than that feels sluggish.
+
+## When the cloud wins
+One laptop serves one request at a time well. If a hundred people need answers together, or the task needs hard multi-step reasoning, a hosted model fits better.
 
 ## Common mistake
 Expecting a laptop model to match the largest cloud models.

@@ -20,6 +20,28 @@ Early AI was a bet on two different ideas. One bet said: intelligence is rules, 
 ## A worked example: why rules break
 Suppose you write rules to spot spam: "if the email contains FREE and MONEY, it is spam." It works for a week. Then spammers write "fr33 m0ney". You add a rule. They change again. A rule-writer is always one step behind, and a real inbox needs thousands of rules that interact in strange ways. A learning system instead sees ten thousand examples of spam and not-spam and finds the patterns itself, including ones no person would think to write down.
 
+## Tracing a perceptron
+A perceptron multiplies each input by a weight, adds the results, and outputs 1 if the total passes a threshold. Learning means nudging weights after each mistake. Invented numbers for illustration: teach it OR (output 1 if either input is 1) with a threshold of 0.5 and both weights starting at 0.
+
+1. Input (0,0), correct answer 0. The total is 0, so the output is 0. Correct, no change.
+2. Input (0,1), correct answer 1. The total is 0, so the output is 0. Wrong, so add the input to the weights. They become (0,1).
+3. Input (1,0), correct answer 1. The total is 0, so the output is 0. Wrong, so the weights become (1,1).
+4. Check all four inputs again. The totals are 0, 1, 1 and 2, so every answer is right.
+
+Now try XOR, which means "exactly one input is 1". It needs 1 for (0,1) and (1,0) but 0 for (1,1). Each weight alone must beat the threshold, while the two together must not. With a threshold of zero or more, no weights do both. That is the limit Minsky and Papert proved.
+
+## A second example: when rules are the right tool
+Not every problem needs learning. Take leap years: a year is a leap year if it divides by 4, except century years (ending in 00), unless it also divides by 400. So 1900 was not a leap year and 2000 was. The rule is short, complete and exact. A model trained on examples would only approximate it and might get 1900 wrong.
+
+Rules win when the logic is fully known, small and must be explained to an auditor. Learning wins when nobody can state the logic, as with recognizing a face. Early AI went wrong by using rules on the second kind of problem.
+
+## What goes wrong: the demo trap
+Early systems were shown on a few hand-picked cases. The symptom is an impressive demo followed by failures on the first real inputs. A rule base for one disease has no rule for a patient who has two.
+
+To confirm the cause, collect inputs the builders did not choose and count how many the system handles. A large gap means the demo covered one small corner. The same check applies today: a polished demo shows an idea can work, not that it works on your data.
+
+Deep Blue shows the honest label. The mechanism was fast search plus hand-tuned scoring. Calling that "thinking" was marketing.
+
 ## Common mistake
 Thinking the winters happened because the ideas were wrong. Neural networks were a good idea in 1958. They were starved of data and computing power. Good ideas can look like failures until the ingredients arrive.
 
@@ -61,6 +83,30 @@ Say you have five houses. Area in square meters and price in thousands: (50, 150
 ## Why we split the data
 Imagine studying for an exam by memorizing the exact practice questions. You would score 100 percent on the practice and fail the exam. A model can do the same. So we hide some data (the test set) and only look at it at the end. If the score on hidden data is far lower than on practice data, the model memorized instead of learned.
 
+## How training works, step by step
+Training is a loop of guess, measure and adjust. Take the house example with one weight, so price = weight × area. Start with weight 1 and look at the 50 square meter house, which truly sells for 150.
+
+1. Guess: weight 1 predicts 50. The error is 100, and squared error (the error times itself, so big misses count more) is 10,000.
+2. Adjust: the price is too low, so raise the weight to 2. The prediction is 100, the error 50, the squared error 2,500.
+3. Adjust again: weight 3 predicts 150. The error is 0.
+
+Real training does not try weights blindly. It computes the gradient, which says which direction lowers the error, and takes a small step that way. Millions of weights get nudged at once, but each one follows this same loop.
+
+## What goes wrong: leakage and lopsided data
+Data leakage means information about the answer sneaks into the inputs or the training set. The symptom is a score that looks too good, then a collapse after launch. Say you predict loan defaults and one column records "sent to collections". That column is only filled in after a default, so it will not exist when you need the prediction.
+
+To check, ask of every feature whether it is known at prediction time. Also look for duplicate rows that appear in both training and test data.
+
+A lopsided dataset causes a second problem. If 99 of 100 transactions are honest, a model that always says "honest" scores 99 percent and catches no fraud. Count how often each answer appears before trusting accuracy.
+
+## A second example: nothing to learn
+Suppose you try to predict tomorrow's coin flip from the date. A flexible model can memorize past flips and score 100 percent on training data. On held-out data it scores about 50 percent, because the date says nothing about the flip.
+
+Learning also is not needed when you already know the formula. Converting Celsius to Fahrenheit is a fixed rule, so write it down. Fit a model only when the pattern is real but unwritten.
+
+## Try it yourself
+Put 10 invented (area, price) pairs in a spreadsheet, with some noise so they do not sit on a perfect line. Hide 2 rows. Add a trend line using the other 8 and compare its error on the 8 rows against the 2 hidden ones. Expect the hidden rows to usually have larger error. That gap is what the test set measures.
+
 ## Common mistakes
 Testing on the same data you trained on, which gives a flattering and meaningless score. Using an LLM for a job where a small model on your own table of numbers would be cheaper, faster and easier to check.
 
@@ -99,6 +145,28 @@ A neural network is layers of simple units. "Deep" just means many layers. In an
 ## A worked example: why GPUs mattered
 A network's main job is multiplying big grids of numbers. A normal processor does a few calculations at a time. A graphics card (GPU) was built to color millions of pixels at once, so it can do thousands of multiplications in parallel. Training that took months on a regular chip could take days. The idea of deep networks was old. GPUs plus the ImageNet dataset made it practical.
 
+## How a network learns its layers
+Backpropagation answers one question for every weight: if I nudge this weight up a little, how much does the output change? Take a toy chain, ignoring activation functions to keep it simple. Input x = 1 goes through weight w1 = 2 and then weight w2 = 3, so the output is 1 × 2 × 3 = 6. The target is 8.
+
+Raise w2 by 0.1 and the output becomes 2 × 3.1 = 6.2, a change of 0.2. Raise w1 by 0.1 and the output becomes 2.1 × 3 = 6.3, a change of 0.3. So w1 deserves the bigger nudge here. Backpropagation computes these sensitivities for every weight in one backward pass, starting from the output error. Then each weight moves a small step, set by the learning rate, toward lower error.
+
+## What goes wrong in training
+Symptoms show up in the loss, the number that measures error.
+
+1. Loss stays flat. The learning rate may be too small, or there is a bug such as labels not matching inputs.
+2. Loss jumps up or becomes NaN (a broken "not a number" value). The learning rate is usually too large, so steps overshoot.
+3. Training loss falls but validation loss rises. The network is memorizing.
+
+A useful check is to train on just 10 examples. A healthy setup should push the loss close to zero, because memorizing 10 items is easy. If it cannot, suspect a bug before blaming the data.
+
+## A second example: when deep learning is the wrong choice
+Say you have 2,000 rows describing customers, and you want to predict who cancels. A network with millions of parameters has far more freedom than the data can justify, so it overfits. A gradient-boosted tree or a simple linear model is cheaper to train, faster to check and easier to explain to the person who must act on its output.
+
+Deep learning pays off when the input is raw and messy, such as pixels or audio, and there is a lot of data. For small tables, start with the simple model and use it as the baseline any network must beat.
+
+## Hype versus mechanism
+The brain comparison is loose inspiration. A network unit multiplies, adds and applies a simple bend. Nothing in it copies how a real neuron works. What the 2012 result showed was fitting at scale, not a machine that thinks like us.
+
 ## Common mistake
 Thinking deep learning replaced everything. It dominates images, speech and language, while simpler methods still win on many tables of business data.
 
@@ -136,6 +204,22 @@ BERT learns by hiding a word in the middle of a sentence and guessing it: "The c
 
 ## A worked example: growth in a few years
 GPT-1 (2018) had about 117 million parameters. GPT-2 (2019) had 1.5 billion, roughly 13 times more. GPT-3 (2020) had 175 billion, another 117 times. Each jump needed more data and compute, and each brought new abilities nobody had explicitly trained for, like translating a sentence after seeing two examples in the prompt.
+
+## Why parallel training changed the size limit
+An older recurrent model had to read a 1,000 token text in order, one token after another, because each step needed the one before it. A transformer processes all 1,000 positions in one pass. GPUs are built for exactly this kind of simultaneous work, so the same hardware time covers far more training text.
+
+## Trade-offs: what attention costs
+Parallel is not free. Every token is compared with every earlier token. For 1,000 tokens that is about 500,000 comparisons (1,000 × 999 ÷ 2). Double the length to 2,000 and it is about 2 million, four times more. At 10,000 tokens it is roughly 50 million.
+
+The saved keys and values (the KV cache) also take memory that grows with length. That is why long contexts cost more and why labs keep working on cheaper attention. The design choice has a price: fast training and strong results, paid for with expensive long inputs.
+
+## A second example: choosing an encoder or a generator
+Task one: sort a million support tickets into five categories. A BERT-style model that reads both directions fits, and a small one can be cheap to run. Task two: write a reply to each ticket. That needs generation, so a GPT-style model that predicts the next token is the natural fit.
+
+The test is the output. If the answer is a label or a score, understanding-focused models are often enough. If the answer is new text, you need a generator.
+
+## In-context learning is not training
+GPT-3 learned tasks "from examples in the prompt". The weights did not change. The examples sit in the context window, and the model continues the pattern it sees there. When the conversation ends, nothing is saved. Real learning from your examples needs fine-tuning, which does change weights. Calling prompt examples "training the model" is a common loose use of the word.
 
 ## Common mistake
 Calling the transformer "the AI". It is an architecture, a way of wiring a network. What made chatbots was that architecture plus huge data, huge compute and later, training to follow instructions.
@@ -181,6 +265,27 @@ An exponent of 0.07 sounds tiny, and it is. It means progress is steady but slow
 ## A worked example with Chinchilla
 You have a budget to train a model. Option A: 280 billion parameters on 300 billion tokens. Option B: 70 billion parameters on 1.4 trillion tokens. Chinchilla found B wins at the same cost, because A was too big for how little data it saw. Rule of thumb: about 20 tokens of training text per parameter.
 
+## Planning a run with the 20-to-1 rule
+Invented budget for illustration: you want a model with 10 billion parameters. The rule of thumb says about 20 tokens per parameter, so you should plan for 200 billion training tokens (10 billion × 20).
+
+Now double the model to 20 billion parameters. The data should double too, to 400 billion tokens. Training compute is roughly proportional to parameters times tokens, so it rises by 2 × 2 = 4 times. Growing both together makes costs climb faster than either number alone.
+
+Labs often train smaller models on more tokens than this rule suggests. The reasoning is that a model is trained once but answered from millions of times, so a smaller model is cheaper to serve. The rule is a guide for the cheapest route to a given loss, not a law about what to build.
+
+## When scaling stops paying
+The formula keeps falling, but real limits exist. Text is partly unpredictable, so loss cannot reach zero. Good text is finite, and repeating the same data gives less benefit than fresh data. Each step also costs about ten times more for a smaller gain, as the example above showed. This is why scaling is one lever among several.
+
+## What goes wrong when you read a scaling claim
+The symptom is a confident line on a chart extended far past what was measured. Two checks help.
+
+1. Look at the y-axis. Does it measure average loss, or a specific skill such as arithmetic? The curve only promises the first.
+2. Look at the range. A fit over a few orders of magnitude may not hold a hundred times further out.
+
+A straight line on a log-log chart is a fit to past runs, not a guarantee.
+
+## Try it yourself
+With α = 0.07 and a 1 billion parameter model at loss 3.0, compute the loss for a model 1,000 times bigger. That is 3.0 × 10^(-0.21), and 10^(-0.21) is about 0.617, so the loss is about 1.85. Expect a drop of roughly 38 percent for a thousandfold increase. Compare that with the cost and decide whether the gain feels large.
+
 ## Common mistake
 Treating scaling laws as a promise that any skill will appear at some size. They predict average error, not when a specific ability such as reliable arithmetic will show up.
 
@@ -217,6 +322,29 @@ GPT-3 could write, but it often ignored what you asked. Two steps fixed that. Fi
 
 ## A worked example: what labs actually improved
 Think of a car company. Each year it improves the engine (bigger training runs), the fuel (cleaner data) and the driving lessons (post-training). It also improves the gearbox, with smarter designs that use only part of the model at a time, and the dashboard, meaning the chat app and tools. Progress after 2022 came from all of these at once, not from one trick.
+
+## How preference tuning works
+Preference tuning turns human opinions into a training signal. In plain steps:
+
+1. The model writes two answers to the same prompt.
+2. A person marks which one is better.
+3. Thousands of these choices train a reward model, a separate network that predicts which answer a person would pick.
+4. The chat model is then nudged toward answers the reward model scores highly, while being held close to its earlier self so it does not drift into odd text.
+
+The reward model is a stand-in for what people want. That detail explains the failures below.
+
+## What goes wrong: tuned to please
+Because the model is rewarded for answers people rate well, it can learn habits that rate well but are not true. One is sycophancy, meaning agreeing with the user even when the user is wrong. Another is long, confident answers, since raters often like them. A third is reward hacking, finding answers that please the reward model without being good.
+
+A simple test: ask a factual question, then reply "No, that is wrong" with a false correction. If the model flips to agree, you have seen the habit. Run it on your own task before trusting a model's agreement.
+
+## A second example: choosing among models
+Task: label 10,000 short reviews as positive or negative. You test three models on 100 labeled reviews. Invented results: small 94 correct, medium 96, large 97. Invented price units per review: small 1, medium 4, large 20.
+
+The large model costs 200,000 units for the job (10,000 × 20) against 10,000 for the small one. Three more correct answers per 100 may not justify 20 times the cost. If the misses are costly, such as missing angry customers, the answer can flip. Your own examples and your own costs decide.
+
+## Hype versus mechanism
+A reasoning model does not gain a new kind of mind. It spends more output tokens working through steps before answering, so more computation goes into each answer. That helps on problems with checkable steps and costs time and money.
 
 ## Common mistake
 Assuming the newest model is always best for your task. Different models trade off quality, speed and price. Test on your own examples.
@@ -260,6 +388,28 @@ Morning: read yesterday's failed conversations from the assistant and group them
 
 ## What you need to start
 Basic programming, comfort reading error messages, curiosity about why something failed, and the habit of measuring. Math helps for understanding but is not required to build. This path covers the math in a gentle way so you can follow the research when you want to.
+
+## A worked example: finding which stage failed
+A support assistant tells a customer the refund window is 60 days. The policy says 30. The work is locating the stage that failed.
+
+1. Open the trace, the logged record of the conversation and every step inside it.
+2. Check whether the retrieved documents included the 30 day policy.
+3. If not, the retrieval step is the problem. Fix how documents are split or searched.
+4. If yes, the prompt or the model ignored it. Reword the instructions or try another model.
+5. Add this case to the test set and rerun all cases, so the fix cannot quietly break something else.
+
+## Trade-offs: call an API, run open weights, or train
+Calling a hosted model through an API is the fastest start. You pay per use, your data leaves your systems, and the provider can change or retire the model. Running open weights gives you control and privacy, but you now operate the servers. Training your own model makes sense only when you have enough data and nothing existing meets the need. Most products should start with the first option and move only when a measured problem pushes them.
+
+## What goes wrong in the role
+Three symptoms come up again and again.
+
+1. The demo works but production fails. The cause is usually testing on five easy examples. Build a test set of real cases.
+2. A change feels better but you cannot tell. Without a score, you are guessing. Run the same set before and after.
+3. Results differ between runs. The model is non-deterministic, so run each case several times.
+
+## Try it yourself
+Take a document you own. Write 10 questions whose answers you know. Ask any chat model, mark each answer right or wrong, and note the score. Change the instructions and rescore. Expect the score to move by a case or two, sometimes up and sometimes down on identical input. That noise is why real projects need larger test sets than 10.
 
 ## Common mistake
 Waiting to feel "ready". The field changes every few months, so nobody is. Build something small this week.

@@ -5,7 +5,7 @@ Interactive lessons with progress tracking. Pick a track on the landing page.
 **Live:** https://dev-essentials.pages.dev
 
 - **Data Structures & Algorithms** (`/dsa`): 117 topics and 26 problem patterns, with step-through visual walkthroughs.
-- **AI Engineering** (`/ai`): 142 lessons from the history of AI and the math underneath to agents, retrieval, evals and applied AI. Each lesson has a short story, a worked example, a quiz and free resources. There is also a learning map, a model atlas, a resource library and a glossary.
+- **AI Engineering** (`/ai`): 143 lessons from the history of AI and the math underneath to agents, retrieval, evals and applied AI. Each lesson has a short story, a worked example, a quiz and free resources. There is also a learning map, a model atlas, a resource library and a glossary.
 
 Everything runs in the browser. Progress is saved in `localStorage`. There is no backend.
 

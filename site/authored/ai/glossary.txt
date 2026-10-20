@@ -158,3 +158,6 @@ deepfake [deepfakes] | A realistic fake image, video or voice made with AI to lo
 C2PA | A standard for attaching a signed record of where an image or video came from and how it was edited.
 allowlist | A list of the only actions or sites something is permitted to use. Everything not on it is refused.
 least privilege | Giving a person or program only the access it needs for the job and nothing more.
+IoU [intersection over union] | A score for a predicted box: the overlap area divided by the combined area of the predicted and true boxes. 1 is a perfect match, 0 is no overlap.
+calibration | Whether a model's confidence matches how often it is right. A well calibrated model is right about 90 percent of the time when it says 0.9.
+leakage [data leakage] | When a feature or test example contains information that would not be known at prediction time, so scores look better than real use.

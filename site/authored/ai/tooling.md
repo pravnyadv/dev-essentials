@@ -13,6 +13,31 @@ Model: a mid-size API model. Data: documents embedded and stored in pgvector. Or
 ## Reading a new tool
 Which aisle is it in? Does it replace something I use, or add a layer I do not have? What problem of mine does it solve today? If you cannot answer the third question, bookmark it and move on.
 
+## How the layers connect
+Follow one question through the support bot.
+
+1. A visitor types into the chat page (application).
+2. A short script (orchestration) receives it.
+3. The script turns the question into an embedding, a list of numbers that captures meaning, and finds similar document chunks in the database (data and retrieval).
+4. It sends the question and those chunks to a model API.
+5. The model runs on someone's inference software and returns an answer.
+6. The script logs the full exchange (observability), and a nightly test run checks quality (evals).
+
+Each hop has one job. When something breaks, you ask which hop it was.
+
+## A second example: a stack with fewer layers
+A script reads one text file each morning and emails a three-line summary. It needs a model and a call. There is no vector database, no framework and no protocol. Adding them would add code to maintain and nothing else. A small stack is a good sign, not a gap.
+
+## What goes wrong
+One product covers two layers, so you cannot tell what it replaces. Symptom: a tool you cannot place on the map. Read its docs for the one job it does best.
+
+You skip evals because everything seems to work. Later you change the prompt and cannot tell if answers improved. The symptom is arguments based on feelings. A small test set fixes it.
+
+You pick a layer's tool before understanding the layer. Switching later costs more than learning first.
+
+## Try it yourself
+Take a project idea and draw the six layers as boxes on paper. Mark each as "needed today", "later" or "never". Write one tool name under every "needed today" box. Expect to mark at least two or three layers as "later". Those are the tools you should not install yet.
+
 ## Common mistake
 Adopting tools for layers you do not need yet.
 
@@ -54,6 +79,25 @@ callModel(prompt, options) is the only place in the code that talks to a provide
 ## Where to call from
 Direct from the lab for the newest features. Through a cloud provider when your company already uses it and needs its controls. Through a router when you want to try many models quickly. Prices, limits and features change often, so check the vendor pages.
 
+## What actually differs between providers
+Many things look the same: messages in, a message out. The differences are in the details. The way tool calls are written, how the system prompt is passed, the names of usage fields, the error codes, the rate limits and the rules for caching all vary. An OpenAI-compatible endpoint covers the common core. Features beyond it, such as caching or extended thinking, usually need provider-specific code.
+
+## A second example: a switch that breaks
+You change the base URL and model name, and your app runs. But your prompt asked for JSON and the new model sometimes adds a sentence before it, so your parser fails. Invented numbers for illustration: your test set passed 94 of 100 before and passes 81 of 100 now. Without that test, you would find out from angry users. With it, you adjust the prompt, rerun and decide whether the new model is worth it.
+
+## Trade-offs of each route
+Calling a lab directly gives the newest features and the fewest middlemen. A cloud adds company controls, but a model may arrive there later and some features may differ. A router makes trying models easy, but it puts another company between you and the model. That is one more point of failure and one more place your data passes through.
+
+## What goes wrong
+A model name in your code is retired, and calls start to fail with a not-found error. Keep names in config and read the provider's deprecation notices.
+
+Costs differ for the same text, because each provider splits text into tokens its own way. Compare the logged token counts, not your guess.
+
+A feature you relied on does not exist on the second provider. Isolate such features in one place.
+
+## Try it yourself
+Take the 20-line script from the calling lesson. Change only the base URL, the key and the model name, and point it at a second provider that accepts the same format. Send five prompts to both. Expect the answers to differ in wording and the token counts to differ for identical input.
+
 ## Common mistake
 Using one provider's special features everywhere. Isolate them so they are easy to swap.
 
@@ -91,6 +135,28 @@ You need an agent that can pause for human approval, survive a server restart an
 
 ## How to evaluate one
 Can you see the exact prompts it sends? Can you swap models? How does it handle errors and retries? Who maintains it and how often does it break? Try it on a small real task before committing.
+
+## What a framework does for you
+Every agent has the same loop: call the model, check for a tool call, run it, add the result and repeat until done. A framework wraps that loop and adds three things: saved state, retries and tracing.
+
+Saved state is the part beginners miss. Imagine a six-step task that pauses for approval at step 4. The framework writes a checkpoint after each step. If the server restarts, it resumes at step 4 instead of step 1. Doing this by hand means handling storage, repeated steps and half-finished tool calls.
+
+## A second example: the framework gets in the way
+You want to change one sentence of the system prompt. The framework adds its own instructions around yours and builds the final prompt several layers down. Your edit does nothing visible. To confirm, log the raw request sent to the provider, or use the framework's tracing, and read what the model actually received. If you cannot do either, treat that as a warning sign.
+
+## Trade-offs
+Benefits: less code for state, approvals and tracing, and a shared structure for a team. Costs: a new set of ideas to learn, upgrades that can break your code, and abstractions that leak when something goes wrong. Moving off a framework later is work, because its concepts spread through your code.
+
+Real mechanism versus marketing: nothing in a framework makes the model smarter. It organizes the same API calls.
+
+## Try it yourself
+1. Write the loop yourself in about 30 lines, with one tool and a step cap.
+2. Rebuild the same agent in a framework you are curious about.
+3. Compare line counts.
+4. Check whether you can print the exact prompt each version sends.
+5. Break a tool on purpose and see which version gives the clearer error.
+
+Expect the framework version to be shorter and the hand-written one to be easier to inspect.
 
 ## Common mistake
 Choosing by popularity alone.
@@ -140,6 +206,27 @@ You find a speech-to-text model. The card says: task, speech recognition. Size, 
 
 ## Free learning
 Hugging Face runs free hands-on courses on LLMs, agents, MCP, deep reinforcement learning and diffusion models. They all use the libraries above.
+
+## How a model gets from the Hub to your laptop
+A model repository holds weight files, a config file describing the architecture and the tokenizer files. When you load it, the library downloads these into a local cache folder (a saved copy on disk), builds the model from the config and fills it with the weights. The first run is slow. Later runs reuse the cache.
+
+## Will it fit? A memory check
+Weights take memory equal to parameters times bytes per parameter. Invented 7 billion parameter model at 16 bits (2 bytes each): 7 billion x 2 = 14 billion bytes, about 14 GB. Quantized to 4 bits (half a byte each), it is about 3.5 GB. Real use needs extra memory beyond the weights, so leave headroom.
+
+## A second example: a model that does not fit
+A 70 billion parameter model needs about 140 GB at 16 bits and about 35 GB at 4 bits. A typical laptop cannot hold either. Your options are a smaller model, an inference provider that hosts it, or a machine with more memory. Reading the size before downloading saves an hour.
+
+## What goes wrong
+An out-of-memory error: the model is larger than your memory. Compare file size on the Hub with your free memory.
+
+A repository asks you to allow custom code when loading. That code runs on your machine, so read it first and trust only authors you can check. Prefer weights in the safetensors format, which stores numbers only and cannot run code on load. Older formats can.
+
+The model works but answers poorly in your language or task. The model card lists its training languages and limits. Test on your own examples.
+
+The license forbids your use. This is the failure that costs the most. Read it first.
+
+## Try it yourself
+Search the Hub for a small sentiment model. Read its card and write down task, size, license and one stated limit. Try it in its Space with three sentences, one sarcastic. Expect the plain ones to work and the sarcastic one to be the likeliest mistake.
 
 ## Common mistake
 Downloading a model without reading its license.

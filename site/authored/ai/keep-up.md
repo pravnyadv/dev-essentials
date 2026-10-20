@@ -10,6 +10,28 @@ Lab engineering blogs for how things are built. A practitioner blog with daily l
 ## A worked example: a weekly routine
 Monday, 20 minutes: skim one newsletter for the week's research. Wednesday, 10 minutes: read one engineering blog post fully. Friday, 15 minutes: check the model release tracker and the radar page here. Total under an hour. Anything bigger gets a deeper read, from the primary source.
 
+## Tracing a claim to its source
+A thread says: "New model beats the old one by 20 percent." Follow these steps.
+1. Look for a link. If there is none, search the lab's blog or model card for the release.
+2. Find the table behind the claim and note which test it uses and the settings.
+3. Check who ran it: the lab itself, or an independent group.
+4. Check the date, in case the claim describes an older version.
+
+Suppose the table shows 10 points before and 12 points after. That is a 20 percent relative gain, since 2 divided by 10 is 0.2. It is only a 2 point absolute gain. Both numbers are true, and only the first makes a good headline.
+
+## What goes wrong: five sources that are really one
+Your five newsletters all report the same new result in nearly the same words, with the same number. It feels like strong confirmation. It is often five summaries of one post.
+
+To confirm, follow each link backward. If all of them end at the same page, you have one source, repeated. Count independent sources, not mentions. The lesson is to read the page they all point to.
+
+## How to tell your set is working
+At the end of each month, write down three things you learned and where each came from. Mark each one as primary (paper, docs, repo) or secondary (someone's summary). Replace a source if:
+1. You cannot recall learning anything from it.
+2. It never links to primary sources.
+3. You skim it without reading.
+
+A set that passes keeps you able to say, in one sentence, what changed and what evidence shows it.
+
 ## Common mistake
 Following everything. Sources you do not read are noise.
 
@@ -53,6 +75,24 @@ You are new and want an order to follow: the path on this site, then the beginne
 ## Use this site's library
 The Resource library page lists every link cited in these lessons, with a sentence on what each one is good for, filterable by type. It is smaller than a giant list and every entry is annotated.
 
+## What goes wrong: link rot and repeats
+Open ten random entries on a list. If three lead to an error page, a changed address, or a site that no longer covers the topic, the list is not being maintained. This is link rot, and it grows with age.
+
+A second problem is repetition. Open three lists on the same topic and you often see the same ten resources in each. The real count is not 500 links across three lists. It may be closer to 40 unique ones. To confirm, copy the titles into one document and remove duplicates. The number left is the size of the topic.
+
+## Turning a list into a plan
+A list becomes useful when you add a goal and a limit.
+1. Write one goal, such as "build a small agent that calls two tools".
+2. Find the section of the list that matches and copy five entries into a notes file.
+3. Next to each, write one line on why you picked it.
+4. Spend 15 minutes on each. Cross out any that repeat what you already learned.
+5. Keep the best two and do them this week.
+
+Five entries become two in about an hour and a half. Expect to end with fewer items than you started with. That is the point.
+
+## When a list is the wrong tool
+You have a specific problem, such as "my model returns the wrong chunk". A list will give you broad reading when you need one answer. Search the exact error or symptom, read the docs of the library you use, and ask in its community. Lists suit orientation: what exists, and where to start.
+
 ## Common mistake
 Saving lists you never open. Pick one, take three items, and read them this week.
 
@@ -88,6 +128,25 @@ Use leaderboards to shortlist, then run your own examples. Track a small number 
 
 ## A worked example: is the gap real?
 Model A scores 87.3 and model B 86.9 on a test with 500 questions. With that many questions the typical sampling error is about 1.5 points (about 3 points at 95 percent confidence), so a gap of 0.4 is within noise. Treat them as equal until a larger or different test separates them.
+
+## How the noise estimate works
+A score on n questions is a sample. The typical sampling error is the square root of p times (1 minus p), divided by n, all under one root. For p = 0.87 and n = 500, that is the square root of (0.87 x 0.13) / 500, which is about 0.015, or 1.5 points.
+
+A gap between two scores is noisier than either score alone, because both carry error. Treating them as independent, the gap error is about 1.5 times the square root of 2, or about 2.1 points. About 95 percent of the time the true gap sits within roughly twice that. A 0.4 gap is far inside it. Models tested on the same questions have a tighter gap in practice, but 0.4 still tells you very little.
+
+## What goes wrong: a model that has seen the test
+Contamination means test questions appeared in the training data. The symptom is a high public score that does not carry over. A model scores 90 on a famous test, then does much worse on questions you wrote in the same style.
+
+To check, write 20 fresh questions of the same type and compare. A large drop suggests memorization. It does not prove it, since your questions may also be harder.
+
+## When a public benchmark is the wrong tool
+You summarize legal contracts. A coding leaderboard tells you almost nothing about that. Build your own test:
+1. Collect 30 real inputs from your work.
+2. Write the answer you want for each, or a short rubric (a checklist for grading).
+3. Run each candidate model three times on all 30.
+4. Record the average and the spread between runs.
+
+If a model's three runs vary by more than the gap between models, you cannot separate them yet. Add more examples.
 
 ## Common mistake
 Quoting a single number without its context.

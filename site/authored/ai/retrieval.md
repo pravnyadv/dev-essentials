@@ -19,6 +19,28 @@ A: "How do I reset my password?" B: "I forgot my login details." C: "What is the
 ## What the numbers are
 Hundreds or thousands of values per text. Individually they mean nothing you could name. Together, the pattern places the text in a space where distance means difference in meaning.
 
+## How a model learns where to put text
+Embedding models are usually trained on pairs of texts that belong together, such as a question and the passage that answers it. Each round nudges the model's weights so the pair moves closer. The same round pushes the pair away from unrelated texts in the same batch (a batch is a group of examples handled together). After millions of rounds, topics form clusters.
+
+Here is one round with invented numbers:
+1. The pair is "reset password" and "forgot login". The model scores them 0.20.
+2. It scores "reset password" against "pizza in Rome" at 0.35, which is wrong.
+3. Training shifts the weights so the first score rises and the second falls, say to 0.25 and 0.30.
+4. Millions more rounds repeat this until the related pair clearly wins.
+
+## A second example: where embeddings blur
+Take "The hotel was clean" and "The hotel was not clean". The words are almost identical and the meanings are opposite. Embeddings often rate such a pair as very close, because both are about a hotel and its cleanliness. The same happens with "refund within 30 days" and "refund within 3 days": the number changes and the vector barely moves.
+
+Embeddings capture topic well and fine detail poorly. Negations, numbers, rare names and error codes are the weak spots. Later lessons cover the fixes: keyword search catches exact strings, and a reranker reads question and passage together.
+
+## How to tell it is working
+Write 10 pairs of sentences: five that should match and five that should not. Embed all of them and compute the cosine similarity for each pair. Every matching pair should score above every non-matching pair. If one does not, note what kind of pair failed (negation, number, name) so you know the model's blind spot.
+
+Compare scores only within one model. A score of 0.82 from one model has no fixed meaning in another, because each model spreads its scores differently.
+
+## Try it yourself
+Use any free sentence-embedding tool or a small open model. Embed these four sentences: "I love this phone", "I hate this phone", "This phone is great", "The train leaves at noon". Expect the three phone sentences to score well above the train sentence. Then look at how close "I hate this phone" sits to "I love this phone". Opposites that score as similar show what embeddings cannot do.
+
 ## Common mistake
 Using an embedding as if it were an answer. It only helps you find related text. A model still has to read it and respond.
 
@@ -52,6 +74,26 @@ Dimensions: the vector length. More dimensions can carry more detail and cost mo
 
 ## A worked example: a 20-minute bake-off
 Collect 30 real questions and note which document answers each. Embed all documents with three candidate models. For each question, check whether the right document is in the top five. Example results (invented for illustration): model X 24 out of 30, model Y 27, model Z 21. Pick Y unless X is much cheaper or faster. Repeat when your documents change character.
+
+## What you pay for each choice
+Dimensions cost storage. With invented numbers: 1,000,000 vectors of 1,024 numbers at 4 bytes each is 4,096,000,000 bytes, about 4.1 GB. The same vectors cut to 256 numbers take about 1 GB. Search also gets faster, but each vector holds less detail.
+
+A hosted API means no servers to run, but your text leaves your machine and the provider may retire a model, which forces a re-embed. An open model you host keeps data in-house and the model fixed, but you run the hardware.
+
+Input length matters too. Text longer than the model's limit is cut off by some providers and rejected by others, so check the docs and chunk below the limit.
+
+## What goes wrong
+The most common failure is a language or domain mismatch. Your documents are in Spanish, the model was trained mostly on English, and results look nearly random. Confirm it by running 10 questions in Spanish and counting how often the right document appears in the top five.
+
+Another quiet failure is a missing instruction. Some models expect a short label telling them whether the text is a question or a document. Leaving it out lowers quality without any error message. The model's documentation says whether it is needed.
+
+A leaderboard score is an average over many tasks. It says little about your contracts, your slang or your product names.
+
+## A second example: when a small model is enough
+A team has 200 short FAQ entries and users who copy wording from the page. A small, cheap model gets 28 of 30 test questions right (invented numbers). A large model gets 29. The extra point does not justify a higher bill and slower calls, so they keep the small one. Paying for a bigger model only makes sense when your own test shows it helps.
+
+## Try it yourself
+Take 15 questions from real users and the documents that answer them. Test two models, one small and one large, and count how often the right document lands in the top five. Time both. Expect the gap to be small for easy, well-worded questions and larger for vague ones. Write the result down with the date, so you can rerun it when a new model appears.
 
 ## Common mistake
 Changing the embedding model later without re-embedding everything. Old and new vectors cannot be compared.
@@ -93,6 +135,20 @@ Most text embedding models are trained for cosine similarity or produce vectors 
 ## A worked example: why cosine ignores length
 a = [1, 2] and b = [10, 20]. They point the same way, b is just ten times longer. Dot product: 1×10 + 2×20 = 50, large. Cosine: 50 / (√5 × √500) = 50 / 50 = 1, a perfect match. Euclidean distance: √(81 + 324) = 20.1, far apart. For comparing meaning you usually want cosine, so a long document is not penalized or favored for its length.
 
+## A third example: when length is a feature
+Some recommender systems learn vectors where a longer vector means a more popular item. Take a user u = [1, 1] and two items p = [2, 2] and q = [1, 1]. Dot product: u·p = 2 + 2 = 4 and u·q = 1 + 1 = 2, so p ranks first. Cosine is 1 for both, a tie. Here the dot product is what you want, because the model deliberately stored popularity in the length. The metric must match how the vectors were trained.
+
+## What goes wrong
+Suppose your vectors are not normalized and you rank with the dot product. Use query [1, 1], item x = [10, 0] and item y = [1, 1.2]. Dot product: x scores 10 and y scores 2.2, so x wins. Cosine: x is 10 / (10 × 1.414) = 0.71 and y is 2.2 / (1.414 × 1.562) = 0.996. Item y points almost exactly where the query points, yet x wins on length alone.
+
+The symptom is results that feel off-topic but oddly confident, often the same long documents showing up for many queries. To confirm, compute the length of 100 stored vectors. If the lengths vary a lot and you use the dot product, length is steering the ranking.
+
+## Reading the scores
+A cosine score has no universal meaning. 0.8 can be a strong match with one model and a weak one with another. Do not copy a cutoff such as "keep results above 0.75" from a blog post. Look at the scores for 20 of your own queries, mark which results were right, and pick a cutoff from that.
+
+## Try it yourself
+In a spreadsheet, enter the vectors a = [1, 2], b = [10, 20] and c = [2, 1]. Compute dot product, cosine and Euclidean distance for a against b and a against c. You should find that cosine says b is a perfect match for a (1.0) and c is 0.8, while Euclidean distance says c is closer. Check: a·c = 2 + 2 = 4, and 4 / (√5 × √5) = 0.8. Seeing the two metrics disagree on the same data explains why the choice matters.
+
 ## Common mistake
 Mixing metrics between indexing and querying.
 
@@ -125,6 +181,27 @@ A report page has two columns and a small table. Plain extraction reads across t
 
 ## How to check it
 Before you index thousands of pages, parse ten and put them beside the originals. Look for tables that fell apart, text in the wrong order, footers repeated on every page and pages that came back empty. Strip repeated headers and footers. Keep the page number and the section title with each chunk, so answers can cite where they came from.
+
+## How a parser rebuilds structure
+A PDF with a text layer stores each character with an x and y position on the page. A parser works in steps:
+1. Group characters into words and lines by their positions.
+2. Group lines into blocks, using the gaps between them.
+3. Decide the reading order, for example all of column one before column two.
+4. Detect tables from aligned columns or ruled lines, and write them out as rows.
+5. Drop or tag repeated headers and footers.
+
+Simple libraries do the first steps. Layout-aware tools add a model that looks at the page shape and labels each region as heading, paragraph, table or figure.
+
+## A second example: a scanned page
+A scanned contract has no characters at all, only pixels. OCR finds regions that look like text, then guesses each character. It makes typical mistakes: a zero read as the letter O, or "rn" read as "m". A clause number or an amount can change without any warning. Some vision models read the page image directly, but they can also misread digits or tidy up wording, so check amounts against the original.
+
+## Trade-offs
+Simple libraries are fast and free but ignore layout. Layout-aware tools are slower and need more computing power. Vision models handle messy pages best and cost the most per page. Choose by document type: clean exported PDFs rarely need more than a simple library, while scans and multi-column reports do.
+
+## What goes wrong
+The failures are quiet. A table becomes one long line, so no chunk holds a clean row. Page numbers appear in the middle of sentences. A page returns almost nothing because it was an image.
+
+To confirm, count characters per page. Any page with fewer than about 20 characters deserves a look. Then pick one known phrase from the original and search the parsed text for it. If you cannot find it, the parser lost it.
 
 ## Common mistake
 Treating "I extracted the text" as the end of ingestion. A scanned file that quietly returns an empty string will never be retrieved, and nobody notices until a user asks about it.
@@ -161,6 +238,32 @@ Start with structural splitting at 200 to 500 tokens and tune on your evals. Kee
 ## A worked example: overlap
 Text: "... demand rose. Prices increased by 4 percent because supply was limited. The central bank ..." Chunk 1 ends after "Prices increased by" and chunk 2 starts at "4 percent because". Neither holds the whole fact. With a 50-token overlap, chunk 2 starts a few sentences earlier and contains it whole.
 
+## How a fixed-size splitter works
+Take a document of 1,000 tokens, a chunk size of 400 and an overlap of 50. Each chunk starts 350 tokens after the previous one (400 minus 50). The chunks are:
+1. Tokens 1 to 400.
+2. Tokens 351 to 750.
+3. Tokens 701 to 1,000, which is shorter because the document ends.
+
+The overlap means the index stores about 14 percent more text than the document holds (400 divided by 350). That is the price of keeping boundary sentences whole.
+
+## Trade-offs in size
+Bigger chunks keep more context but match less precisely, and each one uses more of the prompt. Five chunks of 500 tokens put 2,500 tokens in the prompt. Five chunks of 200 tokens put 1,000. Smaller chunks are cheaper to send and sharper to match, but they lose the surrounding facts. Hierarchical chunking tries to get both.
+
+## A second example: when not to chunk much
+A help center has 300 FAQ entries, each 80 tokens, one question and one answer. Each entry is already one idea, so splitting further would only cut answers in half. A 2-page memo fits in a prompt whole, so it needs no retrieval at all. Chunking earns its place on long documents with many topics.
+
+## What goes wrong
+Symptoms you can see by reading real chunks:
+1. A chunk that starts mid-sentence, so the split ignored the text's structure.
+2. A chunk that says "it" or "the product" with no hint of which one.
+3. A table row separated from its column headers.
+4. A chunk that mixes two topics, so it matches both questions badly.
+
+To confirm, print ten random chunks and read them as if you were the model. If a chunk makes no sense alone, it will not retrieve well either.
+
+## Try it yourself
+Take one long document and 15 questions with known answers. Split it at 200 tokens and again at 600. For each question, check whether the right text appears in the top five chunks. Expect the small size to win on precise facts and the large size to win on questions needing context. Pick by your numbers.
+
 ## Common mistake
 Choosing the size by guesswork and never measuring. Try two sizes and compare recall on your test questions.
 
@@ -195,6 +298,26 @@ Under a million vectors, almost anything works, so choose by what you already ru
 
 ## A worked example: why indexes exist
 One million vectors of 1,536 numbers: comparing a query with all of them is about 1.5 billion multiplications per search. An HNSW index jumps through a graph of neighbors and checks maybe a few thousand vectors, finding the nearest almost every time. You trade a tiny chance of missing the very best match for a hundred-fold speedup.
+
+## How a graph search finds a neighbor
+An HNSW index links each vector to a few nearby vectors, and keeps sparser copies of the graph on top. A search runs like this:
+1. Start at a fixed entry point in the top layer.
+2. Move to whichever linked vector is closest to the query, and repeat until no neighbor is closer.
+3. Drop to the next, denser layer and continue from that spot.
+4. At the bottom layer, keep a short list of the best candidates and return the closest ones.
+
+It is like finding a street by first picking the right city, then the district, then the block. Implementations usually have a setting for how wide that final candidate list is. A wider list is slower and more likely to find the true nearest vector.
+
+## A second example: when you do not need one
+Say you have 5,000 chunks of 1,536 numbers. Comparing a query with all of them is 5,000 × 1,536 = 7,680,000 multiplications, which a laptop does in a blink. A plain array and a loop are enough, with no database to install. An index starts to pay off when scanning everything becomes the slow part, so measure before you add one.
+
+## What goes wrong
+Filtering is the common trap. Some systems find the 10 nearest vectors first and apply the filter afterwards. Ask for 10 results in country = Canada, and if only 2 of the overall top 10 are Canadian, you get 2 results. The symptom is fewer results than you asked for. Confirm it by running the same query without the filter and counting how many of the top 10 pass it.
+
+Other quiet problems: deleted documents that still appear until the index is rebuilt, and an index too big for memory, which slows every query. Check how your database handles both before you depend on it.
+
+## Measuring the trade-off
+Approximate search can miss the true best match. Measure recall: for 100 test queries, compare the index's top 10 with the exact top 10 from a plain scan. If 9.5 of 10 match on average, recall is 95 percent. Then ask whether a lost 5 percent matters for your product. For a help center it usually does not, because the 11th-best passage is rarely needed.
 
 ## Common mistake
 Choosing by benchmark charts rather than by what your team can operate. Operations cost more than a few milliseconds.
@@ -241,6 +364,23 @@ Keyword results: page A (1st), B (2nd), C (3rd). Semantic results: D (1st), A (2
 ## When to use which
 Product codes, names, error messages, legal citations: keyword helps most. Vague questions in natural language: semantic helps most. Do both and let fusion decide.
 
+## How BM25 gives a score
+BM25 rests on three ideas. A rare word is worth more than a common one. A word repeated many times helps, but each repeat adds less. A very long page is slightly discounted, so it does not win just by containing more words.
+
+Here is the rarity idea in simplified form, with invented numbers. Among 1,000 pages, "ERR_4021" appears in 2 and "the" appears in 990. Using a natural logarithm, a rarity weight is about ln(1000 / 2) = 6.2 for the code and ln(1000 / 990) = 0.01 for "the". The code is worth about 600 times more. Real BM25 uses a slightly different formula, but the effect is the same.
+
+## A second example: fusion going wrong
+Reciprocal rank fusion uses only ranks, not scores. Suppose the semantic list puts a junk page 1st, and the keyword list does not contain it. Junk scores 1/61 = 0.0164. A good page ranked 3rd in both lists scores 1/63 + 1/63 = 0.0317, so it beats the junk. Agreement between lists protects you. But if one list is poor for a query type, its top results still get a boost, so a weak list can add noise.
+
+## What goes wrong
+Keyword search fails on small spelling differences: "e-mail" against "email", or "colour" against "color". The symptom is a page you know exists that never appears for one phrasing. Semantic search fails on exact identifiers and on negations. Test both lists separately with the same query before you blame the fusion step.
+
+## Trade-offs
+Hybrid search means two indexes to build and keep in sync, and two searches per question, so it adds time and upkeep. It pays off when your users mix exact terms and vague questions. If your corpus is all long natural prose and your users ask conversational questions, semantic search alone may be enough.
+
+## Try it yourself
+Write 15 queries: five with exact codes or names, five vague, five mixed. Run keyword only, semantic only, then fusion. For each, note whether the right page is in the top five. Expect keyword to win the first group, semantic the second, and fusion to be rarely worst. If fusion adds nothing for your data, skip it.
+
 ## Common mistake
 Adding hybrid search without a test set, so you cannot tell if it helped.
 
@@ -271,6 +411,22 @@ Question: "Can I return a gift card?" Stage one finds three passages with embedd
 
 ## Using one
 Fetch 30 to 100 candidates, rerank them, keep 3 to 10. The reranker adds time, often tens to a few hundred milliseconds depending on the model and the number of passages, and some cost. Measure it: run your test questions and compare recall at 5 before and after, as in the evaluating RAG lesson. Keep the reranker only if the gain is worth the delay.
+
+## Why it cannot be the first stage
+In stage one, every passage was turned into a vector in advance. At query time you embed only the question and compare. A cross-encoder cannot do this, because its score depends on the question and the passage together. It must run once per pair, at query time.
+
+Invented numbers: if one run takes 4 ms, reranking 50 candidates costs 50 × 4 = 200 ms. Reranking a million passages would take 4,000,000 ms, over an hour. So stage one narrows the field and the reranker only sees the shortlist.
+
+## What goes wrong
+A reranker can only reorder what it is given. If the right passage is not among the 50 candidates, no reranker can find it. The symptom is a top result that looks plausible but is wrong. To confirm, check whether the correct passage was in the candidate list at all. If it was missing, fix stage one (chunking, hybrid search, query rewriting), not the reranker.
+
+Long passages are another trap. Rerankers have a maximum input length, and text past it is usually cut off, so a key sentence at the end of a long chunk may never be read.
+
+## A second example: when it adds nothing
+Question: "Where is the Paris office?" Stage one already ranks the passage "Our Paris office is at 12 Rue Example" first, and the second place is far behind. A reranker would confirm the order and add 200 ms. Reranking helps on questions where several passages look alike, such as the gift card case above. Test on your own question mix to see how many are that hard.
+
+## Trade-offs
+You gain accuracy on the final few results. You pay in delay, in hosting or per-call cost, and in one more moving part. Fetch more candidates for better recall, but each extra candidate adds time. A common starting point is 50 candidates in, a handful out.
 
 ## Common mistake
 Reranking only the 5 results you already planned to use. There is nothing to reorder. The point is to search wide, then narrow.
@@ -309,6 +465,24 @@ Step through the pipeline in the demo above.
 
 ## A worked example: one question end to end
 Index time: the handbook is split into 400 chunks, each embedded and stored with its title. Query time: the question is embedded, the five nearest chunks are fetched, a short prompt says "Answer only from these excerpts and cite them. If they do not contain the answer, say so." The model replies with the answer and a citation. A person can click the citation and verify.
+
+## What the model actually receives
+The model never sees your database. It sees one long prompt that your code assembled. In order, it holds the rules (answer only from the excerpts, cite them, admit gaps), then each retrieved chunk with a label such as its title and section, then the user's question. The model reads it like any other text. Because of this, a RAG answer can only be as good as what your code pasted in.
+
+## A second example: when RAG is the wrong tool
+"Summarize this 3-page contract" needs no retrieval, because the whole text fits in the prompt. Retrieval would only risk leaving out a clause. A question like "How many of our policies mention data retention?" is also a poor fit. Retrieval returns the five best-matching chunks, not every match, so the count would be wrong. Questions that need the whole collection need a different tool, such as a database query.
+
+## What goes wrong
+Failures you will see:
+1. A confident wrong answer, because the right chunk was missing and the prompt did not allow "I do not know".
+2. A blended answer, because two chunks disagree (a 2019 policy and a 2024 one) and the model mixed them.
+3. A citation that does not support the claim. The model attached a real source to a sentence it made up.
+4. An outdated answer, because the index was not rebuilt after the document changed.
+
+For each, print the retrieved chunks first. Then ask two questions in order: was the right chunk there, and did the answer use it? The first decides whether to fix retrieval. The second decides whether to fix the prompt.
+
+## Try it yourself
+Paste five short paragraphs from any handbook into a chat with a model. Ask three questions the paragraphs answer and two they do not. Add the instruction to answer only from the excerpts and admit gaps. Expect correct, cited answers to the first three and "the excerpts do not say" to the last two. Remove the instruction and ask the two unanswerable questions again. Compare how often the model guesses instead.
 
 ## Common mistakes
 Skipping the "say you do not know" instruction. Letting retrieval pull documents a user is not allowed to see.
@@ -349,6 +523,24 @@ HyDE: have the model write a short hypothetical answer, then search with that te
 ## A worked example
 Chat: "What is the refund window?" The bot says 30 days. The user asks: "And for gift cards?" Searching that text returns random gift card pages. The rewrite step, given the history, produces: "What is the refund policy for gift cards?" and now the right chunk is found. For "How do I recover my account?", a multi-query rewrite searches "reset password", "locked out of account" and "forgot username", then merges the three lists with reciprocal rank fusion.
 
+## How to write the rewrite step
+The rewriter is a small prompt with clear rules:
+1. Give it the last few chat turns and the new message.
+2. Ask for one standalone question with no pronouns.
+3. Tell it to keep every name, number, date and place exactly.
+4. Tell it to return the question unchanged if it is already clear.
+
+Keep the original question too. If the rewrite goes wrong, you can fall back to searching the user's own words.
+
+## A second example: when a rewrite hurts
+A user types "ERR_4021 refund". A helpful rewriter might turn it into "problems with payment errors". The exact code is gone, so keyword search can no longer find the one page that mentions it. Short, precise queries with identifiers are best left alone. HyDE has a related risk: the invented answer may contain wrong facts, and those wrong facts then steer the search toward the wrong documents.
+
+## What goes wrong
+The symptom is recall that drops for questions that used to work. Another sign is a rewrite that answers instead of asking, such as returning "30 days" in place of a question. A third is cost: multi-query runs three searches instead of one, so latency and spend rise.
+
+## How to tell it is working
+Log the original question and the rewrite side by side for 20 real conversations and read them. Then compute recall at 5 on your test set with and without the rewrite step, split by question type: follow-ups, vague questions and clear questions. Keep the step where it helps and skip it where it does not.
+
 ## When to use it
 Add it when your test set shows misses on follow-ups, vague questions or vocabulary mismatches between users and documents. It costs one extra model call, so use a small fast model and skip it for clear, self-contained questions. Measure recall before and after.
 
@@ -386,6 +578,20 @@ Permissions belong in metadata filters applied by your code, not in the prompt. 
 ## A worked example: extracting filters
 Question: "What was the warranty on the 2023 Model X in Spain?" The system asks a model to return a small JSON: {query: "warranty terms", year: 2023, product: "Model X", country: "ES"}. Your code checks the values against allowed lists, applies them as filters, and then runs the semantic search on the query text.
 
+## How a filtered search runs
+A filtered query has two parts: the meaning ("warranty terms") and the conditions (year = 2023, country = ES). The database can apply the conditions before the vector search, so only matching chunks compete. It can also apply them after, trimming the nearest results. Filtering first is safer because the shortlist cannot be emptied by the filter. Check how your database does it.
+
+## A second example: a filter that hurts
+A user asks "What is the warranty on Model X?" and says nothing about a year. If the model guesses year = 2024, every chunk from other years is excluded, including the one with the answer. Filters should come only from what the user actually said or what your app knows, such as their country on file. When a value is missing, leave that filter out or search broadly and show the year in the answer.
+
+## What goes wrong
+Messy metadata causes silent misses. One document is tagged "US", another "USA", a third "United States". A filter for "US" skips the other two. A document with no date tag fails every date filter. The symptom is "I cannot find that" for a document you know exists. Confirm by repeating the search without the filter. If it appears, the tags are the problem.
+
+Also watch for filters that are too strict. Three filters at once may leave no chunk to match.
+
+## Try it yourself
+Tag 20 short chunks with a country and a year, using a few spellings on purpose. Run one query with no filter and one with country = Canada. Count the results. Expect the filtered search to remove the wrong-country chunks, and expect it to also drop any chunk tagged "CA" or "Canada " (with a stray space). Fix the tags to one allowed list and rerun.
+
 ## Common mistake
 Relying on "do not reveal confidential data" in the prompt. A prompt is not a lock.
 
@@ -413,6 +619,22 @@ RAG puts the right facts in the prompt at question time. The model is unchanged.
 
 ## A decision guide
 Does the model need facts that change or are private? Use RAG. Does it need a consistent tone, a fixed output format or to follow a complicated procedure reliably? Try prompts and examples, then consider fine-tuning. Do you need a small cheap model to match a big one on a narrow task? Fine-tune it, using the big model's outputs as training data. Many production systems use both: a fine-tuned model for style and format, and RAG for facts.
+
+## What each one costs you
+RAG adds work on every call: a search, extra prompt text and sometimes a reranker. Its setup is light, and updating knowledge means re-indexing a document. Fine-tuning has the opposite shape. It needs a set of good example inputs and outputs that you write or collect, a training run and a test that the model did not get worse elsewhere. Once trained, calls are not slower, and the prompt can be shorter.
+
+Changing a fact is the clearest difference. With RAG you edit the document. With fine-tuning you must prepare new examples and train again, and you cannot easily point to where a fact lives in the weights.
+
+## A second example: neither is needed
+A team wants replies in a fixed three-line format. They try a clear instruction plus three example replies in the prompt, and the format comes out right in 19 of 20 tests (invented numbers). That costs nothing to maintain. Fine-tuning would add training and testing for a gain they do not need. Always try the prompt first.
+
+## What goes wrong
+A fine-tuned model states old facts with full confidence, because they are baked into its weights. To check, ask it a question whose answer changed after training. A RAG system fails differently: the right chunk is not found, so the model guesses or declines. Look at the retrieved chunks to tell which one you have.
+
+Fine-tuning on a small, uneven set can also narrow the model. It copies the style of the examples and gets worse on other tasks, which is why you test on questions outside the training set.
+
+## Try it yourself
+Pick one task, such as answering questions about a small policy document. Try three setups on the same 10 questions: the prompt alone, the prompt with the document pasted in, and (if the document is too long to paste) the prompt with retrieved excerpts. Score each by counting correct answers. Expect the first to guess, and the others to improve sharply. That gap is what RAG buys, with no training at all.
 
 ## Common mistake
 Reaching for fine-tuning first because it sounds advanced. It is usually the more expensive, slower, harder-to-update option.
@@ -449,6 +671,20 @@ Change one thing, such as chunk size, embedding model or reranker, and rerun bot
 
 ## A worked example: scoring retrieval
 Five test questions. The right chunk is ranked 1st, 3rd, not found in the top five, 1st and 2nd. Recall at 5 is 4 out of 5 = 0.8. Reciprocal ranks: 1, 0.33, 0, 1, 0.5, so MRR = 2.83 / 5 = 0.57. Change the chunk size and rerun. If recall rises to 0.9, keep it.
+
+## Building the test set
+Start with 30 to 50 questions. Take them from real user logs if you have them, and write the rest by hand. For each, record the chunk or page that answers it. Include some questions the documents cannot answer, with the expected result "I do not know". Cover the types your users ask: exact lookups, vague questions and follow-ups.
+
+## A second example: scoring faithfulness
+Faithfulness checks each claim in an answer against the retrieved chunks. The chunk says "Employees receive 25 days after 12 months." The answer "25 days" has one claim, and it is supported: 1 out of 1. The answer "25 days, plus 5 sick days" has two claims, and only the first is supported: 1 out of 2, a faithfulness of 0.5. The retrieval was fine here. The generation step added something unsupported, so the fix is in the prompt, not the index.
+
+## What goes wrong
+Small test sets are noisy. With 10 questions, one question is 10 percentage points, so 0.8 against 0.9 may be a single flip. With 50 questions, one is 2 points. Do not celebrate a small gain on a small set.
+
+Tuning on the same questions you score on overfits: you pick settings that suit those questions and nothing else. Keep some questions aside as a final check. A model judge can also be wrong or favor longer answers, so read a sample of its verdicts yourself.
+
+## Trade-offs
+More questions mean more reliable numbers but more labeling work. Model judges are cheap and fast, but need calibration. Human review is slow and trustworthy. A practical split is a model judge on every change and human review on a small sample.
 
 ## Common mistake
 Changing three things at once. You will not know which one helped.
