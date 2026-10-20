@@ -2,6 +2,7 @@
 import { useProgress } from './progress.jsx'
 import LinkCard from './LinkCard.jsx'
 import SectionHeading from './SectionHeading.jsx'
+import GithubIcon from './GithubIcon.jsx'
 import { Bar } from './ui.jsx'
 
 const line = 'fill-none stroke-current'
@@ -26,11 +27,12 @@ const NetworkArt = () => (
 const ART = { '/dsa': ArrayArt, '/ai': NetworkArt }
 
 // Landing page: pick a track and see how far you are in each.
-export default function TrackPicker({ tracks }) {
+export default function TrackPicker({ tracks, repoUrl }) {
   const progress = useProgress()
   return (
     <main id="nd-page" className="relative isolate mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center gap-10 px-4 py-12">
       <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(var(--color-fd-border)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+      <a href={repoUrl} target="_blank" rel="noreferrer" className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full border bg-fd-card px-3.5 py-1.5 text-sm font-medium shadow-sm transition hover:border-fd-foreground/40 max-md:min-h-11"><GithubIcon className="size-4" />GitHub</a>
       <header className="text-center">
         <p className="text-sm font-medium uppercase tracking-widest text-fd-muted-foreground">Learn by doing</p>
         <SectionHeading level={1} className="mt-3 text-balance sm:!text-5xl">What do you want to learn?</SectionHeading>

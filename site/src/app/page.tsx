@@ -1,6 +1,7 @@
 import TrackPicker from '@/components/shared/TrackPicker';
 import ai from '@/generated/ai.json';
 import dsa from '@/generated/dsa.json';
+import { repoUrl } from '@/lib/shared';
 
 const lessons = Object.values(ai.topics) as { minutes: number }[];
 const hours = Math.round(lessons.reduce((n, t) => n + t.minutes, 0) / 60);
@@ -22,5 +23,5 @@ export default function Home() {
       ids: Object.keys(ai.topics),
     },
   ];
-  return <TrackPicker tracks={tracks} />;
+  return <TrackPicker tracks={tracks} repoUrl={repoUrl} />;
 }
