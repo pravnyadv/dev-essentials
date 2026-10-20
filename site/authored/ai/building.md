@@ -410,13 +410,13 @@ Few tools, clear names, short descriptions that say when to use them. Return sma
 Giving the server broad access "just in case". Point it at one folder and nothing else.
 
 ## The code
-With the official Python SDK (`pip install mcp`), a small server is a few lines. Each function with a docstring becomes a tool whose description the model reads.
+With the official Python SDK (`pip install mcp`, version 2 or later), a small server is a few lines. Each function with a docstring becomes a tool whose description the model reads. Older tutorials import `FastMCP` from `mcp.server.fastmcp`. Version 2 renamed it `MCPServer`, so use the import below or pin `mcp<2` for the old code.
 
 ```python
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from pathlib import Path
 
-mcp = FastMCP("notes")
+mcp = MCPServer("notes")
 NOTES = Path("~/notes").expanduser()  # the one folder this server may read
 
 @mcp.tool()

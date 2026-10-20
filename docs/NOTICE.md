@@ -12,6 +12,6 @@ The MIT notice of each project applies to the material taken from it: permission
 modify and distribute is granted provided the copyright and permission notice is included.
 
 The AI lessons, stories, quizzes and curated resource lists are original work covered by this
-repository's [LICENSE](LICENSE). Linked articles, videos, papers and courses belong to their authors.
+repository's [LICENSE](../LICENSE). Linked articles, videos, papers and courses belong to their authors.
 [roadmap.sh](https://roadmap.sh/ai-engineer) is used only as a checklist of topics (`npm run coverage`).
 None of its content is copied, because its license does not allow reuse.

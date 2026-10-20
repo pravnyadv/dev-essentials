@@ -204,7 +204,7 @@ A farmer notices that every extra bag of fertilizer adds a bit more corn, but ea
 A raw language model is not a product. Post-training, an interface and a lot of scale turned it into one, then labs kept improving it on several fronts at once.
 
 ## The product moment
-OpenAI's InstructGPT work in 2022 used human feedback to make GPT-3 follow instructions. On 30 November 2022 OpenAI released ChatGPT, a chat interface on a model tuned this way. It reached a hundred million users in about two months. In 2023 Anthropic released Claude, Meta released Llama with downloadable weights, and Google followed with its Gemini models. GPT-4 added image input and much stronger reasoning.
+OpenAI's InstructGPT work in 2022 used human feedback to make GPT-3 follow instructions. On 30 November 2022 OpenAI released ChatGPT, a chat interface on a model tuned this way. A UBS estimate put it at 100 million monthly users about two months after launch, faster than earlier consumer apps. In 2023 Anthropic released Claude, Meta released Llama with downloadable weights, and Google followed with its Gemini models. GPT-4 added image input and much stronger reasoning.
 
 ## The levers labs pulled
 More scale: larger runs on more compute. Better data: filtering, deduplication and synthetic data. Better post-training: preference tuning, then reinforcement learning on tasks with checkable answers. Test-time compute: reasoning models, starting with OpenAI's o1 in late 2024 and the open DeepSeek-R1 in early 2025, spend extra tokens thinking and improve at math and code. Longer context: from a few thousand tokens to hundreds of thousands and beyond. Efficiency: mixture-of-experts, distillation of big models into small ones, and quantization. Multimodality: images, audio and video in and out. Tools: the model calls code, search and APIs, which led to agents.
@@ -237,7 +237,7 @@ Two labs release models in the same month. How should a company decide which to 
 ```
 
 ```story
-In November 2022 a research lab put a chat box on top of a model that had existed for months in a developer tool. Nothing about the model had changed overnight, but the box made it usable by anyone. A hundred million people tried it within about two months. The lesson: a capability becomes a revolution when someone makes it easy to use.
+In November 2022 a research lab put a chat box on top of a model that had existed for months in a developer tool. Nothing about the model had changed overnight, but the box made it usable by anyone. An estimated hundred million people were using it within about two months. The lesson: a capability becomes a revolution when someone makes it easy to use.
 ```
 
 # ai-engineer-role | What is an AI engineer? | 1 | 10

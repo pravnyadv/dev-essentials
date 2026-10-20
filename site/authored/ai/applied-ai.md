@@ -62,7 +62,7 @@ Why do big systems use a candidate stage first? | It lets them skip ranking alto
 ```
 
 ```story
-In 2006 Netflix offered one million dollars to anyone who could improve its movie predictions by 10 percent. A team won in 2009 with a blend of more than a hundred models. Netflix later said it never ran the full winner, because the engineering cost was too high for the gain. Simple and good enough often beats best on paper.
+In 2006 Netflix offered one million dollars to anyone who could improve its movie predictions by 10 percent. A team won in 2009 with a blend of many models. Netflix later said it never ran the full winner, because the engineering cost was too high for the gain. Simple and good enough often beats best on paper.
 ```
 
 # forecasting-and-fraud | Forecasting, fraud and anomaly detection | 2 | 15
@@ -74,7 +74,7 @@ Forecasting predicts a future value from past values: sales, energy use, traffic
 For tables of numbers, simple models (linear models, decision trees, boosted trees) often match or beat large neural networks, train in seconds and are easier to explain.
 
 ## A worked example: forecast error
-Actual sales over three days: 100, 120, 110. Forecast: 105, 115, 120. Errors: 5, 5, 10. The mean absolute error is (5 + 5 + 10) / 3 = 6.7 units a day. The naive "same as yesterday" forecast would be off by 20, 10, 10, so it has a mean error of 13.3 and the model has to beat that to be useful.
+Actual sales over three days: 100, 120, 110. Forecast: 105, 115, 120. Errors: 5, 5, 10. The mean absolute error is (5 + 5 + 10) / 3 = 6.7 units a day. The naive "same as yesterday" forecast can only be scored on days 2 and 3: it predicts 100 and 120, so it is off by 20 and 10, a mean of 15. On those same two days the model is off by 5 and 10, a mean of 7.5, so it beats the baseline.
 
 ## A worked example: rare events
 Out of 100,000 card payments, 100 are fraud. A model that always says "not fraud" is 99.9 percent accurate and catches nothing. This is class imbalance. Use precision (of the cases flagged, how many were right) and recall (of the real cases, how many were found). Say a model flags 200 payments and 80 are truly fraud. Precision is 80 / 200 = 40 percent. Recall is 80 / 100 = 80 percent. Which matters more depends on what a miss costs against what a false alarm costs.
@@ -95,7 +95,7 @@ When is anomaly detection a good fit? | You have few or no labeled examples of t
 ```
 
 ```story
-In 2021 the real estate company Zillow shut down its house-buying business after its pricing models paid more for homes than it could resell them for, losing hundreds of millions of dollars. The model was good on past data. The market moved faster than the forecast, which is the risk of every prediction about the future.
+In 2021 the real estate company Zillow shut down its house-buying business after its pricing models paid more for homes than it could resell them for, losing hundreds of millions of dollars. Home prices moved faster than its forecasts, which is the risk of every prediction about the future.
 ```
 
 # computer-vision-in-practice | Computer vision in practice | 2 | 14
@@ -217,13 +217,13 @@ Healthcare: reading scans, writing visit notes, finding patients at risk. Regula
 Rate each task on two lines: cost of a mistake, and how easily a person can check it. Summarizing a meeting: low cost, easy to check, so automate and sample. Drafting a contract clause: medium cost, checkable by a lawyer, so AI drafts and a lawyer approves. Approving a loan: high cost, affects a person's life, so a model may assist but rules, explanations and a human appeal must exist. The more a mistake costs, the more control stays with a person.
 
 ## What goes wrong
-Bias in data becomes bias in decisions. In 2018 Reuters reported that Amazon dropped a hiring tool trained on past resumes, because it had learned to mark down resumes that mentioned women's groups. In 2023 two New York lawyers were fined after submitting a brief with court cases a chatbot had invented. Neither failure was about intelligence. Both skipped checking.
+Bias in data becomes bias in decisions. In 2018 Reuters reported that Amazon dropped a hiring tool trained on past resumes, because it had learned to mark down resumes that mentioned women's groups. In 2023 two New York lawyers and their firm were fined $5,000 after submitting a brief with court cases a chatbot had invented. Neither failure was about intelligence. Amazon's team tested the tool, found it was biased and shut the project down. The lawyers did not check their citations.
 
 ## Common mistake
 Copying a success from another industry without its safeguards. A tool that is fine for retail support is not automatically fine for medicine.
 
 ```resources
-article | AI-enabled medical devices | https://www.fda.gov/medical-devices/software-medical-device-samd/artificial-intelligence-enabled-medical-devices | US FDA | The official list of AI devices cleared in the United States.
+article | AI-enabled medical devices | https://www.fda.gov/medical-devices/artificial-intelligence-enabled-medical-devices/list-artificial-intelligence-enabled-medical-devices | US FDA | The official list of AI devices cleared in the United States.
 article | Stanford AI Index | https://hai.stanford.edu/ai-index | Stanford HAI | Data on adoption by industry.
 article | People + AI Guidebook | https://pair.withgoogle.com/guidebook/ | Google PAIR | Design guidance for explaining and correcting AI decisions.
 ```
@@ -250,7 +250,7 @@ A rollout goes in stages: test on past cases, run beside the people doing the jo
 A support team gets 10,000 tickets a month. Each takes 4 minutes at a cost of $30 an hour, so $2 a ticket, or $20,000 a month. An assistant drafts replies. It handles 30 percent of tickets with no edits, which saves $6,000. Model calls cost $0.05 a ticket, so $500 for all 10,000. A person spot-checks 5 percent of drafts, about $1,000 of time. Net saving: 6,000 − 500 − 1,000 = $4,500 a month. If building cost $30,000, payback is about seven months. If it handled only 10 percent, the saving would be $2,000 − 500 − 1,000 = $500 and payback would take five years.
 
 ## After launch
-Watch quality, cost and usage. Data drift means real inputs slowly change from what the system was tested on, so scores slide without any code change. Keep a test set, rerun it monthly, and keep an easy way for users to report a bad answer. A company answers for what its tools say: in 2024 a Canadian tribunal ruled that Air Canada had to honor a refund policy its website chatbot invented.
+Watch quality, cost and usage. Data drift means real inputs slowly change from what the system was tested on, so scores slide without any code change. Keep a test set, rerun it monthly, and keep an easy way for users to report a bad answer. A company answers for what its tools say: in 2024 a Canadian tribunal ordered Air Canada to pay a customer who relied on wrong refund advice from its website chatbot.
 
 ## Common mistake
 Declaring victory after a demo. Adoption, review time and drift decide the real return.

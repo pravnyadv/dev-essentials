@@ -124,7 +124,7 @@ Hugging Face is where open models, datasets and demos live, plus the libraries t
 ## What is there
 Hugging Face is the place where open AI is shared. It has four main parts.
 
-The Hub hosts close to a million models and many datasets. Each one is a git repository with a model card that describes how it was trained, what it is bad at and what license it has.
+The Hub hosts well over a million models and many datasets. Each one is a git repository with a model card that describes how it was trained, what it is bad at and what license it has.
 
 Spaces host small demo apps, so you can try a model in your browser before downloading it.
 

@@ -363,7 +363,7 @@ Adam keeps two EMAs per weight: the average of gradients (momentum, direction) a
 A common recipe is warmup (rise from near zero over the first steps) then decay (fall, often along a cosine curve). Large models are sensitive to this, since a rate that is too high early can wreck training.
 
 ## Worked example: smoothing
-Daily gradients for one weight: 1.0, -0.8, 1.2, 0.9. A raw update would zigzag. With beta 0.9, momentum builds as 0.1×1.0 = 0.10, then 0.9×0.10 + 0.1×(-0.8) = 0.01, then 0.9×0.01 + 0.1×1.2 = 0.129, then 0.9×0.129 + 0.1×0.9 = 0.206. The smoothed value changes gently and follows the overall trend.
+Daily gradients for one weight: 1.0, -0.8, 1.2, 0.9. A raw update would zigzag. With beta 0.9, momentum builds as 0.1×1.0 = 0.10, then 0.9×0.10 + 0.1×(-0.8) = 0.01, then 0.9×0.01 + 0.1×1.2 = 0.129, then 0.9×0.129 + 0.1×0.9 = 0.206. The smoothed value changes gently. It starts low because it begins at zero, so real optimizers divide by a correction factor (here 1 − 0.9^4 = 0.344, giving 0.206 / 0.344 = 0.60, close to the plain average of 0.575).
 
 ## Why Adam is the default
 Different weights need different step sizes. Adam divides each step by how large that weight's recent gradients have been, so noisy weights move carefully and quiet ones move more. It works well out of the box, which is why most transformers use it.

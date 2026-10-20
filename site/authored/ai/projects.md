@@ -201,7 +201,7 @@ Read the tool descriptions as if you were the model. Try a request the tools can
 Serve it remotely over HTTP with authentication. Add a prompt template for a weekly review.
 
 ## Starter
-Python with the official SDK (`pip install mcp`). The complete small server is in the Building an MCP server lesson. Copy it to `server.py`, point `NOTES` at one folder, then run the Inspector and connect your agent:
+Python with the official SDK (`pip install mcp`, version 2 or later). The complete small server is in the Building an MCP server lesson. Copy it to `server.py`, point `NOTES` at one folder, then run the Inspector and connect your agent:
 
 ```
 npx @modelcontextprotocol/inspector python server.py

@@ -39,4 +39,4 @@ npm run deploy     # from site/: verify, then wrangler pages deploy out
 
 ## Credits
 
-DSA content builds on [trekhleb/javascript-algorithms](https://github.com/trekhleb/javascript-algorithms) and one AI chapter on the [Prompt Engineering Guide](https://github.com/dair-ai/Prompt-Engineering-Guide), both MIT. See [NOTICE.md](NOTICE.md). Code is MIT, see [LICENSE](LICENSE).
+DSA content builds on [trekhleb/javascript-algorithms](https://github.com/trekhleb/javascript-algorithms) and one AI chapter on the [Prompt Engineering Guide](https://github.com/dair-ai/Prompt-Engineering-Guide), both MIT. See [NOTICE.md](docs/NOTICE.md). Code is MIT, see [LICENSE](LICENSE).

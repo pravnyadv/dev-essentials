@@ -201,6 +201,6 @@ An agent asks for approval on every single action and people click yes without r
 ```
 
 ```story
-A company lets an agent issue refunds. For amounts under $10 it acts alone. Between $10 and $100 it asks a person to approve with one click. Above $100 it only drafts. After a month the team sees that the person approved 98 percent of the middle tier, so they raise the automatic limit to $25. Trust was earned with data.
+A company lets an agent issue refunds. For amounts under $10 it acts alone. Between $10 and $100 it asks a person to approve with one click. Above $100 it only drafts. After a month the team sees that the person approved 98 percent of the middle tier. They first check that reviewers read each request and did not just click through, then raise the automatic limit to $25. Trust was earned with data.
 ```
 
