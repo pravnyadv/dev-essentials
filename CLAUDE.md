@@ -1,4 +1,4 @@
-# Learn in JavaScript
+# Dev Essentials
 
 Interactive reader and progress tracker with two tracks, picked on the landing page (`/`):
 

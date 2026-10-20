@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'Learn in JavaScript', template: '%s | Learn in JavaScript' },
+  title: { default: 'Dev Essentials', template: '%s | Dev Essentials' },
   description: 'Visual lessons with worked examples, quizzes and progress tracking: data structures and algorithms, and AI engineering.',
 };
 

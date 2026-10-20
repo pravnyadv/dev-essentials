@@ -14,7 +14,7 @@ interface TrackLayoutProps {
 // The shell both tracks share: sidebar tree, header links, and a progress bar in the sidebar footer.
 export default function TrackLayout({ tree, home, title, topicIds, children }: TrackLayoutProps) {
   return (
-    <DocsLayout tree={tree} sidebar={{ footer: <OverallProgress ids={topicIds} /> }} {...baseOptions(home, title)}>
+    <DocsLayout tree={tree} sidebar={{ footer: <OverallProgress key="progress" ids={topicIds} /> }} {...baseOptions(home, title)}>
       {children}
     </DocsLayout>
   );

@@ -5,10 +5,13 @@ import { buttonVariants } from 'fumadocs-ui/components/ui/button'
 export const LEVELS = { 1: 'Starter', 2: 'Core', 3: 'Stretch' }
 
 // Small rounded label. Pass href to make it a link.
+const PILL = { muted: 'bg-fd-muted text-fd-muted-foreground', primary: 'bg-fd-primary/10 text-fd-primary hover:bg-fd-primary/20', outline: 'border text-fd-muted-foreground' }
 export const Pill = ({ href = '', tone = 'muted', className = '', children }) => {
-  const cls = `rounded-full px-2.5 py-0.5 text-xs font-medium ${tone === 'primary' ? 'bg-fd-primary/10 text-fd-primary hover:bg-fd-primary/20' : 'bg-fd-muted text-fd-muted-foreground'} ${className}`
+  const cls = `rounded-full px-2.5 py-0.5 text-xs font-medium ${PILL[tone]} ${className}`
   return href ? <a href={href} className={cls}>{children}</a> : <span className={cls}>{children}</span>
 }
+// Numbered circle for recommended order.
+export const NumberBadge = ({ n }) => <span className="grid size-6 shrink-0 place-items-center rounded-full bg-fd-primary text-xs font-bold text-fd-primary-foreground">{n}</span>
 export const LevelBadge = ({ level }) => <Pill>Level: {LEVELS[level]}</Pill>
 
 export const Bar = ({ value }) => (

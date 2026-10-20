@@ -134,3 +134,18 @@ SWE-bench | A benchmark that scores coding agents on real GitHub issues from ope
 GraphRAG | Retrieval that first builds a graph of entities and relations, for questions that span many documents.
 reciprocal rank fusion [RRF] | A way to merge two ranked result lists by adding 1 / (k + rank) for each list.
 A2A | Agent2Agent: a protocol for agents from different makers to find each other and exchange tasks.
+collaborative filtering | Recommending items by finding people with similar past choices: if they liked it, you probably will too.
+recommender [recommenders, recommendation system] | A system that suggests items such as videos or products to each user.
+cold start | The problem that a new user or item has no history, so a recommender has nothing to match.
+class imbalance | When one outcome is far rarer than the other, such as 100 frauds in 100,000 payments. Plain accuracy then misleads.
+anomaly detection | Finding cases that look unlike normal ones, often without labeled examples of the bad kind.
+precision | Of the cases a system flagged, the share that were truly positive.
+recall | Of the truly positive cases, the share the system found.
+forecasting | Predicting a future number, such as sales, from past values.
+computer vision | Getting models to work with images and video: classifying, locating objects and reading text.
+speech recognition [ASR] | Turning spoken audio into text.
+text-to-speech [TTS] | Turning written text into spoken audio.
+word error rate [WER] | Speech recognition accuracy: substitutions, deletions and insertions divided by the number of true words.
+sim-to-real | The gap between a robot trained in simulation and the same robot in the real world.
+data drift | Real-world inputs slowly changing from what a system was tested on, so quality falls with no code change.
+ROI | Return on investment: what a project gains compared with what it costs.

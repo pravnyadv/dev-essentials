@@ -11,14 +11,14 @@ export default function Home() {
       href: '/dsa',
       title: 'Data Structures & Algorithms',
       blurb: 'Arrays to graphs, with visual step-through lessons and problem patterns.',
-      tags: ['JavaScript', `${Object.keys(dsa.topics).length} topics`, `${dsa.patterns.length} patterns`],
+      stats: [[Object.keys(dsa.topics).length, 'topics'], [dsa.patterns.length, 'patterns'], ['JS', 'language']],
       ids: Object.keys(dsa.topics),
     },
     {
       href: '/ai',
       title: 'AI Engineering',
       blurb: 'History, math, LLMs, agents, retrieval, evals and tooling. Built to be updated.',
-      tags: [`${Object.keys(ai.topics).length} lessons`, `about ${hours} hours`, `no experience needed`],
+      stats: [[Object.keys(ai.topics).length, 'lessons'], [`~${hours}h`, 'to finish'], ['0', 'prior experience']],
       ids: Object.keys(ai.topics),
     },
   ];

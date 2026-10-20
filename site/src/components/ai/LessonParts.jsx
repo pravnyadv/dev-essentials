@@ -11,15 +11,19 @@ const KIND = { article: 'Article', video: 'Video', course: 'Course', repo: 'Repo
 const compact = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : n)
 
 export function ResourceRow({ r, showTopics }) {
+  const external = !r.url.startsWith('/')
   return (
-    <ListRow>
-      <div className="flex flex-wrap items-center gap-2">
-        <Pill tone="primary">{KIND[r.kind]}</Pill>
-        <a href={r.url} target={r.url.startsWith('/') ? undefined : '_blank'} rel="noreferrer" className="inline-block py-1 font-medium hover:underline max-md:py-3">{r.title}</a>
-        {r.stars && <span className="text-xs text-fd-muted-foreground" title="GitHub stars">★ {compact(r.stars)}</span>}
+    <ListRow className="flex gap-4">
+      <span className="w-16 shrink-0 pt-1.5 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground max-md:hidden">{KIND[r.kind]}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <a href={r.url} target={external ? '_blank' : undefined} rel="noreferrer" className="inline-block py-1 font-semibold hover:underline max-md:py-3">{r.title}</a>
+          <span className="text-xs text-fd-muted-foreground md:hidden">{KIND[r.kind]}</span>
+          {r.stars && <span className="text-xs text-fd-muted-foreground" title="GitHub stars">★ {compact(r.stars)}</span>}
+        </div>
+        <p className="text-fd-muted-foreground">{r.by && <span className="text-fd-foreground">{r.by} · </span>}{r.why}</p>
+        {showTopics && <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-fd-muted-foreground">Used in {r.topics.map(t => <Pill key={t.url} href={t.url} className="max-md:py-2">{t.title}</Pill>)}</p>}
       </div>
-      <p className="mt-1 text-fd-muted-foreground">{r.by && <span>{r.by} · </span>}{r.why}</p>
-      {showTopics && <p className="mt-1 text-xs text-fd-muted-foreground">Used in: {r.topics.map((t, i) => <span key={t.url}>{i > 0 && ', '}<a href={t.url} className="text-fd-primary underline underline-offset-2">{t.title}</a></span>)}</p>}
     </ListRow>
   )
 }

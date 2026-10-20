@@ -1,10 +1,15 @@
 'use client'
-import { Cards } from 'fumadocs-ui/components/card'
 import { useProgress } from './progress.jsx'
 import PageContainer from './PageContainer.jsx'
 import ProgressCard from './ProgressCard.jsx'
 import SectionHeading from './SectionHeading.jsx'
-import { Pill } from './ui.jsx'
+import { NumberBadge } from './ui.jsx'
+
+// " · 1.6 h" for tracks whose topics carry minutes, nothing otherwise.
+const length = topics => {
+  const m = topics.reduce((n, t) => n + (t.minutes ?? 0), 0)
+  return m ? ` · ${m >= 90 ? `${(m / 60).toFixed(1)} h` : `${m} min`}` : ''
+}
 
 // Track home: hero with resume link, then chapters per tier. `eyebrow` is the line above the title ({n} = topic count), `links` the secondary buttons, `children` extra sections under the chapters.
 /** @param {{ tiers: any[], chapters: any[], eyebrow: string, title: string, links: { href: string, label: string }[], children?: import('react').ReactNode }} props */
@@ -16,37 +21,34 @@ export default function Dashboard({ tiers, chapters, eyebrow, title, links, chil
   const next = learning[0] ?? all.find(t => progress[t.id] !== 'done')
   return (
     <PageContainer width="wide" className="space-y-10">
-      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-fd-primary to-fd-primary/60 p-8 text-fd-primary-foreground shadow-xl shadow-fd-primary/20 sm:p-10">
-        <div className="absolute -right-10 -top-10 size-64 rounded-full bg-white/10 blur-2xl" />
-        <p className="text-sm font-medium opacity-70">{eyebrow.replace('{n}', all.length)}</p>
-        <SectionHeading level={1} className="mt-2 max-w-2xl leading-tight">{title}</SectionHeading>
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          {next && <a href={next.url} className="rounded-full bg-fd-background px-5 py-2.5 text-sm font-semibold text-fd-foreground shadow hover:scale-[1.03]">{learning.length ? 'Resume' : done ? 'Continue' : 'Start'}: {next.title} →</a>}
-          {links.map(l => <a key={l.href} href={l.href} className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-semibold backdrop-blur hover:bg-white/25">{l.label}</a>)}
+      <header className="relative overflow-hidden rounded-3xl bg-fd-foreground p-8 text-fd-background shadow-xl sm:p-10">
+        <div aria-hidden className="absolute inset-0 bg-[radial-gradient(color-mix(in_oklab,var(--color-fd-background)_18%,transparent)_1px,transparent_1px)] [background-size:20px_20px] [mask-image:linear-gradient(to_bottom_left,black,transparent_70%)]" />
+        <p className="relative text-sm font-medium uppercase tracking-widest opacity-70">{eyebrow.replace('{n}', all.length)}</p>
+        <SectionHeading level={1} className="relative mt-3 max-w-2xl leading-tight sm:!text-5xl">{title}</SectionHeading>
+        <div className="relative mt-8 flex flex-wrap items-center gap-3">
+          {next && <a href={next.url} className="rounded-full bg-fd-background px-5 py-2.5 text-sm font-semibold text-fd-foreground shadow transition hover:scale-[1.03] motion-reduce:transition-none">{learning.length ? 'Resume' : done ? 'Continue' : 'Start'}: {next.title} →</a>}
+          {links.map(l => <a key={l.href} href={l.href} className="rounded-full border border-fd-background/30 px-5 py-2.5 text-sm font-semibold transition hover:bg-fd-background/15">{l.label}</a>)}
         </div>
-        <div className="mt-8 flex max-w-md items-center gap-3 text-sm">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/20"><div className="h-full rounded-full bg-white transition-all" style={{ width: `${(done / all.length) * 100}%` }} /></div>
+        <div className="relative mt-8 flex max-w-md items-center gap-3 text-sm">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-fd-background/20"><div className="h-full rounded-full bg-fd-background transition-all" style={{ width: `${(done / all.length) * 100}%` }} /></div>
           <span className="tabular-nums">{done}/{all.length} done · {learning.length} in progress</span>
         </div>
       </header>
 
       {tiers.map(tier => (
         <section key={tier.id}>
-          <SectionHeading level={2}>{tier.id}. {tier.title}</SectionHeading>
-          <p className="mb-4 mt-1 text-sm text-fd-muted-foreground">{tier.blurb}</p>
-          <Cards className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mb-5 border-b pb-4">
+            <SectionHeading level={2}>{tier.id}. {tier.title}</SectionHeading>
+            <p className="mt-1 max-w-3xl text-sm text-fd-muted-foreground">{tier.blurb}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {chapters.filter(c => c.tier === tier.id).map(c => {
               const d = c.topics.filter(t => progress[t.id] === 'done').length
               return (
-                <ProgressCard key={c.id} href={c.topics[0].url} title={<span className="text-base font-semibold">{c.title}</span>} description={c.blurb} className="p-5" value={d / c.topics.length} caption={`Chapter ${chapters.indexOf(c) + 1} · ${d}/${c.topics.length} done`}>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {c.topics.slice(0, 5).map(t => <Pill key={t.id}>{t.title.replace(/ \(.*\)/, '')}</Pill>)}
-                    {c.topics.length > 5 && <span className="px-1 text-xs">+{c.topics.length - 5}</span>}
-                  </div>
-                </ProgressCard>
+                <ProgressCard key={c.id} href={c.topics[0].url} className="!p-5" title={<span className="flex items-center gap-3"><NumberBadge n={chapters.indexOf(c) + 1} />{c.title}</span>} description={c.blurb} value={d / c.topics.length} caption={`${d}/${c.topics.length} lessons done${length(c.topics)}`} />
               )
             })}
-          </Cards>
+          </div>
         </section>
       ))}
       {children}

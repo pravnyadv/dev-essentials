@@ -9,6 +9,7 @@
     "prebuild": "npm run content",
     "build": "next build",
     "start": "serve out",
+    "deploy": "npm run verify && : \"${CLOUDFLARE_ACCOUNT_ID:?set CLOUDFLARE_ACCOUNT_ID so this cannot deploy to the wrong Cloudflare account}\" && wrangler pages deploy out --project-name dev-essentials --branch main",
     "verify": "npm run content && node scripts/verify.mjs && node scripts/check-ui.mjs && node scripts/lint-ai.mjs --strict > /dev/null && next build",
     "types:check": "next typegen && tsc --noEmit",
     "check:ui": "node scripts/check-ui.mjs",

@@ -1,7 +1,9 @@
 'use client'
 import { useMemo, useState } from 'react'
+import { Check, Search } from 'lucide-react'
 import Chip from '../shared/Chip.jsx'
 import PageContainer from '../shared/PageContainer.jsx'
+import Panel from '../shared/Panel.jsx'
 import { Pill, buttonClass } from '../shared/ui.jsx'
 import SectionHeading from '../shared/SectionHeading.jsx'
 import { ListRow, RowList } from '../shared/RowList.jsx'
@@ -28,39 +30,63 @@ export function Radar({ items, updated }) {
   )
 }
 
+// Search box with a magnifier, shared by the library and the glossary.
+function SearchBox({ value, onChange, placeholder, label, className = '' }) {
+  return (
+    <label className={`relative block ${className}`}>
+      <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fd-muted-foreground" />
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} aria-label={label} className="w-full rounded-lg border bg-fd-card py-2.5 pl-9 pr-3 text-sm shadow-sm max-md:min-h-11" />
+    </label>
+  )
+}
+
 const OPEN = { true: 'Open weights', false: 'Closed', null: 'Check license' }
+const OPENNESS = [['all', 'All models'], ['open', 'Open weights'], ['closed', 'Closed']]
+const linkClass = 'font-medium text-fd-foreground underline underline-offset-2 decoration-fd-border hover:decoration-fd-foreground max-md:py-3'
+
+function ModelCard({ m }) {
+  return (
+    <Panel as="article" padding="p-5" className="flex flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <SectionHeading level={3} className="!text-lg leading-snug tracking-tight">{m.name}</SectionHeading>
+        <time className="shrink-0 pt-1 text-xs tabular-nums text-fd-muted-foreground">{m.released}</time>
+      </div>
+      <p className="text-sm text-fd-muted-foreground">{m.lab}</p>
+      <p className="mt-3 text-sm leading-relaxed">{m.why}</p>
+      <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-4 text-xs">
+        {m.verified === 'vendor' && <Pill tone="primary" className="inline-flex items-center gap-1"><Check aria-hidden className="size-3" />Vendor-confirmed</Pill>}
+        {m.verified === 'tracker' && <Pill tone="outline" className="border-dashed">Tracker only</Pill>}
+        {m.open !== undefined && <Pill tone="outline">{OPEN[m.open]}</Pill>}
+        {m.tier && <Pill tone="outline">{m.tier}</Pill>}
+        <span className="ml-auto flex gap-3">
+          {m.topicUrl && <a href={m.topicUrl} className={linkClass}>Read more</a>}
+          {m.url && <a href={m.url} target="_blank" rel="noreferrer" className={linkClass}>Source</a>}
+        </span>
+      </div>
+    </Panel>
+  )
+}
+
 export function ModelAtlas({ atlas }) {
+  const [openness, setOpenness] = useState('all')
+  const keep = m => openness === 'all' || (openness === 'open' ? m.open === true : m.open === false)
+  const groups = atlas.groups.map(g => ({ ...g, models: g.models.filter(keep) })).filter(g => g.models.length)
   return (
     <PageContainer className="space-y-10">
       <header>
         <SectionHeading level={1}>Model atlas</SectionHeading>
         <p className="mt-2 max-w-2xl text-fd-muted-foreground">The models worth knowing, from the milestones that built the field to today's frontier. As of {atlas.asOf}. {atlas.caveat}</p>
+        <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Filter by license">
+          {OPENNESS.map(([id, label]) => <Chip key={id} on={openness === id} onClick={() => setOpenness(id)}>{label}</Chip>)}
+        </div>
       </header>
-      {atlas.groups.map(g => (
+      {groups.map(g => (
         <section key={g.id}>
-          <SectionHeading level={2}>{g.title}</SectionHeading>
-          <p className="mb-3 mt-1 text-sm text-fd-muted-foreground">{g.blurb}</p>
-          <RowList>
-            {g.models.map(m => (
-              <ListRow key={m.name} className="grid gap-1 sm:grid-cols-[11rem_1fr] sm:gap-4">
-                <div>
-                  <p className="font-semibold">{m.name}</p>
-                  <p className="text-xs text-fd-muted-foreground">{m.lab} · {m.released}</p>
-                </div>
-                <div>
-                  <p>{m.why}</p>
-                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                    {m.open !== undefined && <Pill tone={m.open ? 'primary' : 'muted'}>{OPEN[m.open]}</Pill>}
-                    {m.verified === 'vendor' && <Pill tone="primary">Vendor-confirmed</Pill>}
-                    {m.verified === 'tracker' && <Pill>Tracker only</Pill>}
-                    {m.tier && <Pill>{m.tier}</Pill>}
-                    {m.topicUrl && <a href={m.topicUrl} className="text-fd-primary underline underline-offset-2">Read more</a>}
-                    {m.url && <a href={m.url} target="_blank" rel="noreferrer" className="text-fd-primary underline underline-offset-2">Source</a>}
-                  </p>
-                </div>
-              </ListRow>
-            ))}
-          </RowList>
+          <div className="mb-5 border-b pb-4">
+            <SectionHeading level={2}>{g.title}</SectionHeading>
+            <p className="mt-1 max-w-3xl text-sm text-fd-muted-foreground">{g.blurb}</p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">{g.models.map(m => <ModelCard key={m.name} m={m} />)}</div>
         </section>
       ))}
     </PageContainer>
@@ -81,23 +107,24 @@ export function Library({ library, chapters }) {
     const needle = q.trim().toLowerCase()
     return library.filter(r => (!kind || r.kind === kind) && (!chapter || chapterOf(r).includes(chapter)) && (!needle || `${r.title} ${r.by} ${r.why}`.toLowerCase().includes(needle)))
   }, [library, kind, chapter, q])
+  const counts = useMemo(() => Object.fromEntries(KINDS.map(k => [k, library.filter(r => r.kind === k).length])), [library])
   const reset = fn => v => { fn(v); setLimit(PAGE) }
   return (
-    <PageContainer className="space-y-4">
+    <PageContainer className="space-y-5">
       <header>
         <SectionHeading level={1}>Resource library</SectionHeading>
-        <p className="mt-2 text-fd-muted-foreground">{library.length} articles, videos, courses, repositories and papers cited across the lessons. Everything linked is free to read. Some courses charge for a certificate. Repo stars are a snapshot.</p>
+        <p className="mt-2 max-w-3xl text-fd-muted-foreground">{library.length} articles, videos, courses, repositories and papers cited across the lessons. Everything linked is free to read. Some courses charge for a certificate. Repo stars are a snapshot.</p>
       </header>
       <div className="grid gap-3 sm:grid-cols-[1fr_16rem]">
-        <input value={q} onChange={e => reset(setQ)(e.target.value)} placeholder="Search title, author or topic" aria-label="Search resources" className="w-full rounded-lg border bg-fd-background px-3 py-2 text-sm max-md:min-h-11" />
-        <select value={chapter} onChange={e => reset(setChapter)(e.target.value)} aria-label="Filter by chapter" className="w-full rounded-lg border bg-fd-background px-3 py-2 text-sm max-md:min-h-11">
+        <SearchBox value={q} onChange={reset(setQ)} placeholder="Search title, author or topic" label="Search resources" />
+        <select value={chapter} onChange={e => reset(setChapter)(e.target.value)} aria-label="Filter by chapter" className="w-full rounded-lg border bg-fd-card px-3 py-2.5 text-sm shadow-sm max-md:min-h-11">
           <option value="">All chapters</option>
           {chapters.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
         </select>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Chip on={!kind} onClick={() => reset(setKind)(null)}>All</Chip>
-        {KINDS.map(k => <Chip key={k} on={kind === k} onClick={() => reset(setKind)(k)}>{k}</Chip>)}
+        <Chip on={!kind} onClick={() => reset(setKind)(null)}>All {library.length}</Chip>
+        {KINDS.map(k => <Chip key={k} on={kind === k} onClick={() => reset(setKind)(k)}>{k} {counts[k]}</Chip>)}
       </div>
       <p className="text-sm text-fd-muted-foreground" aria-live="polite">Showing {Math.min(limit, shown.length)} of {shown.length}</p>
       <RowList>{shown.slice(0, limit).map(r => <ResourceRow key={r.url} r={r} showTopics />)}</RowList>
@@ -106,19 +133,37 @@ export function Library({ library, chapters }) {
   )
 }
 
+const letterOf = term => (/[a-z]/i.test(term[0]) ? term[0].toUpperCase() : '#')
+
 export function Glossary({ glossary }) {
   const [q, setQ] = useState('')
-  const shown = glossary.filter(g => `${g.term} ${g.names.join(' ')}`.toLowerCase().includes(q.trim().toLowerCase())).sort((a, b) => a.term.localeCompare(b.term))
+  const needle = q.trim().toLowerCase()
+  const shown = glossary.filter(g => `${g.term} ${g.names.join(' ')}`.toLowerCase().includes(needle)).sort((a, b) => a.term.localeCompare(b.term))
+  const letters = [...new Set(shown.map(g => letterOf(g.term)))]
   return (
-    <PageContainer width="narrow" className="space-y-4">
+    <PageContainer className="space-y-5">
       <header>
         <SectionHeading level={1}>Glossary</SectionHeading>
-        <p className="mt-2 text-fd-muted-foreground">Every technical word the lessons use, in plain language. Each lesson also lists the ones it uses.</p>
+        <p className="mt-2 max-w-2xl text-fd-muted-foreground">{glossary.length} technical words the lessons use, in plain language. Each lesson also lists the ones it uses.</p>
       </header>
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Find a term" aria-label="Find a term" className="w-full rounded-lg border bg-fd-background px-3 py-2 text-sm max-md:min-h-11" />
-      <RowList as="dl">
-        {shown.map(g => <ListRow key={g.term} as="div"><dt className="font-semibold">{g.term}</dt><dd className="mt-0.5 text-fd-muted-foreground">{g.def}</dd></ListRow>)}
-      </RowList>
+      <SearchBox value={q} onChange={setQ} placeholder="Find a term" label="Find a term" className="max-w-md" />
+      <nav aria-label="Jump to letter" className="flex flex-wrap gap-1">
+        {letters.map(l => <a key={l} href={`#g-${l}`} className="grid size-8 place-items-center rounded-md border text-sm font-medium hover:bg-fd-accent max-md:size-11">{l}</a>)}
+      </nav>
+      {!shown.length && <p className="text-fd-muted-foreground">No term matches "{q}".</p>}
+      {letters.map(l => (
+        <section key={l} id={`g-${l}`} className="scroll-mt-20">
+          <div className="mb-3 border-b pb-2"><SectionHeading level={2} className="!text-2xl">{l}</SectionHeading></div>
+          <dl className="grid gap-3 md:grid-cols-2">
+            {shown.filter(g => letterOf(g.term) === l).map(g => (
+              <Panel key={g.term} padding="p-4">
+                <dt className="font-semibold">{g.term}</dt>
+                <dd className="mt-1 text-sm leading-relaxed text-fd-muted-foreground">{g.def}</dd>
+              </Panel>
+            ))}
+          </dl>
+        </section>
+      ))}
     </PageContainer>
   )
 }

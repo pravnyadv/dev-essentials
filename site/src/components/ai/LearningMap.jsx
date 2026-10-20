@@ -10,7 +10,7 @@ import SectionHeading from '../shared/SectionHeading.jsx'
 import StatusDot from '../shared/StatusDot.jsx'
 import { ListRow, RowList } from '../shared/RowList.jsx'
 import { useProgress } from '../shared/progress.jsx'
-import { Bar, Pill, buttonClass } from '../shared/ui.jsx'
+import { Bar, NumberBadge, Pill, buttonClass } from '../shared/ui.jsx'
 import { Story } from './LessonParts.jsx'
 
 const minutes = c => c.topics.reduce((n, t) => n + t.minutes, 0)
@@ -26,7 +26,6 @@ function useMapData(chapters, stages) {
   return { ordered, byId, leads, byStage }
 }
 
-const Number = ({ n }) => <span className="grid size-6 shrink-0 place-items-center rounded-full bg-fd-primary text-xs font-bold text-fd-primary-foreground">{n}</span>
 
 // Detail for one chapter: what you can do after it, a story, what it builds on and unlocks, and its lessons.
 function ChapterPanel({ c, byId, leads, onPick }) {
@@ -62,16 +61,17 @@ function GoalPicker({ goals, goalId, setGoalId, route }) {
         <span className="font-medium">I want to</span>
         {[{ id: null, title: 'See everything' }, ...goals].map(g => <Chip key={g.id ?? 'all'} on={g.id === goalId} onClick={() => setGoalId(g.id)}>{g.title}</Chip>)}
       </div>
-      <p className="min-h-10 text-sm text-fd-muted-foreground">{goal ? <><b className="text-fd-foreground">{goal.blurb}</b> Your route: {route.map(c => c.order).join(' → ')}. Other chapters are dimmed.</> : 'Numbers show the recommended order. Click a chapter for details.'}</p>
+      <p className="min-h-10 text-sm text-fd-muted-foreground">{goal ? <><b className="text-fd-foreground">{goal.blurb}</b> Your route: {route.map(c => c.order).join(' → ')}. Other chapters are dimmed.</> : 'Numbers show the recommended order and lines show what builds on what. Click a chapter to highlight its lines and see details.'}</p>
     </div>
   )
 }
 
-// Arrows show only for the selected chapter, so the picture stays readable.
+// Every dependency is a faint line; the selected chapter's lines are drawn dark on top.
 function GraphMap({ data, on, selected, setSelected }) {
   const progress = useProgress()
   const wrap = useRef(), nodes = useRef({}), [lines, setLines] = useState([])
   const { ordered, byStage } = data
+  const hot = l => (l.a === selected || l.b === selected ? 1 : 0)
   const edges = ordered.flatMap(c => c.after.filter(a => data.byId[a].stage < c.stage).map(a => [a, c.id]))
   useLayoutEffect(() => {
     const measure = () => {
@@ -89,12 +89,12 @@ function GraphMap({ data, on, selected, setSelected }) {
   return (
     <div ref={wrap} className="relative">
       <svg className="pointer-events-none absolute inset-0 hidden size-full md:block" aria-hidden>
-        {lines.filter(l => l.a === selected || l.b === selected).map(l => {
-          const dx = Math.max(24, (l.x2 - l.x1) / 2)
+        {[...lines].sort((p, q) => hot(p) - hot(q)).map(l => {
+          const dx = Math.max(24, (l.x2 - l.x1) / 2), h = hot(l), dim = !on(data.byId[l.a]) || !on(data.byId[l.b])
           return (
-            <g key={l.a + l.b}>
-              <path d={`M${l.x1},${l.y1} C${l.x1 + dx},${l.y1} ${l.x2 - dx},${l.y2} ${l.x2},${l.y2}`} fill="none" strokeWidth={2.5} className="stroke-fd-primary" />
-              <circle cx={l.x2} cy={l.y2} r={4} className="fill-fd-primary" />
+            <g key={l.a + l.b} className={dim && !h ? 'opacity-30' : ''}>
+              <path d={`M${l.x1},${l.y1} C${l.x1 + dx},${l.y1} ${l.x2 - dx},${l.y2} ${l.x2},${l.y2}`} fill="none" strokeWidth={h ? 2.5 : 1.5} className={h ? 'stroke-fd-primary' : 'stroke-fd-muted-foreground/40'} />
+              <circle cx={l.x2} cy={l.y2} r={h ? 4 : 3} className={h ? 'fill-fd-primary' : 'fill-fd-muted-foreground/50'} />
             </g>
           )
         })}
@@ -104,8 +104,8 @@ function GraphMap({ data, on, selected, setSelected }) {
           <div key={st.id} className="space-y-2">
             <div className="mb-3"><p className="text-xs font-semibold uppercase tracking-wide text-fd-primary">Stage {st.id}</p><p className="font-bold">{st.title}</p><p className="text-xs text-fd-muted-foreground">{st.blurb}</p></div>
             {st.chapters.map(c => (
-              <button key={c.id} ref={el => (nodes.current[c.id] = el)} onClick={() => setSelected(c.id)} aria-pressed={selected === c.id} className={`block w-full rounded-xl border bg-fd-card p-3 text-left transition hover:border-fd-primary/70 focus-visible:outline-2 focus-visible:outline-fd-primary ${selected === c.id ? 'border-fd-primary ring-2 ring-fd-primary/30' : ''} ${on(c) ? '' : 'opacity-50'}`}>
-                <span className="flex items-start gap-2"><Number n={c.order} /><span className="text-sm font-semibold leading-snug">{c.title}</span></span>
+              <button key={c.id} ref={el => (nodes.current[c.id] = el)} onClick={() => setSelected(c.id)} aria-pressed={selected === c.id} className={`block w-full rounded-xl border bg-fd-card p-3 text-left shadow-sm transition hover:border-fd-primary/70 focus-visible:outline-2 focus-visible:outline-fd-primary ${selected === c.id ? 'border-fd-primary ring-2 ring-fd-primary/30' : ''} ${on(c) ? '' : 'opacity-50'}`}>
+                <span className="flex items-start gap-2"><NumberBadge n={c.order} /><span className="text-sm font-semibold leading-snug">{c.title}</span></span>
                 <span className="mt-2 block text-xs text-fd-muted-foreground">{c.topics.length} lessons · {hours(minutes(c))}</span>
                 <span className="mt-1.5 block"><Bar value={doneOf(c, progress) / c.topics.length} /></span>
               </button>
@@ -124,7 +124,7 @@ function RoadmapView({ data, on }) {
     content: (
       <Cards className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
         {st.chapters.map(c => (
-          <ProgressCard key={c.id} href={c.topics[0].url} className={on(c) ? '' : 'opacity-50'} title={<span className="flex items-center gap-2"><Number n={c.order} />{c.title}</span>} description={c.blurb} value={doneOf(c, progress) / c.topics.length} caption={`${doneOf(c, progress)}/${c.topics.length} done · ${hours(minutes(c))}`} />
+          <ProgressCard key={c.id} href={c.topics[0].url} className={on(c) ? '' : 'opacity-50'} title={<span className="flex items-center gap-2"><NumberBadge n={c.order} />{c.title}</span>} description={c.blurb} value={doneOf(c, progress) / c.topics.length} caption={`${doneOf(c, progress)}/${c.topics.length} done · ${hours(minutes(c))}`} />
         ))}
       </Cards>
     ),

@@ -1,0 +1,7 @@
+{
+  // Pages projects do NOT support account_id here, so the account comes from
+  // CLOUDFLARE_ACCOUNT_ID, which the npm "deploy" script requires to be set.
+  "name": "dev-essentials",
+  "compatibility_date": "2026-07-01",
+  "pages_build_output_dir": "./out"
+}
