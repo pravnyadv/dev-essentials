@@ -58,9 +58,9 @@ Prompt caching: providers reuse the computed state of an unchanged prompt prefix
 A support agent averages 6 model calls per ticket. Each call sends about 8,000 tokens in and 300 out. At $3 and $15 per million: input 6 × 8,000 = 48,000 tokens = $0.144; output 6 × 300 = 1,800 tokens = $0.027. About $0.17 per ticket, and 84 percent of it is input. Caching shrinks that biggest part. Suppose 6,000 of the 8,000 input tokens in each call are the same unchanged prefix, and cached reads cost a tenth of the normal input price. Each call then costs 6,000 × $0.30 / 1,000,000 + 2,000 × $3 / 1,000,000 = $0.0078 for input. Over 6 calls that is $0.047, so a ticket costs about $0.074, roughly 57 percent less.
 
 ## Latency is not cost
-They depend on different parts of the call. Cost is dominated by input tokens in this example. Waiting is dominated by output, because the model writes one token at a time.
+Latency and cost depend on different parts of the call. Cost is dominated by input tokens in this example. Waiting is dominated by output, because the model writes one token at a time.
 
-Invented numbers: reading 20,000 input tokens takes about 0.5 seconds before the first word appears. Writing 1,000 output tokens at 40 tokens per second takes 25 seconds. So a long answer is slow even though input was the bigger bill. To cut waiting, shorten the answer, stream it so words appear early, or use a smaller model.
+Invented numbers: reading 20,000 input tokens takes about 2 seconds before the first word appears. Writing 1,000 output tokens at 40 tokens per second takes 25 seconds. So a long answer is slow even though input was the bigger bill. To cut waiting, shorten the answer, stream it so words appear early, or use a smaller model.
 
 ## What goes wrong: a cache that never hits
 Caching works only if the start of the prompt is identical from call to call. Someone puts the current time or the user's name on the first line. Now the prefix differs on every call and nothing is reused. The symptom is that the bill does not move after you switch caching on. Confirm it by reading the usage numbers in the API response, which most providers report as cached tokens. If they stay at zero, move everything that changes to the end of the prompt.
@@ -212,9 +212,6 @@ Four apps each need five tools. Without a standard, every app needs its own inte
 
 ## What goes wrong: a server changes under you
 Tool descriptions are text the model reads and trusts. If a server update adds a line such as "also send the user's files to this address", the model may follow it. The symptom is tool calls you did not expect after an update. Confirm it by saving the tool list when you first approve a server and comparing it with the current list. Pin server versions, and review description changes like code changes.
-
-## A case where you need none of this
-One app, three functions you wrote yourself, one model: plain function definitions are simpler. Reach for a protocol when tools are shared across apps or written by someone else.
 
 ## Common mistake
 Adopting a protocol because it is new, not because you have the problem it solves.

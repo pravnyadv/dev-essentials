@@ -199,13 +199,13 @@ Commands (install, test, lint, run), architecture in a few lines, conventions th
 Run: pnpm install, pnpm test, pnpm dev. Layout: app code in src/, tests in spec/. Conventions: functional components, no default exports. Never: edit src/generated, commit .env. Gotcha: tests need Docker running. Eight lines. Every line prevents a repeated correction.
 
 ## How the file is used
-When a session starts, the harness reads the file and puts its text at the top of the model's context. The model does not remember earlier sessions by itself. Each one begins empty, so this file is the only memory it has of your project. Because the text sits in the context window, every line uses space and competes with your actual task.
+When a session starts, the harness reads the file and puts its text at the top of the model's context. The model does not remember earlier sessions by itself. Each one begins empty, so this file is the main thing that carries project knowledge from one session to the next. The agent can still read the code itself. Because the text sits in the context window, every line uses space and competes with your actual task.
 
 ## A second example: a file that makes things worse
 Imagine a file of 300 lines with the full history of the project, old decisions, and a tutorial for the framework. The agent now has to weigh all of it on every task. Important rules, like "never edit generated files", are buried. A shorter version keeps only what the agent cannot discover by reading the code: commands, traps and rules. The history can live in a docs folder that the file links to. Instructions in the file are also advice, not a lock. For a rule that must never break, use a permission setting or a hook.
 
 ## What goes wrong
-Files go stale. A command in the file changes, nobody updates it, and the agent keeps running the old one. You will see errors about a missing script or a wrong folder. Contradictions cause trouble too: one line says use tabs, another says spaces, and the agent picks one at random. Over-long files lead to ignored rules.
+Files go stale. A command in the file changes, nobody updates it, and the agent keeps running the old one. You will see errors about a missing script or a wrong folder. Contradictions cause trouble too: one line says use tabs, another says spaces, and the agent may follow either. Over-long files lead to ignored rules.
 
 ## How to tell it is working
 Run a simple test. Start a fresh session and ask: "What commands would you run to test this project, and what must you never do?" The answer should match your file. If it guesses, the file is not being loaded or the wording is unclear. Then give the agent a real task and count how many corrections you make. Add a line for each repeated correction and remove one that never matters.
@@ -252,7 +252,7 @@ Goal: always format files after the agent edits them. Not a skill (the agent mig
 ## How each one runs
 A skill works by loading on demand. At the start, the agent sees a one-line description of each skill. When your request matches, it reads the full file and follows it. The match is a judgment by the model, so a vague description may never trigger, or may trigger at the wrong time.
 
-A hook is different. The harness, not the model, runs it when an event happens, such as "after a file is edited". The model cannot skip it. If the hook script exits with an error, the harness can block the action and show the message to the agent.
+A hook is different. The harness, not the model, runs it when an event happens, such as "after a file is edited". The model cannot skip it. If a before-the-action hook exits with the code the tool treats as blocking (exit 2 in Claude Code), the harness stops the action and shows the message to the agent. Other error codes usually let the action go ahead, so check your tool's docs.
 
 A command is a saved prompt that you start yourself, so it runs when you type its name and not otherwise.
 
@@ -260,7 +260,7 @@ A command is a saved prompt that you start yourself, so it runs when you type it
 You want to stop the agent from ever committing a file called secrets.env. You write a skill saying "never commit secrets". This relies on the model remembering and matching. One day it does not load. A hook that checks the staged files before each commit and fails if that file appears is the right tool, because it runs every time. Now the opposite: you want the agent to know your team's review style. A hook cannot teach style. That is a skill.
 
 ## Trade-offs
-Hooks are strict, so a faulty one blocks work, such as a formatter that crashes and stops every edit. Keep hooks fast and test them by hand. Skills cost little context but need precise descriptions. Too many skills with similar descriptions confuse the choice.
+Hooks are strict, so a faulty one blocks work: a before-edit check that blocks too often stops the agent from getting anything done. Keep hooks fast and test them by hand. Skills cost little context but need precise descriptions. Too many skills with similar descriptions confuse the choice.
 
 ## What goes wrong
 Skill never triggers: the description does not match how you phrase requests, so rewrite it using your own words. Hook does nothing: the event or the file pattern is wrong, so run the script by hand and check its exit code. Hook slows everything: it does heavy work on every edit, so move that work to a commit-time check.

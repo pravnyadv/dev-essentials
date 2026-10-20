@@ -161,3 +161,6 @@ least privilege | Giving a person or program only the access it needs for the jo
 IoU [intersection over union] | A score for a predicted box: the overlap area divided by the combined area of the predicted and true boxes. 1 is a perfect match, 0 is no overlap.
 calibration | Whether a model's confidence matches how often it is right. A well calibrated model is right about 90 percent of the time when it says 0.9.
 leakage [data leakage] | When a feature or test example contains information that would not be known at prediction time, so scores look better than real use.
+metadata | Extra labels stored with a document or chunk, such as its title, date or country, which let you filter results.
+vocabulary | The full list of pieces (tokens) a model knows how to read and write.
+stop token | A special marker the model writes to say its answer is finished.

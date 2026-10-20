@@ -2,7 +2,7 @@
 // YouTube is checked through oEmbed because watch pages answer 200 for any id. 401/403/429 are reported as "blocked", not broken.
 import { readFileSync } from 'node:fs'
 
-const { library } = JSON.parse(readFileSync(new URL('../src/generated/ai.json', import.meta.url), 'utf8'))
+const { library, articles = [] } = JSON.parse(readFileSync(new URL('../src/generated/ai.json', import.meta.url), 'utf8'))
 const UA = { 'user-agent': 'Mozilla/5.0 (link-check)' }
 const check = async ({ url }) => {
   const target = /youtube\.com\/watch/.test(url) ? `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json` : url
@@ -12,7 +12,7 @@ const check = async ({ url }) => {
     return { url, status: r.status }
   } catch (e) { return { url, status: 'error ' + (e.cause?.code ?? e.name) } }
 }
-const queue = library.filter(r => r.url.startsWith('http')), results = []
+const queue = [...library, ...articles].filter(r => r.url.startsWith('http')), results = []
 await Promise.all(Array.from({ length: 12 }, async () => { while (queue.length) results.push(await check(queue.shift())) }))
 // Some sites answer scripts with 404 or 403 while serving browsers; they are reported as unverified, not broken.
 const BOT_BLOCKED = ['consumer.ftc.gov', 'academic.oup.com', 'www.fda.gov']

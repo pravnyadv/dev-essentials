@@ -1,11 +1,11 @@
 # vectors-and-similarity | Vectors and similarity | 1 | 12
-A vector is a list of numbers. The dot product measures how much two vectors point the same way. Nearly everything in modern AI is this operation repeated.
+A vector is a list of numbers. The dot product measures how much two vectors point the same way. A large share of modern AI is this operation repeated.
 
 ## Before you start
 This chapter is the math underneath everything you have used so far: prompts, embeddings, retrieval and agents. You have already seen what these things do. Here you see why they work, using small numbers you can do by hand. Take it one lesson at a time. If a formula gets heavy, read the worked example and the picture first, and come back to the formula later.
 
 ## The idea
-Represent a thing as numbers. A word, an image or a sentence becomes a vector such as [0.2, 0.9, -0.1]. The dot product multiplies matching entries and adds them: a · b = a₁b₁ + a₂b₂ + … Large and positive means similar direction, near zero means unrelated, negative means opposite.
+Represent a thing as numbers. A word, an image or a sentence becomes a vector such as [0.2, 0.9, -0.1]. The dot product multiplies matching entries and adds them: a · b = a₁b₁ + a₂b₂ + … Think of each vector as an arrow from the middle of a graph to the point it names, so its direction is where the arrow points. Large and positive means similar direction, near zero means unrelated, negative means opposite.
 
 $$a \cdot b = a_1 b_1 + a_2 b_2 + \dots + a_n b_n$$
 
@@ -14,16 +14,16 @@ Cosine similarity divides out the lengths so only direction counts: cos(a, b) = 
 $$\cos(a,b) = \frac{a \cdot b}{\lVert a \rVert \, \lVert b \rVert}$$
 
 ## Example
-Take a = [1, 2] and b = [2, 1]. The dot product is 1×2 + 2×1 = 4. The lengths are both √5 ≈ 2.236. So cosine is 4 / 5 = 0.8, quite similar. For a = [1, 0] and c = [0, 1], the dot product is 0, so cosine is 0: unrelated.
+Take a = [1, 2] and b = [2, 1]. The dot product is 1×2 + 2×1 = 4. The lengths are both √5 ≈ 2.236, and √5 × √5 = 5. So cosine is 4 / 5 = 0.8, quite similar. For a = [1, 0] and c = [0, 1], the dot product is 0, so cosine is 0: unrelated.
 
 ## Where you will see it
-Embedding search ranks documents by cosine similarity to the query. Attention scores are dot products between a query vector and key vectors. A neuron computes a dot product between its weights and its inputs. Learn this one operation well.
+Embedding search ranks documents by cosine similarity to the query. Later you will meet the same operation inside attention and inside every neuron, but you do not need those yet. Learn this one operation well.
 
 ## Try it
 Drag the two arrows in the demo above and watch the dot product and cosine change.
 
 ## Worked example: recommending a song
-You: [fast 0.9, acoustic 0.1, sad 0.2]. Song A: [0.8, 0.0, 0.1]. Song B: [0.1, 0.9, 0.9]. Dot with A: 0.9×0.8 + 0.1×0 + 0.2×0.1 = 0.74. Dot with B: 0.9×0.1 + 0.1×0.9 + 0.2×0.9 = 0.36. Song A fits you better. Search engines, recommendations and chatbots all use this idea at much bigger scale, with hundreds of numbers instead of three.
+You: [fast 0.9, acoustic 0.1, sad 0.2]. Song A: [0.8, 0.0, 0.1]. Song B: [0.1, 0.9, 0.9]. Dot with A: 0.9×0.8 + 0.1×0 + 0.2×0.1 = 0.74. Dot with B: 0.9×0.1 + 0.1×0.9 + 0.2×0.9 = 0.36. Song A fits you better. The songs are all about the same size, so the plain dot product is fair here. Search engines, recommendations and chatbots all use this idea at much bigger scale, with hundreds of numbers instead of three.
 
 ## How length and direction separate
 Every vector has a length, written |a|. For [3, 4] it is √(3² + 4²) = √25 = 5. Dividing each entry by the length gives [0.6, 0.8], a vector of length 1 that points the same way. Cosine similarity is the dot product of two such length-1 vectors, which is why it ignores size. Doubling a vector, from [1, 2] to [2, 4], doubles its dot products but leaves its cosine with [1, 2] at exactly 1. Flip it to [-1, -2] and the cosine is -1. A vector like [2, -1] gives dot product 0 with [1, 2], so the cosine is 0.
@@ -38,7 +38,7 @@ Embedding vectors (lists of numbers that stand for meaning) are learned from how
 Pick a = [3, 4], b = [6, 8] and c = [4, -3]. Work out a · b, a · c and the three lengths. You should get a · b = 50, a · c = 0, lengths 5, 10 and 5. Then the cosine of a and b is 50 / (5 × 10) = 1, and the cosine of a and c is 0. Same direction and a right angle, found with arithmetic alone.
 
 ## Common mistake
-Comparing raw dot products when vectors have different lengths. A long vector gets a big dot product just for being long. Cosine similarity removes length so only direction counts.
+Reading a dot product as a percentage. It has no fixed maximum and grows with vector size, so only cosine similarity stays between -1 and 1.
 
 ```resources
 video | Vectors (Essence of linear algebra, chapter 1) | https://www.youtube.com/watch?v=fNk_zzaMoSs | 3Blue1Brown | Essence of linear algebra, chapter 1.
@@ -230,7 +230,7 @@ A model has billions of weights. The gradient has one slope per weight: for each
 Take f(x) = (3x + 1)² at x = 2. Think of two steps: g = 3x + 1, then f = g². At x = 2, g = 7 and f = 49. The outer slope is 2g = 14. The inner slope is 3. Multiply: 14 × 3 = 42. Numerical check: at x = 2.001, g = 7.003, f = 49.042, so the change is 0.042 for a nudge of 0.001, a ratio of about 42. This multiply-the-slopes habit is all that backpropagation does.
 
 ## A second example: where the slope is zero
-At x = 0, f(x) = x² has slope 0, and that is the bottom of the bowl, so no step is needed. But zero slope is not always a good sign. f(x) = x³ also has slope 0 at x = 0, yet it keeps rising on one side and falling on the other. In a network, a ReLU neuron with a negative input has slope 0, so no gradient flows through it and its weights stop learning. Flat does not always mean finished.
+At x = 0, f(x) = x² has slope 0, and that is the bottom of the bowl, so no step is needed. But zero slope is not always a good sign. f(x) = x³ also has slope 0 at x = 0, yet it is not a bottom. Values to the left are lower and values to the right are higher, so the slope is zero only for a moment and the curve keeps climbing. In a network, a ReLU neuron with a negative input has slope 0, so no gradient flows through it and its weights stop learning. Flat does not always mean finished.
 
 ## What goes wrong: slopes that multiply
 By the chain rule, the slope through a deep stack is a product of one slope per layer. Invented numbers: if each of 10 layers contributes 0.25, the product is 0.25¹⁰ = 0.00000095. The early layers barely get a signal, called a vanishing gradient. If each contributes 2, the product is 2¹⁰ = 1,024, an exploding gradient. Symptoms: loss that does not move, or loss that suddenly becomes nan. Confirm by printing the gradient size for each layer and looking for a steady drop or rise toward the start of the network.
@@ -278,7 +278,7 @@ Change the weights and bias in the demo and watch the output and the decision li
 Take the XOR task: output 1 when exactly one of two inputs is 1. The four cases are (0,0) → 0, (0,1) → 1, (1,0) → 1 and (1,1) → 0. A single neuron draws one straight line to separate its answers, and no line can do this. Two layers can. Let h1 = ReLU(x1 + x2) and h2 = ReLU(x1 + x2 - 1), then output h1 - 2×h2. Case (1,1): h1 = 2, h2 = 1, output 2 - 2 = 0. Case (1,0): h1 = 1, h2 = 0, output 1. Case (0,0): both 0, output 0. All four cases come out right, using 9 learned numbers (6 weights and 3 biases).
 
 ## Why the bend is required
-Remove the activation and a second layer does nothing new. If layer one multiplies by 3 and layer two multiplies by 2, together they multiply by 6, which one layer could do. With ReLU in between, the layers cannot merge, and each adds new shapes. That is the mechanism. A claim that networks "think like brains" is marketing, not a description of this.
+Remove the activation and a second layer does nothing new. If layer one multiplies by 3 and layer two multiplies by 2, together they multiply by 6, which one layer could do. With ReLU in between, the layers cannot merge, and each adds new shapes. That is the mechanism.
 
 ## What goes wrong: dead neurons
 If a neuron's sum is negative for every input, ReLU outputs 0 and its slope is 0 too, so training cannot repair it. This is a dead neuron. Typical cause: a learning rate so large that one update pushed the bias far below zero. Symptom: many hidden values that are exactly 0 for every example. To confirm, run a batch through and count how often each neuron is above 0. A neuron stuck at 0% is dead.
@@ -385,7 +385,7 @@ The cost of the backward pass is about the same as the forward pass, no matter h
 Computing each weight's blame separately would take billions of passes. Backprop reuses work: the blame at a later layer is passed backward and combined with each earlier layer's local slope. One forward pass and one backward pass give every gradient. That is why training a huge model is possible at all.
 
 ## A second step of the same example
-Continue from the example: after the first update w = 2.2. Forward: a = 2.2 × 2 = 4.4, p = 4.4, L = (4.4 - 5)² = 0.36. Backward: dL/dp = 2(4.4 - 5) = -1.2, and dL/dw = -1.2 × 2 = -2.4. Update: w = 2.2 + 0.1 × 2.4 = 2.44. Forward again: a = 4.88 and L = 0.0144. The bias gets its own gradient from the same pass: dL/db = dL/dp × dp/db, and dp/db = 1, so it is just -6 on the first step. One backward walk serves every parameter.
+Continue from the example: after the first update w = 2.2. Forward: a = 2.2 × 2 = 4.4, p = 4.4, L = (4.4 - 5)² = 0.36. Backward: dL/dp = 2(4.4 - 5) = -1.2, and dL/dw = -1.2 × 2 = -2.4. Update: w = 2.2 + 0.1 × 2.4 = 2.44. Forward again: a = 4.88 and L = 0.0144. The same backward pass also gives the bias its gradient: dL/db = dL/dp × dp/db, and dp/db = 1, so it is -6 on the first step. The numbers above update only w and keep b = 0. If you updated b as well (b = 0.6), the next prediction would be 5.0 and the loss 0. One backward walk serves every parameter.
 
 ## When one weight is used twice
 If a weight appears in two places, its gradient is the sum of the gradients along each path. Take p = w×x1 + w×x2 with x1 = 2, x2 = 3, target t = 10 and w = 1. Then p = 5 and L = 25. dL/dp = 2(5 - 10) = -10. The path through x1 contributes -10 × 2 = -20, and the path through x2 contributes -10 × 3 = -30. So dL/dw = -50. With η = 0.01, w = 1.5, p = 7.5 and L = 6.25. This summing is how one filter reused across a whole image, or one weight matrix reused across a whole sentence, gets a single gradient.
@@ -490,7 +490,7 @@ Daily gradients for one weight: 1.0, -0.8, 1.2, 0.9. A raw update would zigzag. 
 Different weights need different step sizes. Adam divides each step by how large that weight's recent gradients have been, so noisy weights move carefully and quiet ones move more. It works well out of the box, which is why most transformers use it.
 
 ## How one Adam step is built
-Adam tracks two averages per weight, m for gradients and v for squared gradients. A typical choice is β₁ = 0.9 for m and β₂ = 0.999 for v. After bias correction on step 1, m̂ equals the gradient g and v̂ equals g², so the step is the learning rate × g / (|g| + a tiny number). That is about plus or minus the learning rate, whatever g was. Check: with g = 0.5, 50 and 0.001 the ratio g / |g| is 1 in all three cases. The first steps all have about the same size, even when gradient scales differ by a factor of 100,000. That is the "per-weight step size" idea in action.
+Adam tracks two averages per weight, m for gradients and v for squared gradients. A typical choice is β₁ = 0.9 for m and β₂ = 0.999 for v. After bias correction on step 1, m̂ equals the gradient g and v̂ equals g², so the step is the learning rate × g / (|g| + a tiny number). That is about plus or minus the learning rate, whatever g was. Check: with g = 0.5, 50 and 0.001 the ratio g / |g| is 1 in all three cases. The first steps all have about the same size, even when gradient scales differ by a factor of 50,000. That is the "per-weight step size" idea in action.
 
 ## A second example: a weight that zigzags
 Gradients +1, -1, +1, -1 for one weight, with β = 0.9. The raw average m runs 0.1, -0.01, 0.091, -0.0181. After dividing by 1 - 0.9ᵗ (0.1, 0.19, 0.271, 0.3439) you get 1.0, -0.053, 0.336, -0.053. A plain gradient step would swing by ±1 every time. The smoothed signal says: mostly cancelling, barely move. Compare a steady gradient of 1, where the corrected value stays at exactly 1 and the weight moves at full speed.

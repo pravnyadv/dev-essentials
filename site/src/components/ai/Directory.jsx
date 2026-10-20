@@ -4,7 +4,7 @@ import { Check, Search } from 'lucide-react'
 import Chip from '../shared/Chip.jsx'
 import PageContainer from '../shared/PageContainer.jsx'
 import Panel from '../shared/Panel.jsx'
-import { Pill, buttonClass } from '../shared/ui.jsx'
+import { LEVELS, Pill, buttonClass } from '../shared/ui.jsx'
 import SectionHeading from '../shared/SectionHeading.jsx'
 import { ListRow, RowList } from '../shared/RowList.jsx'
 import { ResourceRow } from './LessonParts.jsx'
@@ -164,6 +164,47 @@ export function Glossary({ glossary }) {
           </dl>
         </section>
       ))}
+    </PageContainer>
+  )
+}
+
+const TOPICS = { 'how-llms-work': 'How LLMs work', prompting: 'Prompting', agents: 'Agents', retrieval: 'Retrieval', evals: 'Evals', safety: 'Safety', building: 'Building', coding: 'Coding with AI', history: 'History', critical: 'Critical views' }
+
+// Hand-picked free reading, one lesson each. Filter by topic or search.
+export function Articles({ articles }) {
+  const [topic, setTopic] = useState(null)
+  const [q, setQ] = useState('')
+  const needle = q.trim().toLowerCase()
+  const shown = articles.filter(a => (!topic || a.topic === topic) && (!needle || `${a.title} ${a.author} ${a.why}`.toLowerCase().includes(needle)))
+  const count = t => articles.filter(a => a.topic === t).length
+  return (
+    <PageContainer className="space-y-5">
+      <header>
+        <SectionHeading level={1}>Free articles</SectionHeading>
+        <p className="mt-2 max-w-3xl text-fd-muted-foreground">{articles.length} articles worth reading, picked by hand. Every one is free and was opened to check it loads. Each pairs with a lesson, so you can read it right after.</p>
+      </header>
+      <SearchBox value={q} onChange={setQ} placeholder="Search title, author or topic" label="Search articles" className="max-w-md" />
+      <div className="flex flex-wrap gap-2">
+        <Chip on={!topic} onClick={() => setTopic(null)}>All {articles.length}</Chip>
+        {Object.entries(TOPICS).filter(([t]) => count(t)).map(([t, label]) => <Chip key={t} on={topic === t} onClick={() => setTopic(t)}>{label} {count(t)}</Chip>)}
+      </div>
+      <p className="text-sm text-fd-muted-foreground" aria-live="polite">Showing {shown.length} of {articles.length}</p>
+      <RowList>
+        {shown.map(a => (
+          <ListRow key={a.url}>
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <a href={a.url} target="_blank" rel="noreferrer" className="inline-block py-1 font-semibold hover:underline max-md:py-3">{a.title}</a>
+              <span className="text-xs text-fd-muted-foreground">{a.author}{a.year ? `, ${a.year}` : ''}</span>
+            </div>
+            <p className="text-fd-muted-foreground">{a.why}</p>
+            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-fd-muted-foreground">
+              <Pill tone="outline">{TOPICS[a.topic]}</Pill>
+              <Pill tone="outline">{LEVELS[a.level]}</Pill>
+              Pairs with <Pill href={a.lessonUrl} className="max-md:inline-flex max-md:min-h-11 max-md:items-center">{a.lessonTitle}</Pill>
+            </p>
+          </ListRow>
+        ))}
+      </RowList>
     </PageContainer>
   )
 }

@@ -25,9 +25,15 @@ Fumadocs (Next.js, static export) renders both. No backend. Each track is its ow
 - `authored/ai/<chapter>.md`: one file per chapter. A topic is a section headed `# slug | Title | level 1-3 | minutes`: first paragraph is the summary, `##` sections are the lesson, a ```resources fence lists `kind | title | url | by | why` lines, a ```quiz fence lists `question | a ; b ; c | answerIndex | why` lines, and a ```story fence holds a 2 to 4 sentence "Picture this" scenario. Every topic needs at least one resource and three quiz questions with options of similar length (write the right answer anywhere, `npm run lint:ai` flags clustering), and every authored lesson should have a story, a worked example and a "Common mistake" note (`npm run lint:ai` reports thin or hard-to-read lessons).
 - `scripts/ai-curation.mjs`: tiers, stages, goals, chapter order, and which demo (`EXPLAINERS`) a topic shows. Each chapter also carries `stage`, `after` (chapters it builds on), `goals`, `outcome` and `story`, which drive the learning map at `/ai/map`. Chapter order in the file is the numbered recommended order on the map.
 - `authored/ai/glossary.txt`: `term [aliases] | definition`. Each lesson lists the terms it uses, so define every new technical word here.
-- `authored/ai/data/`: the parts that change over time: `models.json` (model atlas), `radar.json` (dated news on the dashboard), `stars.json` (GitHub stars snapshot), `meta.json` (`lastUpdated` and the sources to re-check).
+- `authored/ai/data/`: the parts that change over time: `models.json` (model atlas), `radar.json` (dated news on the dashboard), `stars.json` (GitHub stars snapshot), `meta.json` (`lastUpdated` and the sources to re-check). `articles.json` is the hand-picked free reading list shown at `/ai/articles`: each entry has `title`, `author`, `year`, `url`, `why`, `level` (1 to 3), `topic` (one of `ARTICLE_TOPICS` in `build-ai.mjs`), `lesson` (an existing topic slug) and `verified`. The build fails on a bad topic, level or lesson. `npm run links` checks these URLs too.
 - `scripts/build-ai.mjs`: all of the above into `content/ai/` and `src/generated/ai.json`. It fails on a bad resource kind, quiz answer, duplicate slug or unknown topic reference.
 - `scripts/import-guide.mjs`: imports the DAIR.AI Prompt Engineering Guide technique pages (MIT) as the `prompting-reference` chapter. Do not import roadmap.sh content: its license forbids reuse. Use it only as a checklist (`npm run coverage`).
+
+### Adding a track
+Landing-page cards come from `site/src/lib/tracks.ts`. A new track needs its page tree under `src/app/<track>/` (copy `src/app/ai/layout.tsx` and `docs/[[...slug]]`), a generator script like `build-docs.mjs`, a Fumadocs source in `src/lib/source.tsx`, a search route under `src/app/api/search/`, and one entry in `tracks.ts`.
+
+### CI and deploy
+`.github/workflows/ci.yml` runs `npm run verify` on every push and pull request and deploys `out/` to Cloudflare Pages on pushes to `main` when the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets exist. `links.yml` runs `npm run links` weekly. The local manual deploy is `npm run deploy` with `CLOUDFLARE_ACCOUNT_ID` exported.
 
 ## Commands
 

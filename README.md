@@ -30,6 +30,8 @@ export CLOUDFLARE_ACCOUNT_ID=<your account id>
 npm run deploy     # from site/: verify, then wrangler pages deploy out
 ```
 
+Pushes to `main` run the checks in GitHub Actions (`.github/workflows/ci.yml`) and deploy when two repository secrets exist: `CLOUDFLARE_API_TOKEN` (an API token with the "Cloudflare Pages: Edit" permission) and `CLOUDFLARE_ACCOUNT_ID`. Without them the workflow still verifies and skips the deploy. A weekly workflow checks every linked resource and article (`links.yml`).
+
 ## Layout
 
 - `site/authored/ai/`: the AI lessons (one Markdown file per chapter), glossary and the data that changes over time (`data/models.json`, `radar.json`, `meta.json`).

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-10-19",
+  "lastUpdated": "2026-10-20",
   "note": "Bump lastUpdated whenever you refresh models.json or radar.json. The next update starts by looking for anything newer than this date.",
   "watch": [
     {

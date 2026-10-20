@@ -240,7 +240,7 @@ Your app sends 300 requests a minute and the provider allows 200. The extra 100 
 Text arrives in small pieces, so append, do not replace. The connection can drop halfway: keep what you have and offer a retry. Let the user press Stop.
 
 ## How streaming works
-The server keeps the connection open and sends small events as tokens are produced. Your code reads each event and appends its text to the screen. A final event carries the usage counts.
+The server keeps the connection open and sends small events as tokens are produced. Your code reads each event and appends its text to the screen. Usage counts arrive in the stream's closing events. Some providers need an option switched on to send them.
 
 Two times matter. Time to first token is the wait before anything appears. Total time is how long the whole answer takes. Streaming improves the first and leaves the second unchanged.
 
@@ -310,7 +310,7 @@ An API key in browser code is a key anyone can copy. Call the provider from your
 Models often reply in markdown. If you convert it to HTML and insert it into the page, a prompt-injected or odd answer can contain a script tag or a link that runs code. Sanitize the HTML with a library, or render markdown with a safe renderer that does not allow raw HTML. Treat the output like user input, because it can be shaped by user input. Do the same before putting model text into a database query or a shell command.
 
 ## How retry with backoff works
-1. Send the request. It fails with a retryable error such as 429 or 529.
+1. Send the request. It fails with a retryable error such as 429 (rate limited) or an overloaded or 5xx server error.
 2. Wait about 1 second plus a small random amount, then try again.
 3. If it fails again, wait about 2 seconds, then about 4.
 4. Stop after a fixed number of tries and show the user a plain message.
@@ -375,7 +375,7 @@ Think of a short loop. Your code sends the messages and tool list. If the reply 
 Trace for the question "Is order 8123 late, and what is the refund policy?" The model calls track_order. Your code returns "shipped, arrives Friday". The model calls get_policy. Your code returns the policy text. The model then writes the final answer. That is three model calls, and each one resends the earlier messages and results. More tools and longer results mean more tokens. Always set a maximum number of loop steps.
 
 ## A second example: when a tool is not the answer
-A tool that adds two numbers invites mistakes in the wrong direction: for exact math, a tool or code run is more reliable than the model's own guess. A tool that returns the capital of France wastes a round trip, because the model already knows. Add a tool when the answer needs live data, private data or an action. Skip it when the model can answer alone.
+A tool for adding two numbers is fine, since code is exact where the model can slip. A tool that returns the capital of France wastes a round trip, because the model already knows. Add a tool when the answer needs live data, private data or an action. Skip it when the model can answer alone.
 
 ## Narrow versus broad tools
 A broad tool such as run_sql(query) can answer many questions, but it can also delete a table. A narrow tool such as get_order(id) is limited by design. Prefer narrow tools for anything with side effects.
@@ -757,7 +757,7 @@ Audio with noise, overlapping speakers or strong accents produces mistakes and s
 
 Private data leaves your control. Photos can include faces, addresses or documents in the background. Check where the provider stores them.
 
-Generated images often garble text inside the picture. Add text yourself afterward.
+Some image models still misspell text inside the picture. Check any text in the output, and add it yourself afterward if it matters.
 
 ## Try it yourself
 Photograph one printed paragraph three times: sharp, from far away, and slightly blurred. Send each to a vision model and ask it to copy the text. Compare the results. Expect it to read the sharp one well and to start making errors as the quality drops. Note the point where it breaks.

@@ -128,10 +128,10 @@ A hook is code that runs at a fixed point, so the model cannot talk its way past
 4. It finds one and returns a refusal that names the file.
 5. The agent reads the refusal, removes the key, and tries again.
 
-A rule in the prompt, "never commit secrets", works most of the time. The hook works every time, because the check does not depend on the model remembering.
+A rule in the prompt, "never commit secrets", works most of the time. The hook runs every time, because the check does not depend on the model remembering. It still only catches what its scan can recognise.
 
 ## What goes wrong: a harness that grows too heavy
-A rules file grows to 300 lines. Some rules contradict each other, and the agent starts ignoring parts of it. The symptom is an agent that obeys rules early in a session and drops them later, as the rules compete with the task for space in the context window.
+A rules file grows to 300 lines. Some rules contradict each other, and the agent starts ignoring parts of it. The symptom is an agent that obeys rules early in a session and drops them later, as the rules compete with the task for attention and sometimes contradict each other.
 
 To confirm, trim the file to the ten rules that matter. Run the same task ten times with each version and compare the passes. If the short file passes as often or more, the extra rules were noise.
 

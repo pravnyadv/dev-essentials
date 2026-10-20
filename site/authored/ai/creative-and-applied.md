@@ -23,7 +23,7 @@ Start with arithmetic, since everything in the code runs on frame numbers.
 A progress value runs from 0 to 1 across a range of frames. A bar chart grows between frame 30 and frame 90, a span of 60 frames. At frame 60, progress is (60 - 30) / 60 = 0.5. If the final bar height is 80 pixels, the bar is 40 pixels tall at that moment. A title that fades in over frames 0 to 30 has opacity 0.5 at frame 15. Easing changes the curve, but the idea stays the same: the picture is a pure function of the frame number.
 
 ## What goes wrong: a preview that flickers
-Preview looks fine, but the final render has parts that jump or flicker. A common cause is timing that does not come from the frame number, such as CSS transitions, a timer, or random values. Rendering draws frames one at a time and does not wait for real time to pass.
+Preview looks fine, but the final render has parts that jump or flicker. A common cause is timing that does not come from the frame number, such as CSS transitions, a timer, or random values. Rendering draws frames in separate browser tabs, in parallel, and does not wait for real time to pass.
 
 To confirm, render the same frame twice, then compare the two images. A correct scene produces identical stills. If they differ, find the code that reads the clock or a random number, and replace it with a value computed from the frame.
 
@@ -92,7 +92,7 @@ Sources 2, 3 and 5 all state the same figure in similar words. They look like th
 A single fact, such as a city's population, needs one search. A question whose answer lives in your own private files needs retrieval over those files, because the web has nothing on it. A decision due in five minutes cannot wait for a run that costs many times a normal answer. Use it for open questions where several sources must agree.
 
 ## What the cost looks like
-Parallel gathering reads a lot. Invented numbers: 5 sub-questions, 10 pages each, about 3,000 tokens a page. That is 5 x 10 x 3,000 = 150,000 tokens of reading, before the verifiers fetch pages of their own. A normal chat answer might use 1,000 tokens of output. You pay for breadth, so a narrower question is both cheaper and easier to check. Cutting the scope from five sub-questions to two cuts the reading to 60,000 tokens.
+Parallel gathering reads a lot. Invented numbers: 5 sub-questions, 10 pages each, about 3,000 tokens a page. That is 5 x 10 x 3,000 = 150,000 tokens of reading, before the verifiers fetch pages of their own. A normal chat answer might read 5,000 tokens and write 1,000. You pay for breadth, so a narrower question is both cheaper and easier to check. Cutting the scope from five sub-questions to two cuts the reading to 60,000 tokens.
 
 ## Common mistake
 Treating a long cited report as proof. Check the sources that matter.

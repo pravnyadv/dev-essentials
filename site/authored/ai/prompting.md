@@ -2,10 +2,10 @@
 A good prompt states the task, gives the context the model cannot guess, and shows what a good answer looks like.
 
 ## What it is
-Treat the model like a capable colleague who has none of your background. Say what you want, who it is for, what the constraints are, and what format you need back. Include the inputs. Give one or two examples of good output when the format matters. Put long documents before the question, and separate sections with clear tags such as XML-style delimiters so instructions are not confused with data.
+Treat the model like a capable colleague who has none of your background. Say what you want, who it is for, what the constraints are, and what format you need back. Include the inputs. Give one or two examples of good output when the format matters. Put long documents before the question, and separate sections with clear tags, for example <document> ... </document> around the pasted text and <question> ... </question> around your request, so instructions are not confused with data.
 
 ## What helps and what does not
-Specific beats clever. "Summarize in three bullets for a CFO, no jargon" works better than a persona line. Examples work better than long descriptions of style. Telling the model what to do works better than listing what not to do. Trying a prompt on five varied inputs finds problems that one input hides.
+Specific beats clever. "Summarize in three bullets for a CFO, no jargon" works better than a persona line. Examples work better than long descriptions of style. Telling the model what to do works better than listing what not to do: "Reply in two sentences" beats "Do not write long answers". Trying a prompt on five varied inputs finds problems that one input hides.
 
 ## Try it
 Take a prompt that gives mediocre results. Rewrite it with an audience, a format and one example, then compare outputs on the same inputs.
@@ -23,7 +23,7 @@ A model predicts the most likely useful answer given your words. When the words 
 Ask "What was our revenue last quarter?" with no document attached. No wording can fix this, because the model does not have the number. The symptom is a confident, specific figure that is invented. The fix is to supply the input, such as the report itself, or to accept that the model cannot know. If you see made-up details, check first whether the prompt gave the model what it needed to answer.
 
 ## Change one thing at a time
-To see whether a rewrite helps, keep the test inputs fixed and change only one part of the prompt. Use ten inputs and mark each answer pass or fail against the same three rules. Invented example: version one passes 4 of 10 and version two passes 7 of 10. Run each version twice, because the same prompt can give different answers on different runs. If two changes happen together, you cannot tell which one helped.
+To see whether a rewrite helps, keep the test inputs fixed and change only one part of the prompt. Use ten inputs and mark each answer pass or fail against three yes or no rules you wrote first, such as "under 50 words", "mentions cost" and "no jargon". Invented example: version one passes 4 of 10 and version two passes 7 of 10. Run each version twice, because the model picks words with some randomness, so the same prompt can give different answers on different runs. With only ten inputs a gap of a few passes can be luck. If two changes happen together, you cannot tell which one helped.
 
 ## Common mistakes
 Writing very short prompts and expecting mind-reading. Stacking many unrelated tasks in one prompt. Testing on only one input.
@@ -288,22 +288,19 @@ A new employee on their first day is handed a pile of 400 documents and told "an
 ```
 
 # context-failure-modes | How context fails | 2 | 12
-Long contexts do not just fill up. They go wrong in specific, nameable ways.
+The context is everything the model is reading right now: your prompt, the chat history and any tool results. Long contexts do not just fill up. They go wrong in specific, nameable ways. Several of these show up mostly in agents, programs that run a model in a loop with tools, which the next chapters cover.
 
 ## The failure modes
-Poisoning: a wrong fact or hallucination enters the context and later steps treat it as true. Distraction: so much accumulated history that the model repeats past actions instead of reasoning anew. Confusion: irrelevant tools or documents make the model pick the wrong one. Clash: the context contains contradictory information, such as an old and a new version of a spec. Rot: accuracy drops as inputs get longer, even on simple tasks.
+Poisoning: a wrong fact or hallucination enters the context and later steps treat it as true. Distraction: so much accumulated history that the model repeats past actions instead of reasoning anew. Confusion: irrelevant tools or documents make the model pick the wrong one. Clash: the context contains contradictory information, such as an old and a new version of a spec. Rot: accuracy drops as inputs get longer, even on simple tasks (the causes are not fully understood).
 
 ## What to do about each
 Poisoning: validate facts before saving to memory and let the agent start fresh when a run goes wrong. Distraction: summarize or drop old turns. Confusion: expose only the tools needed for the step. Clash: keep one source of truth and remove stale versions. Rot: retrieve only what the step needs instead of pasting everything.
 
 ## Measure it
-Test with your real prompts at different lengths. If answers get worse as you add context, you have found the limit for that task. Place the key instructions at the start and the end, where models attend best.
+Test with your real prompts at different lengths: add unrelated pages of text (about 5,000 tokens each) and watch the accuracy. If answers get worse as you add context, you have found the limit for that task. Place the key instructions at the start and the end, where models pay the most attention.
 
 ## A worked example: clash
 Your context holds the old spec ("orders ship in 5 days") and a newer message ("orders now ship in 3 days"). The model sees both and sometimes uses the old one. Fix: remove the outdated item or write one clear sentence, "Ignore the earlier shipping time. Use 3 days."
-
-## Testing for rot
-Take a task the model does well with a short prompt. Add unrelated paragraphs in steps of 5,000 tokens and watch the accuracy. The point where it dips is your practical limit for that task.
 
 ## Telling the failures apart
 Work through a short test to find which failure you have.
@@ -311,13 +308,13 @@ Work through a short test to find which failure you have.
 2. If the wrong fact appears in the output, search the context for where it first appeared. If it came from an earlier step, that is poisoning.
 3. If the context holds two versions of the same thing, that is clash.
 4. If it still fails with a clean context, the problem is the task or the model, not the context.
-Each answer points to a different fix, so diagnose before you trim anything.
+Clutter calls for trimming. Poisoning and clash call for removing the bad item. Diagnose before you trim anything.
 
 ## A second example: confusion from too many tools
 An agent has 40 tools. A user asks for last month's sales total, and the agent calls "get_customer" because its description mentions sales. Many descriptions overlap, so the model cannot tell them apart. The fix is to expose only the five tools the step needs and rewrite each description so it says clearly what it does and when not to use it. Symptom to watch for: the right tool exists, but the wrong one gets called.
 
 ## Trimming has a cost
-Removing old turns can remove something that still matters. Suppose the user said early on, "never use PDFs". After trimming, the agent produces a PDF. The symptom is a broken earlier constraint. Keep standing rules in a separate stable block that is never trimmed, and trim only the history around it.
+Removing old turns can remove something that still matters. Suppose the user said early on, "never use PDFs". After trimming, the agent produces a PDF. The symptom is a broken earlier constraint. Keep standing rules in a separate stable block that is never trimmed (in a chat app, that is the system prompt), and trim only the history around it.
 
 ## Common mistake
 Blaming the model for forgetting when the real problem is clutter in the window.

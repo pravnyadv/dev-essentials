@@ -7,23 +7,21 @@ A token is a piece of text, usually a word or part of a word. "unbelievable" mig
 The context window is the maximum number of tokens the model can see at once. It holds your system prompt, the whole conversation so far, any files or tool results, and the answer being written. When it is full, something has to be dropped or summarized.
 
 ## Why it matters
-Cost, speed and quality all follow token count. You pay per input and output token. Long inputs are slower. Past a point, quality drops too: models get worse at using facts buried in the middle of a very long context, a failure often called context rot.
-
-Every agent design decision later in this path (retrieval, memory, subagents, compaction) is a way of deciding what goes into that window.
+Cost, speed and quality all follow token count. Developers who use a model through an API pay per input and output token. Long inputs are slower. Past a point, quality drops too: models get worse at using facts buried in the middle of a very long context, a failure often called context rot.
 
 ## Try it
-Paste a paragraph of prose, a JSON blob and some code into a tokenizer viewer and compare tokens per character. Then count how many tokens your longest CLAUDE.md or system prompt takes.
+Paste a paragraph of prose, a JSON blob and some code into a tokenizer viewer and compare tokens per character. Then count the tokens in the longest message you have ever sent a chatbot.
 
 ## Worked example: counting tokens and cost
 The sentence "I love learning about AI!" is about 7 tokens. A 1,000-word email is around 1,300 tokens. If a model charges $3 per million input tokens, that email costs about $0.004 to read. Cheap once, but an agent that re-reads a 50,000-token conversation 30 times pays for 1.5 million tokens: about $4.50. Tokens are the unit of cost, speed and memory.
 
 ## How text becomes tokens
-A tokenizer holds a fixed list of pieces, built by repeatedly merging character pairs that appear often in training text (this method is called BPE). To encode text it cuts the string into the longest pieces on its list, then replaces each piece with an ID number. The model only ever sees those numbers.
+A tokenizer holds a fixed list of pieces, built by repeatedly merging character pairs that appear often in training text (this method is called BPE). To encode text it starts from single characters and joins pairs using those learned merges, in the order it learned them. For example, "t" and "h" join into "th", then "th" and "e" into "the". Then it replaces each resulting piece with an ID number. The model only ever sees those numbers.
 
 Common words are usually one piece. Rare words split into several. An invented split: "unbelievable" becomes "un", "believ", "able". This also explains why models struggle to count letters. The letters were never given to the model, only piece IDs.
 
 ## Why long chats get expensive
-Every turn resends the whole conversation as input. Invented numbers: each turn adds 500 tokens. Turn 1 sends about 500, turn 2 about 1,000, turn 3 about 1,500, and so on. Over 10 turns the total sent is 500 × (1 + 2 + ... + 10) = 500 × 55 = 27,500 tokens, although the conversation holds only 5,000 tokens of text. Cost grows faster than the number of turns. Caching repeated prefixes lowers the price, but the window still fills.
+Every turn resends the whole conversation as input. Invented numbers: each turn adds 500 tokens. Turn 1 sends about 500. Turn 2 sends turns 1 and 2 together, about 1,000. Turn 3 sends all three, about 1,500, and so on. Over 10 turns the total sent is 500 × (1 + 2 + ... + 10) = 500 × 55 = 27,500 tokens, although the conversation holds only 5,000 tokens of text. Cost grows faster than the number of turns. Providers can discount text that repeats at the start of every call, but the window still fills.
 
 ## What goes wrong when the window fills
 Symptoms are easy to spot:
@@ -33,11 +31,6 @@ Symptoms are easy to spot:
 3. Costs per message keep rising during one session.
 
 To confirm, count tokens before sending. Most APIs also report why generation stopped, for example hitting the length limit.
-
-## A second example: when the window is not the problem
-Say you paste three documents of 2,000 tokens each into a model with a far larger window. Everything fits, yet the summary is vague. The window is not the cause here. The prompt probably never said what the summary is for.
-
-Test it. Cut the input down to just the relevant paragraph and ask again. If the answer is still vague, fix the prompt. If it improves, the extra text was the problem, and retrieval or trimming will help.
 
 ## Common mistakes
 Assuming a bigger window means a better answer. More text can bury what matters. Another mistake is forgetting that the answer also uses window space, so a nearly full window leaves little room to reply.
@@ -56,35 +49,35 @@ A chat has used 95 percent of the context window. What is a problem with asking 
 ```
 
 ```story
-A user pastes a whole contract into a chatbot and asks one question about clause 14. The answer is vague. Nothing is broken: the contract used most of the model's attention budget, and clause 14 was one needle in a very large haystack. A short, well-chosen excerpt would have worked better and cost less.
+A user pastes a whole contract into a chatbot and asks one question about clause 14. The answer is vague. Nothing is broken: the contract filled most of the model's context window, and clause 14 was one needle in a very large haystack. A short, well-chosen excerpt would have worked better and cost less.
 ```
 
 # next-token-prediction | Next-token prediction and sampling | 1 | 12
 An LLM is a function that scores every possible next token. Sampling settings decide which one gets picked.
 
 ## What it is
-Given the tokens so far, the model outputs a probability for every token in its vocabulary. A sampler picks one, appends it, and the model runs again. An answer is just this loop repeated until a stop token appears.
+Given the tokens so far, the model outputs a probability for every token in its vocabulary (its full list of known pieces). A sampler picks one, appends it, and the model runs again. An answer is just this loop repeated until the model outputs a special end-of-answer marker called a stop token.
 
-Temperature rescales the probabilities before sampling. Near 0 the top token wins almost every time, so output is stable. Higher values flatten the distribution, so unlikely tokens get picked more often. Top-p keeps only the smallest set of tokens whose probabilities add up to p, then samples inside it.
+Temperature reshapes the probabilities before sampling (it divides the scores first, shown below). Near 0 the top token wins almost every time, so output is stable. Higher values flatten the odds, so unlikely tokens get picked more often. Top-p keeps only the smallest set of tokens whose probabilities add up to p, then samples inside it. For example, with probabilities 0.66, 0.24 and 0.10 and p = 0.8, the first two add up to 0.90, so the third token is dropped and the other two are rescaled to 0.73 and 0.27.
 
 ## Try it
-Use the sampler above. Raise the temperature and watch how the picks spread out. Then set it near zero and sample ten times.
+Use the sampler above the lesson, which shows three tokens and their odds. Raise the temperature and watch how the picks spread out. Then set it near zero and sample ten times.
 
 ## Worked example: one step
 Prompt: "The capital of France is". The model scores possible next tokens: "Paris" 92 percent, "a" 2 percent, "Lyon" 1 percent, and so on. The sampler picks one, usually "Paris". Now the prompt is "The capital of France is Paris" and the model predicts the next token again, maybe a period. Repeat until it predicts an end marker.
 
 ## Why this explains the weirdness
-The model never plans the whole answer. That is why it can start a sentence confidently and then paint itself into a corner. It is also why asking it to write out its reasoning first often helps. Those reasoning words become part of the context for the final answer.
+The model never plans the whole answer. That is why it can start a sentence confidently and then box itself into an ending that does not fit.
 
 ## Inside one step, with small numbers
-The model first produces a raw score for each token, called a logit. Softmax turns scores into probabilities that sum to 1. Invented scores for three tokens: 2, 1 and 0. Softmax gives about 0.665, 0.245 and 0.090.
+The model first produces a raw score for each token, called a logit. Softmax turns scores into probabilities that sum to 1. Invented scores for three tokens: 2, 1 and 0. Softmax raises e (about 2.718) to each score, which gives 7.389, 2.718 and 1, then divides each by their total of 11.107. The probabilities are about 0.665, 0.245 and 0.090.
 
 Temperature divides the scores first. At temperature 0.5 the scores become 4, 2 and 0, and the probabilities sharpen to about 0.867, 0.117 and 0.016. At temperature 2 they become 1, 0.5 and 0, and flatten to about 0.506, 0.307 and 0.186. Same model, same prompt, different odds.
 
 ## What goes wrong: loops
 At low temperature a model can repeat itself. After a phrase has appeared twice, the most likely next token is often the start of the same phrase again, and the loop feeds itself. The symptom is the same sentence repeated until the length limit.
 
-To confirm, rerun with a higher temperature or a repetition penalty, a setting that lowers the score of tokens already used. If the loop disappears, the cause was the sampling, not the prompt.
+To confirm, rerun with a higher temperature or a repetition penalty, a setting that lowers the score of tokens already used. If the loop disappears, sampling was at least part of the cause.
 
 ## Answer order matters
 Because tokens are committed one at a time, the first words steer the rest. If a reply must begin "Yes", the model often ends up justifying yes even when the evidence says no. Asking for the reasoning first and the verdict last lets the verdict rest on that reasoning.
@@ -98,7 +91,7 @@ For a task you care about, run the same prompt 10 times at your chosen settings 
 Believing the model "looks up" facts. It predicts likely text. When a fact was common in training, the likely text is right. When it was rare, the likely text can be a convincing guess.
 
 ## The math, when you are ready
-The step that turns scores into probabilities is called softmax. It has a worked example with small numbers in [Probability and softmax](/ai/docs/building-blocks/probability-and-softmax). You do not need it to use models. It makes more sense once you have built something, so come back to it later in the path.
+The step that turns scores into probabilities is called softmax. It has a worked example with small numbers in [Probability and softmax](/ai/docs/building-blocks/probability-and-softmax). You do not need it to use models.
 
 ```resources
 video | Intro to Large Language Models | https://www.youtube.com/watch?v=zjkBMFhNj_g | Andrej Karpathy | One hour that gives the right mental model of what an LLM is.
@@ -134,7 +127,7 @@ Prompt: "Name a fruit." Temperature 0: "Apple" every time. Temperature 0.7: appl
 ## How the settings stack
 Settings act in sequence, and earlier ones change what later ones see. Reuse the probabilities A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Dividing the scores by a temperature of 0.5 is the same as squaring each probability and rescaling so they sum to 1. The squares are 0.25, 0.0625, 0.0225, 0.0049 and 0.0009, which total 0.3408. The new probabilities are about 0.734, 0.183, 0.066, 0.014 and 0.003.
 
-Now apply top-p 0.9. A and B together reach 0.917, so only A and B survive. Earlier, top-p 0.9 alone kept three tokens. Lowering temperature shrank the candidate set as well. Providers differ in the order they apply settings, so test rather than assume.
+Now apply top-p 0.9. A and B together reach 0.917, so only A and B survive. Earlier, top-p 0.9 alone kept three tokens. Lowering temperature shrank the candidate set as well. The order can differ between libraries and services, so test rather than assume.
 
 ## Trade-offs and when not to use them
 Low temperature gives repeatable output but can loop and sound flat. High temperature gives variety but more errors. Top-k uses the same cutoff whether the model is sure or unsure, which top-p handles better. A seed helps you debug, but it is not a guarantee of identical output across providers or versions.
@@ -201,12 +194,12 @@ Invented numbers for illustration. A token has three earlier tokens to look at. 
 Say the three values are single numbers, 10, 20 and 30. The output is the weighted average: 0.84 × 10 + 0.11 × 20 + 0.04 × 30, about 12.0. Most of the answer comes from the first token, because its key matched the query best. Real models scale the scores before softmax and use long vectors, but the steps are the same.
 
 ## Trade-offs and limits
-Each comparison costs work. For 1,000 tokens there are about 500,000 comparisons, and for 2,000 tokens about 2 million, four times more. Doubling the input quadruples this part of the cost.
+Each comparison costs work, and the number of comparisons grows with the square of the input length. As the history chapter showed, doubling the input quadruples this part of the cost.
 
 A model also runs several attention heads in parallel. A head is one independent copy of attention that can focus on a different kind of relationship. Attention weights show where information flowed, but they are only part of the computation, so they are an incomplete explanation of why the model answered as it did.
 
 ## A second example: where attention does not help
-Attention can only mix information the vectors already hold. Ask a model how many r letters are in "strawberry". The tokenizer may have hidden the letters inside larger pieces, so there is nothing to attend to. Giving the model a code tool avoids the problem.
+Attention can only mix information the vectors already hold. Ask a model how many r letters are in "strawberry". The tokenizer may have hidden the letters inside larger pieces, so the model has little direct access to the letters. Giving the model a code tool avoids the problem.
 
 A different failure is a fact buried in a very long prompt. Weights spread thin across many tokens, and the model may ignore a line that is present. To confirm, move the fact to the start or end of the prompt and ask again. If the answer changes, position was the cause.
 

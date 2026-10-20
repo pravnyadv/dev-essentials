@@ -24,13 +24,13 @@ const NetworkArt = () => (
   </svg>
 )
 
-const ART = { '/dsa': ArrayArt, '/ai': NetworkArt }
+const ART = { array: ArrayArt, network: NetworkArt }
 
 // Landing page: pick a track and see how far you are in each.
 export default function TrackPicker({ tracks, repoUrl }) {
   const progress = useProgress()
   return (
-    <main id="nd-page" className="relative isolate mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center gap-10 px-4 py-12">
+    <main id="nd-page" className={`relative isolate mx-auto flex min-h-screen w-full ${tracks.length > 2 ? 'max-w-6xl' : 'max-w-4xl'} flex-col justify-center gap-10 px-4 py-12`}>
       <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(var(--color-fd-border)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
       <a href={repoUrl} target="_blank" rel="noreferrer" className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full border bg-fd-card px-3.5 py-1.5 text-sm font-medium shadow-sm transition hover:border-fd-foreground/40 max-md:min-h-11"><GithubIcon className="size-4" />GitHub</a>
       <header className="text-center">
@@ -38,10 +38,10 @@ export default function TrackPicker({ tracks, repoUrl }) {
         <SectionHeading level={1} className="mt-3 text-balance sm:!text-5xl">What do you want to learn?</SectionHeading>
         <p className="mx-auto mt-3 max-w-xl text-pretty text-fd-muted-foreground">Visual lessons with worked examples, quizzes and progress tracking. Your progress is saved in this browser.</p>
       </header>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${tracks.length > 2 ? 'lg:grid-cols-3' : ''}`}>
         {tracks.map(t => {
           const done = t.ids.filter(id => progress[id] === 'done').length
-          const Art = ART[t.href]
+          const Art = ART[t.art] ?? NetworkArt
           return (
             <LinkCard key={t.href} href={t.href} className="!p-4" title={<span className="text-xl font-bold">{t.title}</span>} description={t.blurb}>
               <div className="order-first mb-4 h-24 overflow-hidden rounded-lg border bg-fd-background bg-[radial-gradient(var(--color-fd-border)_1px,transparent_1px)] p-2 text-fd-foreground [background-size:14px_14px]"><Art /></div>

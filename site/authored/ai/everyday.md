@@ -18,7 +18,7 @@ The model also keeps track of the conversation only inside its context window, t
 Suppose you want to know whether a bus leaves at 7:40 tomorrow. A chatbot may give a confident time, but it has no live timetable and may be guessing. Open the transport site instead. The same goes for today's weather, a score from last night, or the current rules of your school. Use a model for explaining, drafting and practising. Use the real source for facts that change or that you will act on.
 
 ## What goes wrong
-The most common failure is agreement. A model often praises a weak draft or accepts your wrong answer, because friendly replies are common in the text it learned from. You will see this as feedback that is always positive. To test it, paste in a paragraph you know is flawed and ask for problems. If it finds none, ask again with "list three specific weaknesses".
+The most common failure is agreement. A model often praises a weak draft or accepts your wrong answer, because it was tuned on human ratings, and people tend to rate agreeable answers higher. You will see this as feedback that is always positive. To test it, paste in a paragraph you know is flawed and ask for problems. If it finds none, ask again with "list three specific weaknesses".
 
 Another failure is a plausible but wrong explanation. If a step does not make sense to you, say so and ask for a different example. Do not nod along.
 
@@ -217,7 +217,7 @@ Detection is not a solution. Tools that claim to spot fakes make mistakes in bot
 Two failures are common. One is believing a fake because it matches what you expected. Another is sharing before checking, which spreads it further. Both come from speed. If something makes you angry or afraid, that is the moment to wait.
 
 ## Try it yourself
-Ask three friends to agree on a family code word. Then pick a viral image from this week and trace it.
+Agree on a code word with your family. Then pick a viral image from this week and trace it.
 1. Run a reverse image search with a search engine.
 2. Find the earliest post you can.
 3. Note whether a trusted outlet reports it.

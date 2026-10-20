@@ -88,10 +88,7 @@ A list becomes useful when you add a goal and a limit.
 4. Spend 15 minutes on each. Cross out any that repeat what you already learned.
 5. Keep the best two and do them this week.
 
-Five entries become two in about an hour and a half. Expect to end with fewer items than you started with. That is the point.
-
-## When a list is the wrong tool
-You have a specific problem, such as "my model returns the wrong chunk". A list will give you broad reading when you need one answer. Search the exact error or symptom, read the docs of the library you use, and ask in its community. Lists suit orientation: what exists, and where to start.
+Five entries become two in about an hour and a quarter. Expect to end with fewer items than you started with. That is the point.
 
 ## Common mistake
 Saving lists you never open. Pick one, take three items, and read them this week.
@@ -130,7 +127,7 @@ Use leaderboards to shortlist, then run your own examples. Track a small number 
 Model A scores 87.3 and model B 86.9 on a test with 500 questions. With that many questions the typical sampling error is about 1.5 points (about 3 points at 95 percent confidence), so a gap of 0.4 is within noise. Treat them as equal until a larger or different test separates them.
 
 ## How the noise estimate works
-A score on n questions is a sample. The typical sampling error is the square root of p times (1 minus p), divided by n, all under one root. For p = 0.87 and n = 500, that is the square root of (0.87 x 0.13) / 500, which is about 0.015, or 1.5 points.
+A score on n questions is a sample. The typical sampling error is sqrt(p(1 - p) / n). For p = 0.87 and n = 500 that is sqrt(0.87 × 0.13 / 500), about 0.015, or 1.5 points.
 
 A gap between two scores is noisier than either score alone, because both carry error. Treating them as independent, the gap error is about 1.5 times the square root of 2, or about 2.1 points. About 95 percent of the time the true gap sits within roughly twice that. A 0.4 gap is far inside it. Models tested on the same questions have a tighter gap in practice, but 0.4 still tells you very little.
 

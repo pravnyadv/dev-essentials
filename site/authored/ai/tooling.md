@@ -142,7 +142,7 @@ Every agent has the same loop: call the model, check for a tool call, run it, ad
 Saved state is the part beginners miss. Imagine a six-step task that pauses for approval at step 4. The framework writes a checkpoint after each step. If the server restarts, it resumes at step 4 instead of step 1. Doing this by hand means handling storage, repeated steps and half-finished tool calls.
 
 ## A second example: the framework gets in the way
-You want to change one sentence of the system prompt. The framework adds its own instructions around yours and builds the final prompt several layers down. Your edit does nothing visible. To confirm, log the raw request sent to the provider, or use the framework's tracing, and read what the model actually received. If you cannot do either, treat that as a warning sign.
+You want to change one sentence of the system prompt. Some frameworks add their own instructions around yours and builds the final prompt several layers down. Your edit does nothing visible. To confirm, log the raw request sent to the provider, or use the framework's tracing, and read what the model actually received. If you cannot do either, treat that as a warning sign.
 
 ## Trade-offs
 Benefits: less code for state, approvals and tracing, and a shared structure for a team. Costs: a new set of ideas to learn, upgrades that can break your code, and abstractions that leak when something goes wrong. Moving off a framework later is work, because its concepts spread through your code.
@@ -214,7 +214,7 @@ A model repository holds weight files, a config file describing the architecture
 Weights take memory equal to parameters times bytes per parameter. Invented 7 billion parameter model at 16 bits (2 bytes each): 7 billion x 2 = 14 billion bytes, about 14 GB. Quantized to 4 bits (half a byte each), it is about 3.5 GB. Real use needs extra memory beyond the weights, so leave headroom.
 
 ## A second example: a model that does not fit
-A 70 billion parameter model needs about 140 GB at 16 bits and about 35 GB at 4 bits. A typical laptop cannot hold either. Your options are a smaller model, an inference provider that hosts it, or a machine with more memory. Reading the size before downloading saves an hour.
+A 70 billion parameter model needs about 140 GB at 16 bits and about 35 GB at 4 bits. A typical 16 GB laptop cannot hold either. Your options are a smaller model, an inference provider that hosts it, or a machine with more memory.
 
 ## What goes wrong
 An out-of-memory error: the model is larger than your memory. Compare file size on the Hub with your free memory.
@@ -223,7 +223,7 @@ A repository asks you to allow custom code when loading. That code runs on your 
 
 The model works but answers poorly in your language or task. The model card lists its training languages and limits. Test on your own examples.
 
-The license forbids your use. This is the failure that costs the most. Read it first.
+The license forbids your use. Read it before you build on the model.
 
 ## Try it yourself
 Search the Hub for a small sentiment model. Read its card and write down task, size, license and one stated limit. Try it in its Space with three sentences, one sarcastic. Expect the plain ones to work and the sarcastic one to be the likeliest mistake.

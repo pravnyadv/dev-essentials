@@ -1,5 +1,5 @@
 {
-  "asOf": "2026-10-19",
+  "asOf": "2026-10-20",
   "caveat": "Rows marked vendor-confirmed were checked against the lab's own announcement or model page on the date above. Rows marked tracker came only from third-party release trackers. Names, prices and availability move fast, so confirm on the vendor page before relying on one.",
   "groups": [
     {
@@ -42,9 +42,10 @@
           "lab": "Anthropic",
           "released": "2026-09-01",
           "open": false,
-          "why": "A higher tier in the Claude 5 family. Anthropic describes Opus 5.5 as performing at its level on most work.",
-          "verified": "tracker",
-          "tier": "large"
+          "why": "A higher tier in the Claude 5 family, generally available on the API and the major clouds. Claude Mythos 5.1 is the same model with looser safeguards, limited to trusted access programs for security and life sciences work. Anthropic says Opus 5.5 performs at its level on most work.",
+          "verified": "vendor",
+          "tier": "large",
+          "url": "https://www.anthropic.com/claude-fable-and-mythos-5-1"
         },
         {
           "name": "GPT-6 family: Astra, Sol, Luna",
@@ -71,18 +72,20 @@
           "lab": "xAI",
           "released": "2026-09-21",
           "open": false,
-          "why": "xAI's current model, listed with a 500K-token context window.",
-          "verified": "tracker",
-          "tier": "large"
+          "why": "xAI's current model, which it calls its most powerful for coding and knowledge work. Available through the xAI API, Cursor and Grok Build. The announcement does not say whether the weights are open.",
+          "verified": "vendor",
+          "tier": "large",
+          "url": "https://x.ai/news/grok-4-7"
         },
         {
           "name": "Muse Wonder",
           "lab": "Meta",
           "released": "2026-10-12",
-          "open": false,
-          "why": "The larger closed model in Meta's Muse line, listed by release trackers. Meta's open-weight release is in the next group.",
-          "verified": "tracker",
-          "tier": "large"
+          "open": null,
+          "why": "Meta's most capable model so far, built on Muse Spark and aimed at agent work. Muse Wonder is in the Meta Model API and Muse Code, and Muse Wonder Full is for Muse Code subscribers. Meta's announcement does not say whether the weights are open. Muse Spark Open is in the next group.",
+          "verified": "vendor",
+          "tier": "large",
+          "url": "https://about.fb.com/news/2026/10/introducing-muse-wonder-models/"
         }
       ]
     },
@@ -136,18 +139,20 @@
           "lab": "Google",
           "released": "2026-04-02",
           "open": true,
-          "why": "Google's small open models for local use.",
-          "verified": "tracker",
-          "tier": "small"
+          "why": "Google's open models for local use, in four sizes (E2B, E4B, 26B mixture of experts, 31B dense) under the Apache 2.0 license.",
+          "verified": "vendor",
+          "tier": "small",
+          "url": "https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/"
         },
         {
           "name": "Kimi K3",
           "lab": "Moonshot AI",
           "released": "2026-07-16",
-          "open": null,
-          "why": "Long-context agentic model from Moonshot. Check the license.",
-          "verified": "tracker",
-          "tier": "mid"
+          "open": true,
+          "why": "A 2.8T-parameter mixture of experts (104B active per token) with a 1M-token context. Weights are published under Moonshot's own Kimi K3 License, so read its terms before commercial use.",
+          "verified": "vendor",
+          "tier": "mid",
+          "url": "https://huggingface.co/moonshotai/Kimi-K3"
         },
         {
           "name": "GLM 5.3",

@@ -26,7 +26,7 @@ Removing all the noise in one jump gives a blurry average of everything the mode
 The symptom is a hand with six fingers, a sign with scrambled letters, or three apples when you asked for four. The cause is that the model learned what these things usually look like, not the rules behind them. A recognition model that only saw bright daytime photos can also fail at night, because the pixels look unlike its training data. To check whether a flaw is a model limit or bad luck, repeat the prompt with ten different random seeds (the seed fixes the starting noise). If most of the ten share the flaw, it is the model.
 
 ## Try it yourself: count the apples
-Open any free image generator. Ask for "a hand holding four red apples" five times. Count the fingers and the apples in each image. Then add detail ("on a white table, daylight, photo") and repeat. Most people find that counting errors persist while the style changes. That shows the model copies appearance and does not count.
+Open any free image generator. Ask for "a hand holding four red apples" five times. Count the fingers and the apples in each image. Then add detail ("on a white table, daylight, photo") and repeat. Counting errors are common, especially above three or four objects, and often persist while the style changes. Treat that as a sign the model copies appearance more than it counts.
 
 ## Common mistake
 Believing the image model understands what it draws. It captures how things usually look. That is why hands, text and counting objects were hard for early versions.
@@ -165,7 +165,7 @@ A 224 by 224 pixel image cut into 16 by 16 pixel patches gives 14 × 14 = 196 pa
 Images and audio use many more tokens than the text that describes them. A single high-resolution photo can cost as much as a few thousand words. Downscale before sending, and send audio in short segments.
 
 ## How speech becomes text
-Sound is a stream of numbers, for example 16,000 a second (a common rate). The model first turns a short clip into a spectrogram, a picture showing which pitches are loud at each moment. It then reads that picture much like image patches and writes out text tokens one at a time. Many modern speech models, including Whisper, work in roughly this way. One second of audio at that rate is 16,000 numbers, which is why audio is heavy to process.
+Sound is a stream of numbers, for example 16,000 a second (a common rate). The model first turns a short clip into a spectrogram, a picture showing which pitches are loud at each moment. It then reads that picture with a transformer, much as it would read an image, and writes out text tokens one at a time. Many modern speech models, including Whisper, work in roughly this way. One second of audio at that rate is 16,000 numbers, which is why audio is heavy to process.
 
 ## A second example: invoice, image or text?
 You need to pull the total from a scanned invoice. Option one: run OCR (software that turns a picture of text into text) and send only the text. It is cheap, but it loses layout, so a total in a table can be confused with a subtotal. Option two: send the image directly. The model sees the layout and stamps, but you pay for more tokens. Option two is not needed for a clean typed contract where plain text is enough. Try both on ten real documents and compare.
@@ -174,7 +174,7 @@ You need to pull the total from a scanned invoice. Option one: run OCR (software
 With speech, the symptom is confident but wrong words, mostly names, jargon and accents, and sometimes text invented for silent or noisy stretches. With images, the symptom is a description of details that are not there, or small print that became unreadable after downscaling. To confirm, ask the model to quote the exact text it relied on and compare it with the source. For speech, measure the word error rate: wrong words divided by total words, checked against a transcript you wrote by hand.
 
 ## Try it yourself: measure your own error rate
-Record a 30 second clip that includes two names and some background noise. Run it through any speech-to-text tool. Write down what you actually said and count the wrong, missing or extra words. With invented numbers, 6 wrong out of 100 words is 6 ÷ 100 = 6 percent. Most readers find that names cause the largest share of errors, so those are the words to double-check.
+Record a 30 second clip that includes two names and some background noise. Run it through any speech-to-text tool. Write down what you actually said and count the wrong, missing or extra words. With invented numbers, 6 wrong out of 100 words is 6 ÷ 100 = 6 percent. Names and jargon are often the biggest source of errors, so those are the words to double-check.
 
 ## Common mistake
 Trusting speech recognition on names, jargon and noisy audio. Always check those parts.
@@ -269,7 +269,7 @@ You need to classify 5 million support tickets a month. A closed API at $0.50 pe
 An open-weight release is a large file of numbers plus a program that runs them. The file size is roughly the number of parameters times the bytes stored for each one. Invented numbers: a model with 7 billion parameters stored at 2 bytes each is 14 GB. Quantization (storing each number with less precision) at half a byte each cuts that to 3.5 GB, at some cost in quality. The model also needs extra memory while it works, so a file that fits on your disk may not fit in memory.
 
 ## A second example: when the API wins
-A team builds a feature that gets 200 requests a day with no privacy rule. Suppose each request uses 1,000 tokens. That is 200 × 1,000 × 30 = 6 million tokens a month. At the invented price of $0.50 per million tokens, the API costs about $3. A rented GPU is billed by the hour whether it is busy or idle, so it would cost far more. At low volume the API is the clear choice, and you also get the strongest model without running anything.
+A team builds a feature that gets 200 requests a day with no privacy rule. Suppose each request uses 1,000 tokens. That is 200 × 1,000 × 30 = 6 million tokens a month. At the invented price of $0.50 per million tokens, the API costs about $3. A rented GPU is billed by the hour whether it is busy or idle, so it would cost far more. At low volume the API is the clear choice, and you can use a stronger model than your own hardware could run.
 
 ## What goes wrong
 The symptom is a model that runs but crawls, because it did not fit in fast memory and spilled to slower storage. Another is answers that look worse than the online demo. Common causes are heavy quantization or the wrong chat format for that model. To confirm, run the same 20 prompts on the local model and on a hosted one and compare the results side by side. A license surprise is a third failure, so read the terms before you build.

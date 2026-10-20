@@ -119,6 +119,20 @@ for (const m of models.groups.flatMap(g => g.models)) if (m.topic) m.topicUrl = 
 const titleOf = Object.fromEntries(Object.values(topics).map(t => [t.slug, t.title]))
 for (const r of radar) if (r.topic) { r.topicUrl = urlOf[r.topic]; r.topicTitle = titleOf[r.topic] }
 
+// Hand-picked free reading list (data/articles.json). Each entry pairs with one lesson.
+const ARTICLE_TOPICS = ['how-llms-work', 'prompting', 'agents', 'retrieval', 'evals', 'safety', 'building', 'coding', 'history', 'critical']
+const articles = existsSync(join(authored, 'data/articles.json')) ? json('articles.json') : []
+const seenArticle = new Set()
+for (const a of articles) {
+  if (!ARTICLE_TOPICS.includes(a.topic)) errors.push(`article ${a.title}: bad topic ${a.topic}`)
+  if (![1, 2, 3].includes(a.level)) errors.push(`article ${a.title}: bad level ${a.level}`)
+  if (!slugs.includes(a.lesson)) errors.push(`article ${a.title}: unknown lesson ${a.lesson}`)
+  if (seenArticle.has(a.url)) errors.push(`duplicate article url: ${a.url}`)
+  seenArticle.add(a.url)
+  a.lessonUrl = urlOf[a.lesson]
+  a.lessonTitle = titleOf[a.lesson]
+}
+
 // One entry per URL for the library page, with every topic that cites it.
 const library = {}
 for (const t of Object.values(topics)) for (const r of t.resources) (library[r.url] ??= { ...r, topics: [] }).topics.push({ title: t.title, url: t.url })
@@ -133,7 +147,7 @@ for (const tier of TIERS) {
     for (const t of c.topics) write(join(out, c.id, `${t.slug}${t.source ? '.md' : '.mdx'}`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : `${toMdx(t.body, t.terms)}\n\n${hiddenStory(t.story)}`}\n`)
   }
 }
-write(join(out, 'meta.json'), JSON.stringify({ pages: ['[Dashboard](/ai)', '[Learning map](/ai/map)', ...rootPages, '---Reference---', '[Model atlas](/ai/models)', '[Resource library](/ai/library)', '[Glossary](/ai/glossary)'] }, null, 2))
+write(join(out, 'meta.json'), JSON.stringify({ pages: ['[Dashboard](/ai)', '[Learning map](/ai/map)', ...rootPages, '---Reference---', '[Model atlas](/ai/models)', '[Resource library](/ai/library)', '[Free articles](/ai/articles)', '[Glossary](/ai/glossary)'] }, null, 2))
 
 const slim = Object.fromEntries(Object.entries(topics).map(([id, t]) => [id, { ...t, body: undefined }]))
 write(join(here, '../src/generated/ai.json'), JSON.stringify({
@@ -141,6 +155,6 @@ write(join(here, '../src/generated/ai.json'), JSON.stringify({
   chapters: chapters.map(c => ({ ...c, topics: c.topics.map(t => slim[t.id]) })),
   topics: slim,
   order: chapters.flatMap(c => c.topics.map(t => t.url)),
-  models, radar, meta, glossary, library: Object.values(library),
+  models, radar, meta, glossary, articles, library: Object.values(library),
 }))
-console.log(`ai: ${Object.keys(topics).length} topics, ${chapters.length} chapters, ${Object.keys(library).length} unique resources, ${glossary.length} terms`)
+console.log(`ai: ${Object.keys(topics).length} topics, ${chapters.length} chapters, ${Object.keys(library).length} unique resources, ${glossary.length} terms, ${articles.length} articles`)

@@ -2,22 +2,21 @@
 An embedding turns a piece of text, an image or a sound into a list of numbers so that similar meanings end up close together.
 
 ## The idea
-Computers cannot compare meaning directly, but they can compare numbers. An embedding model reads a sentence and outputs a vector, which is a list of numbers, often 384 to 3,072 of them. The model is trained so that sentences with similar meaning get vectors that point in similar directions. "How do I reset my password?" and "I forgot my login" end up near each other. "Best pizza in Rome" ends up far away.
+Computers cannot compare meaning directly, but they can compare numbers. An embedding model reads a sentence and outputs a vector, which is a list of numbers, often 384 to 3,072 of them. The model is trained so that sentences with similar meaning get vectors that land close together. "How do I reset my password?" and "I forgot my login" end up near each other. "Best pizza in Rome" ends up far away.
 
 ## A tiny example
 Imagine a 2-number embedding where the first number means "about animals" and the second "about vehicles". "cat" might be [0.9, 0.0], "dog" [0.8, 0.1], "truck" [0.0, 0.9]. The cat and dog vectors are close. Cat and truck are far apart. Real embeddings have hundreds of dimensions that are not human-readable like this, but the geometry works the same way.
 
+Plot the three as points on a graph, with "animals" along one axis and "vehicles" along the other. Cat and dog land in the same corner. An arrow from the middle of the graph to each point is the vector's direction, so "pointing the same way" just means "landing in the same corner".
+
 ## Where embeddings are used
-Semantic search (find documents by meaning), retrieval for RAG, clustering similar items, recommendations, duplicate detection and classification with few labels. Inside a language model, each token also has an embedding, which is the first layer the text passes through.
+Semantic search (find documents by meaning), retrieval for RAG, clustering similar items, recommendations, duplicate detection and classification with few labels.
 
 ## Try it
 Use the demo above to drag two arrows and see how the angle between them sets the similarity score.
 
 ## A worked example: three sentences
-A: "How do I reset my password?" B: "I forgot my login details." C: "What is the weather in Rome?" Their embeddings might have cosine similarity A to B of 0.82 and A to C of 0.08. No shared keyword between A and B, yet the model knows they are about the same thing. That is why a help center search can answer "can't sign in" with the password-reset article.
-
-## What the numbers are
-Hundreds or thousands of values per text. Individually they mean nothing you could name. Together, the pattern places the text in a space where distance means difference in meaning.
+A: "How do I reset my password?" B: "I forgot my login details." C: "What is the weather in Rome?" Scored with cosine similarity (a closeness score where 1 means the same direction and 0 means unrelated), A to B might get 0.82 and A to C 0.08. No shared keyword between A and B, yet the model knows they are about the same thing. That is why a help center search can answer "can't sign in" with the password-reset article.
 
 ## How a model learns where to put text
 Embedding models are usually trained on pairs of texts that belong together, such as a question and the passage that answers it. Each round nudges the model's weights so the pair moves closer. The same round pushes the pair away from unrelated texts in the same batch (a batch is a group of examples handled together). After millions of rounds, topics form clusters.
@@ -25,7 +24,7 @@ Embedding models are usually trained on pairs of texts that belong together, suc
 Here is one round with invented numbers:
 1. The pair is "reset password" and "forgot login". The model scores them 0.20.
 2. It scores "reset password" against "pizza in Rome" at 0.35, which is wrong.
-3. Training shifts the weights so the first score rises and the second falls, say to 0.25 and 0.30.
+3. Training shifts the weights a little so the first score rises and the second falls, say to 0.25 and 0.30. The order is still wrong, but the gap has narrowed.
 4. Millions more rounds repeat this until the related pair clearly wins.
 
 ## A second example: where embeddings blur
@@ -38,11 +37,8 @@ Write 10 pairs of sentences: five that should match and five that should not. Em
 
 Compare scores only within one model. A score of 0.82 from one model has no fixed meaning in another, because each model spreads its scores differently.
 
-## Try it yourself
-Use any free sentence-embedding tool or a small open model. Embed these four sentences: "I love this phone", "I hate this phone", "This phone is great", "The train leaves at noon". Expect the three phone sentences to score well above the train sentence. Then look at how close "I hate this phone" sits to "I love this phone". Opposites that score as similar show what embeddings cannot do.
-
 ## Common mistake
-Using an embedding as if it were an answer. It only helps you find related text. A model still has to read it and respond.
+Expecting an embedding to answer a question. It only finds related text, and a model still has to read that text and respond.
 
 ## The math, when you are ready
 Closeness between two embeddings is measured with a dot product or cosine similarity. [Vectors and similarity](/ai/docs/building-blocks/vectors-and-similarity) works through both with small numbers. The next lessons here explain what you need, so you can skip it for now.
@@ -76,7 +72,7 @@ Dimensions: the vector length. More dimensions can carry more detail and cost mo
 Collect 30 real questions and note which document answers each. Embed all documents with three candidate models. For each question, check whether the right document is in the top five. Example results (invented for illustration): model X 24 out of 30, model Y 27, model Z 21. Pick Y unless X is much cheaper or faster. Repeat when your documents change character.
 
 ## What you pay for each choice
-Dimensions cost storage. With invented numbers: 1,000,000 vectors of 1,024 numbers at 4 bytes each is 4,096,000,000 bytes, about 4.1 GB. The same vectors cut to 256 numbers take about 1 GB. Search also gets faster, but each vector holds less detail.
+Dimensions cost storage. With invented numbers: 1,000,000 vectors of 1,024 numbers at 4 bytes each is 4,096,000,000 bytes, about 4.1 GB. The same vectors at 256 numbers (for a model that supports shorter outputs) take about 1 GB. Search also gets faster, but each vector holds less detail.
 
 A hosted API means no servers to run, but your text leaves your machine and the provider may retire a model, which forces a re-embed. An open model you host keeps data in-house and the model fixed, but you run the hardware.
 
@@ -141,7 +137,7 @@ Some recommender systems learn vectors where a longer vector means a more popula
 ## What goes wrong
 Suppose your vectors are not normalized and you rank with the dot product. Use query [1, 1], item x = [10, 0] and item y = [1, 1.2]. Dot product: x scores 10 and y scores 2.2, so x wins. Cosine: x is 10 / (10 × 1.414) = 0.71 and y is 2.2 / (1.414 × 1.562) = 0.996. Item y points almost exactly where the query points, yet x wins on length alone.
 
-The symptom is results that feel off-topic but oddly confident, often the same long documents showing up for many queries. To confirm, compute the length of 100 stored vectors. If the lengths vary a lot and you use the dot product, length is steering the ranking.
+The symptom is results that feel off-topic but oddly confident, often the same items with the longest vectors showing up for many queries. Most text-embedding models return unit-length vectors, so this applies when yours do not. To confirm, compute the length of 100 stored vectors. If the lengths vary a lot and you use the dot product, length is steering the ranking.
 
 ## Reading the scores
 A cosine score has no universal meaning. 0.8 can be a strong match with one model and a weak one with another. Do not copy a cutoff such as "keep results above 0.75" from a blog post. Look at the scores for 20 of your own queries, mark which results were right, and pick a cutoff from that.
@@ -314,7 +310,7 @@ Say you have 5,000 chunks of 1,536 numbers. Comparing a query with all of them i
 ## What goes wrong
 Filtering is the common trap. Some systems find the 10 nearest vectors first and apply the filter afterwards. Ask for 10 results in country = Canada, and if only 2 of the overall top 10 are Canadian, you get 2 results. The symptom is fewer results than you asked for. Confirm it by running the same query without the filter and counting how many of the top 10 pass it.
 
-Other quiet problems: deleted documents that still appear until the index is rebuilt, and an index too big for memory, which slows every query. Check how your database handles both before you depend on it.
+Other quiet problems: deleted documents that may still appear in some systems until the index is cleaned up, and an index too big for memory, which slows every query. Check how your database handles both before you depend on it.
 
 ## Measuring the trade-off
 Approximate search can miss the true best match. Measure recall: for 100 test queries, compare the index's top 10 with the exact top 10 from a plain scan. If 9.5 of 10 match on average, recall is 95 percent. Then ask whether a lost 5 percent matters for your product. For a help center it usually does not, because the 11th-best passage is rarely needed.
@@ -452,16 +448,13 @@ A support search returns "Returns accepted within 30 days" as its top result for
 Retrieve relevant text first, then ask the model to answer using it. It is how you give a model knowledge it was not trained on.
 
 ## The three parts
-Indexing: split documents into chunks, embed each one and store it with metadata. Retrieval: embed the question, fetch the closest chunks, optionally filter and rerank them. Generation: put the chunks in the prompt with instructions to answer only from them and to cite which chunk each claim came from.
+Indexing (preparing the documents ahead of time): split them into chunks, embed each one and store it with metadata, which means extra labels such as title or date. Retrieval: embed the question, fetch the closest chunks, optionally filter (keep only chunks with the right label, such as a year) and rerank them. Generation: put the chunks in the prompt with instructions to answer only from them and to cite which chunk each claim came from.
 
 ## Why use it
 It adds private or fresh knowledge without retraining, lets you cite sources, lets you update by re-indexing, and keeps access control possible because you decide which chunks a user can see. It does not make a model reason better. It gives it better material.
 
-## Where RAG fails
-Most bad answers are retrieval failures, not generation failures. The right chunk was not retrieved, was split badly or was ranked below noise. Debug retrieval separately: for a set of test questions, check whether the right chunk appears in the top results. Common fixes are better chunking, contextual notes on chunks, hybrid search and a reranker. Tell the model to say when the sources do not contain the answer.
-
 ## Try it
-Step through the pipeline in the demo above.
+The demo above steps a question through indexing, retrieval and generation.
 
 ## A worked example: one question end to end
 Index time: the handbook is split into 400 chunks, each embedded and stored with its title. Query time: the question is embedded, the five nearest chunks are fetched, a short prompt says "Answer only from these excerpts and cite them. If they do not contain the answer, say so." The model replies with the answer and a citation. A person can click the citation and verify.
@@ -470,7 +463,7 @@ Index time: the handbook is split into 400 chunks, each embedded and stored with
 The model never sees your database. It sees one long prompt that your code assembled. In order, it holds the rules (answer only from the excerpts, cite them, admit gaps), then each retrieved chunk with a label such as its title and section, then the user's question. The model reads it like any other text. Because of this, a RAG answer can only be as good as what your code pasted in.
 
 ## A second example: when RAG is the wrong tool
-"Summarize this 3-page contract" needs no retrieval, because the whole text fits in the prompt. Retrieval would only risk leaving out a clause. A question like "How many of our policies mention data retention?" is also a poor fit. Retrieval returns the five best-matching chunks, not every match, so the count would be wrong. Questions that need the whole collection need a different tool, such as a database query.
+"Summarize this 3-page contract" needs no retrieval, because the whole text fits in the prompt. Retrieval would only risk leaving out a clause. A question like "How many of our policies mention data retention?" is also a poor fit. Retrieval returns the five best-matching chunks, not every match, so the count would be wrong. Questions that need the whole collection need a different tool, such as a database query (a precise lookup written in a language like SQL).
 
 ## What goes wrong
 Failures you will see:
@@ -479,7 +472,9 @@ Failures you will see:
 3. A citation that does not support the claim. The model attached a real source to a sentence it made up.
 4. An outdated answer, because the index was not rebuilt after the document changed.
 
-For each, print the retrieved chunks first. Then ask two questions in order: was the right chunk there, and did the answer use it? The first decides whether to fix retrieval. The second decides whether to fix the prompt.
+For each, look at the retrieved chunks first (log them in your code). Then ask two questions in order: was the right chunk there, and did the answer use it? The first decides whether to fix retrieval. The second decides whether to fix the prompt.
+
+Most bad answers turn out to be retrieval failures: the right chunk was not retrieved, was split badly or ranked below noise. Common fixes are better chunking, short notes on each chunk saying where it came from (contextual notes), combining keyword and meaning search (hybrid search) and a reranker.
 
 ## Try it yourself
 Paste five short paragraphs from any handbook into a chat with a model. Ask three questions the paragraphs answer and two they do not. Add the instruction to answer only from the excerpts and admit gaps. Expect correct, cited answers to the first three and "the excerpts do not say" to the last two. Remove the instruction and ask the two unanswerable questions again. Compare how often the model guesses instead.

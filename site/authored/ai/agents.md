@@ -18,7 +18,7 @@ The workflow makes one call and sends 500 tokens. The agent makes four calls and
 Cost is only part of it. The agent might also take a different route on each run, so the same email can get two different tags.
 
 ## What goes wrong: an agent where a workflow would do
-The symptom is a system that works in the demo and disagrees with itself in testing. Run the same 20 emails twice and count how many get a different tag. A fixed workflow with the randomness turned down (temperature near zero) should disagree far less. If the agent disagrees often, the freedom it has is not buying anything.
+The symptom is a system that works in the demo and disagrees with itself in testing. Run the same 20 emails twice and count how many get a different tag. A fixed workflow, with randomness turned down where the model allows it, should disagree far less. If the agent disagrees often, the freedom it has is not buying anything.
 
 ## A middle path: one loop inside a workflow
 You do not have to pick one side. Keep the fixed steps in code and allow a loop in only the step that needs it. For the invoice question, fetching the invoice and the account can be two fixed calls. Only the step "work out why the totals differ" needs a loop. The loop then has a small job, a short step limit and a narrow set of tools, so it is cheap to test and hard to derail.
@@ -109,24 +109,20 @@ A while loop with a model call inside. Understanding the loop is understanding a
 2. If the reply is a tool call, run it.
 3. Append the call and its result to the history.
 4. Call the model again.
-5. If the reply is a final answer, stop. Add limits: a maximum number of steps, a cost cap and a timeout.
+5. If the reply is a final answer, stop.
+
+Around the loop, add limits: a maximum number of steps, a cost cap and a timeout. Also log every call, so you can see what the agent did, and give a person a way to interrupt.
 
 ## What goes wrong
-The model picks the wrong tool, repeats the same call, or loses the goal as the history grows. Tool errors that are unclear cause retry spirals. Context fills with old results. Fixes are in the harness: clear tool errors, a step limit, trimming or summarizing old output and checks the agent can run itself.
+The model picks the wrong tool, repeats the same call, or loses the goal as the history grows. Unclear tool errors make the model retry the same call over and over. Context fills with old results. Fixes are in the harness: clear tool errors, a step limit, trimming or summarizing old output and checks the agent can run itself.
 
 ## Try it
 Step through the loop in the demo. Watch the context grow with each tool call, and see where the loop stops.
 
-## A worked example in pseudocode
-messages = [user goal]. Repeat up to 10 times: reply = model(messages, tools). If reply has no tool call, stop and return it. Otherwise run the tool, append the call and the result to messages. That is the whole thing, around 20 lines in any language. Everything else is safety and polish: limits, logging, error handling.
-
-## What to add in practice
-A step limit and a cost limit. Logging of every call. A clear final answer format. A way for a person to interrupt.
-
 ## A trace of three turns
 Goal: "What is the total for order 8123 including shipping?" Invented token counts. The goal plus the tool definitions take 450 tokens.
 
-Turn 1 sends 450 tokens. The model replies with a call to get_order, which is 30 tokens. The result adds 100.
+Turn 1 sends 450 tokens. The model replies with a call to get_order (30 tokens). Your program runs it, and the tool result adds 100 tokens.
 
 Turn 2 sends 450 + 30 + 100 = 580 tokens. The model calls get_shipping (30 tokens) and the result adds 120.
 
@@ -144,9 +140,13 @@ Read the logs of twenty runs. If every run makes the same three calls in the sam
 Agents need tests of their own, and the loop needs limits for cost and steps. See [Trajectory evals for agents](/ai/docs/evals-and-safety/agent-evals) and [Human approval](/ai/docs/production/human-in-the-loop).
 
 ## The code
-The loop from the steps above, in Python. It stops when the model answers, and also after 10 steps.
+The loop from the steps above, in Python. It stops when the model answers, and also after 10 steps. Tool results go back in a message with the role "user", because from the model's side your program is the one answering its request. `tools` is the list of tool definitions and `run_tool` is your function that runs one, as in the tool-use lesson.
 
 ```python
+from anthropic import Anthropic
+
+client = Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+
 def run_agent(goal, tools, run_tool, max_steps=10):
     messages = [{"role": "user", "content": goal}]
     for _ in range(max_steps):
@@ -184,13 +184,13 @@ A new employee is told "find out why the checkout page is slow". They look at on
 ```
 
 # tool-design | Designing tools for agents | 2 | 12
-Tools are a contract between a deterministic system and a non-deterministic one. Design them for the model, not for a human API consumer.
+Your code does the same thing every time for the same input. The model does not. A tool is the agreement between them, so design it for the model, not for a human developer.
 
 ## Principles
-Fewer, higher-level tools beat many thin ones. A single "search customers by name" tool is easier to use well than five endpoints the model must chain. Write descriptions as if for a new colleague, with when to use it and examples. Return what the model needs, in readable form, not raw database rows. Offer pagination or filters so a call cannot return 40,000 tokens. Make errors instructive: say what failed and what to try.
+Fewer, higher-level tools beat many thin ones. A single "search customers by name" tool is easier to use well than five separate API calls the model must string together. Write descriptions as if for a new colleague, with when to use it and examples. Return what the model needs, in readable form, not raw database rows ("Order 8123, shipped Tuesday, $42" rather than every column). Offer filters, or return only a few results at a time, so a call cannot return 40,000 tokens. Make errors instructive: say what failed and what to try.
 
 ## Test them with the model
-Run realistic tasks, read the transcripts, and look for confusion. Common signs are wrong tool picks, wrong arguments and over-calling. Revise descriptions and responses, then rerun the same tasks and compare.
+Run realistic tasks, read the transcripts, and look for confusion. Common signs are wrong tool picks, wrong arguments and over-calling (using a tool when it is not needed). Revise descriptions and responses, then rerun the same tasks and compare.
 
 ## A worked example: a tool description
 Weak: "search - searches stuff". Better: "search_orders - find orders for a customer. Use when the user asks about past purchases. Input: customer_email (required), status (optional: open, shipped, cancelled). Returns up to 5 orders as id, date, total, status." The better one tells the model when to use it, what to pass and what comes back.
@@ -343,7 +343,7 @@ After each session the agent appends to notes.md: "User prefers metric units. Pr
 ## How a note gets back into the window
 The model does not read your notes file by itself. At the start of each session your harness reads the file and pastes it into the prompt, so the text is in the window again.
 
-That has a price. Invented numbers: the file is 2,000 tokens and grows by 200 tokens a session. Every call carries it. After 50 sessions it is 10,000 tokens on every call, even when most lines are irrelevant. That is the point where search over the notes starts to pay for itself.
+That has a price. Invented numbers: the file is 2,000 tokens and grows by 200 tokens a session. Every call carries it. After 40 sessions it is 10,000 tokens on every call, even when most lines are irrelevant. That is the point where search over the notes starts to pay for itself.
 
 ## What goes wrong: stale memory
 A note says "The project uses PostgreSQL 15." The team has since moved to 16. The agent reads the note, trusts it, and writes code for the old version. The symptom is an agent acting confidently on a fact that was once true. Confirm it by asking the agent where it got the fact, then checking the date on that note. Fix it by dating every entry and having the agent check anything it can look up, such as a version, before acting on it.
@@ -393,7 +393,7 @@ conversation_id, user_id, created_at, model "sonnet-5-5", prompt_version "v14", 
 Saving as you go matters. If the process dies midway, you lose one step, not the whole conversation.
 
 ## What goes wrong: a crash between call and result
-The assistant's tool call was saved, then the server crashed before the tool result was written. On resume, the history has a call with no result. Many providers reject that, so the symptom is an error that only affects conversations that were interrupted. Confirm it by scanning saved conversations for tool calls without a matching result. On load, either drop the dangling call or add a result saying "interrupted before finishing".
+The assistant's tool call was saved, then the server crashed before the tool result was written. On resume, the history has a call with no result. The major provider APIs reject a tool call that has no matching result, so the symptom is an error that only affects conversations that were interrupted. Confirm it by scanning saved conversations for tool calls without a matching result. On load, either drop the dangling call or add a result saying "interrupted before finishing".
 
 ## Trimming without losing the goal
 Suppose a conversation has 40 messages and is too long. Keep the first message, since it holds the original goal. Replace messages 2 to 33 with one summary message. Keep the last 7 turns as they are. That is 1 + 1 + 7 = 9 messages instead of 40. Check that a tool call and its result are kept or dropped together, never split.

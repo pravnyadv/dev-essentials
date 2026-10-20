@@ -28,6 +28,13 @@
     "topic": "agentic-coding-workflow"
   },
   {
+    "date": "2026-10-12",
+    "title": "Meta releases Muse Wonder and Muse Wonder Full",
+    "url": "https://about.fb.com/news/2026/10/introducing-muse-wonder-models/",
+    "why": "Meta's most capable models so far, built for agent work, served through its API and Muse Code.",
+    "topic": "choosing-a-model"
+  },
+  {
     "date": "2026-10-07",
     "title": "Claude Haiku 5.5",
     "url": "https://www.anthropic.com/claude-haiku-5-5",
@@ -42,6 +49,13 @@
     "topic": "open-models"
   },
   {
+    "date": "2026-09-29",
+    "title": "GPT-6.1 Sol",
+    "url": "https://deploymentsafety.openai.com/gpt-6-1-sol",
+    "why": "OpenAI says this cheaper, faster model is comparable to its flagship GPT-6 Astra.",
+    "topic": "choosing-a-model"
+  },
+  {
     "date": "2026-09-28",
     "title": "Claude Sonnet 5.5",
     "url": "https://www.anthropic.com/claude-sonnet-5-5",
@@ -54,6 +68,20 @@
     "url": "https://www.anthropic.com/claude-opus-5-5",
     "why": "Both labs shipped new model tiers on the same day. GPT-6 Astra had arrived on Sep 3.",
     "topic": "chatgpt-and-the-race"
+  },
+  {
+    "date": "2026-09-21",
+    "title": "Grok 4.7",
+    "url": "https://x.ai/news/grok-4-7",
+    "why": "xAI's newest model, aimed at coding and knowledge work, available in the API, Cursor and Grok Build.",
+    "topic": "choosing-a-model"
+  },
+  {
+    "date": "2026-09-01",
+    "title": "Claude Fable 5.1 and Claude Mythos 5.1",
+    "url": "https://www.anthropic.com/claude-fable-and-mythos-5-1",
+    "why": "One model sold two ways: Fable with standard safeguards for everyone, Mythos with looser security and biology safeguards for vetted organizations.",
+    "topic": "choosing-a-model"
   },
   {
     "date": "2026-06-16",

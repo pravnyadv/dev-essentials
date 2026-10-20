@@ -40,7 +40,7 @@ Early systems were shown on a few hand-picked cases. The symptom is an impressiv
 
 To confirm the cause, collect inputs the builders did not choose and count how many the system handles. A large gap means the demo covered one small corner. The same check applies today: a polished demo shows an idea can work, not that it works on your data.
 
-Deep Blue shows the honest label. The mechanism was fast search plus hand-tuned scoring. Calling that "thinking" was marketing.
+Deep Blue shows the honest label. The mechanism was fast search plus hand-tuned scoring. Calling that "thinking" stretches the word, since the mechanism is search and scoring, not human-style reasoning.
 
 ## Common mistake
 Thinking the winters happened because the ideas were wrong. Neural networks were a good idea in 1958. They were starved of data and computing power. Good ideas can look like failures until the ingredients arrive.
@@ -105,7 +105,7 @@ Suppose you try to predict tomorrow's coin flip from the date. A flexible model 
 Learning also is not needed when you already know the formula. Converting Celsius to Fahrenheit is a fixed rule, so write it down. Fit a model only when the pattern is real but unwritten.
 
 ## Try it yourself
-Put 10 invented (area, price) pairs in a spreadsheet, with some noise so they do not sit on a perfect line. Hide 2 rows. Add a trend line using the other 8 and compare its error on the 8 rows against the 2 hidden ones. Expect the hidden rows to usually have larger error. That gap is what the test set measures.
+Put 10 invented (area, price) pairs in a spreadsheet, with some noise so they do not sit on a perfect line. Hide 2 rows. Add a trend line using the other 8 and compare its error on the 8 rows against the 2 hidden ones. Hidden rows often have larger error, though with only 2 rows the result is noisy. That gap is what the test set measures.
 
 ## Common mistakes
 Testing on the same data you trained on, which gives a flattering and meaningless score. Using an LLM for a job where a small model on your own table of numbers would be cheaper, faster and easier to check.
@@ -164,9 +164,6 @@ Say you have 2,000 rows describing customers, and you want to predict who cancel
 
 Deep learning pays off when the input is raw and messy, such as pixels or audio, and there is a lot of data. For small tables, start with the simple model and use it as the baseline any network must beat.
 
-## Hype versus mechanism
-The brain comparison is loose inspiration. A network unit multiplies, adds and applies a simple bend. Nothing in it copies how a real neuron works. What the 2012 result showed was fitting at scale, not a machine that thinks like us.
-
 ## Common mistake
 Thinking deep learning replaced everything. It dominates images, speech and language, while simpler methods still win on many tables of business data.
 
@@ -219,7 +216,7 @@ Task one: sort a million support tickets into five categories. A BERT-style mode
 The test is the output. If the answer is a label or a score, understanding-focused models are often enough. If the answer is new text, you need a generator.
 
 ## In-context learning is not training
-GPT-3 learned tasks "from examples in the prompt". The weights did not change. The examples sit in the context window, and the model continues the pattern it sees there. When the conversation ends, nothing is saved. Real learning from your examples needs fine-tuning, which does change weights. Calling prompt examples "training the model" is a common loose use of the word.
+GPT-3 learned tasks "from examples in the prompt". The weights did not change. The examples sit in the context window, and the model continues the pattern it sees there. When the conversation ends, the weights are unchanged. Some apps add a separate memory feature on top. Real learning from your examples needs fine-tuning, which does change weights. Calling prompt examples "training the model" is a common loose use of the word.
 
 ## Common mistake
 Calling the transformer "the AI". It is an architecture, a way of wiring a network. What made chatbots was that architecture plus huge data, huge compute and later, training to follow instructions.
@@ -254,7 +251,7 @@ $$L(N) = \left(\frac{N_c}{N}\right)^{\alpha}$$
 Chinchilla refined this: for a compute budget C, the best split gives parameters and tokens that grow together, and a good rule is about 20 training tokens per parameter. A 70 billion parameter model should see around 1.4 trillion tokens.
 
 ## Example
-Suppose a 1B model has loss 3.0. With α = 0.07, a 10B model has loss 3.0 × 10^(-0.07) = 3.0 × 0.851 = 2.55. Another 10x gives 2.17. Each step costs ten times more compute for a smaller absolute gain, which is why labs also look for gains elsewhere: better data, reasoning at inference time and tools.
+Suppose a 1B model has loss 3.0. With α = 0.07, a 10B model has loss 3.0 × 10^(-0.07) = 3.0 × 0.851 = 2.55. Another 10x gives 2.17. Each 10x in model size, with data growing alongside, costs about 100 times more compute for a smaller absolute gain, which is why labs also look for gains elsewhere: better data, reasoning at inference time and tools.
 
 ## What to take from it
 Scaling is a trend, not a guarantee of every skill. It tells you that bigger runs reliably improve average loss, not when a particular ability will appear. It also explains why training tokens are as important as parameters.
@@ -273,7 +270,7 @@ Now double the model to 20 billion parameters. The data should double too, to 40
 Labs often train smaller models on more tokens than this rule suggests. The reasoning is that a model is trained once but answered from millions of times, so a smaller model is cheaper to serve. The rule is a guide for the cheapest route to a given loss, not a law about what to build.
 
 ## When scaling stops paying
-The formula keeps falling, but real limits exist. Text is partly unpredictable, so loss cannot reach zero. Good text is finite, and repeating the same data gives less benefit than fresh data. Each step also costs about ten times more for a smaller gain, as the example above showed. This is why scaling is one lever among several.
+The formula keeps falling, but real limits exist. Text is partly unpredictable, so loss cannot reach zero. Good text is finite, and repeating the same data gives less benefit than fresh data. Each 10x step costs about 100 times more compute (more parameters and more data) for a smaller gain, as the example above showed. This is why scaling is one lever among several.
 
 ## What goes wrong when you read a scaling claim
 The symptom is a confident line on a chart extended far past what was measured. Two checks help.
@@ -342,9 +339,6 @@ A simple test: ask a factual question, then reply "No, that is wrong" with a fal
 Task: label 10,000 short reviews as positive or negative. You test three models on 100 labeled reviews. Invented results: small 94 correct, medium 96, large 97. Invented price units per review: small 1, medium 4, large 20.
 
 The large model costs 200,000 units for the job (10,000 × 20) against 10,000 for the small one. Three more correct answers per 100 may not justify 20 times the cost. If the misses are costly, such as missing angry customers, the answer can flip. Your own examples and your own costs decide.
-
-## Hype versus mechanism
-A reasoning model does not gain a new kind of mind. It spends more output tokens working through steps before answering, so more computation goes into each answer. That helps on problems with checkable steps and costs time and money.
 
 ## Common mistake
 Assuming the newest model is always best for your task. Different models trade off quality, speed and price. Test on your own examples.

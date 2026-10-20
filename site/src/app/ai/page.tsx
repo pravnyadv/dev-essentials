@@ -13,6 +13,7 @@ export default function AiHome() {
         { href: '/ai/map', label: 'Learning map' },
         { href: '/ai/models', label: 'Model atlas' },
         { href: '/ai/library', label: 'Resource library' },
+        { href: '/ai/articles', label: 'Free articles' },
         { href: '/ai/glossary', label: 'Glossary' },
       ]}
     >

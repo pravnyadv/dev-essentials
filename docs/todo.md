@@ -1,12 +1,8 @@
 # To do
 
-## Free AI articles section
+Nothing open right now. Ideas that came up and were not built:
 
-Build a section that lists all the important free AI articles in one place, so a reader can browse the best free reading without opening a lesson first.
-
-Notes for when this is picked up:
-
-- The Resource library (`/ai/library`) already lists every link cited in the lessons, filterable by type and chapter. This section is a hand-picked reading list, not a duplicate of it.
-- Decide how entries are stored. The existing pattern is a data file under `site/authored/ai/data/` that the build reads, so it can be updated without touching code.
-- Each entry needs a title, author, link, a one-line reason to read it and the lesson it pairs with.
-- Only free articles. Check that each link loads without a paywall or login (`npm run links` checks the URLs).
+- A system design track (the landing page is driven by `site/src/lib/tracks.ts`, so it is one new entry plus its page tree).
+- Inline maths in lesson text still renders as plain text. Only `$$ tex $$` lines become formulas.
+- Cloudflare Web Analytics for page views (one switch in the Pages project, under Metrics).
+- Real learners: have two or three beginners read one chapter and note where they get stuck.
