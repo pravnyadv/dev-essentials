@@ -22,7 +22,7 @@ export function ResourceRow({ r, showTopics }) {
           {r.stars && <span className="text-xs text-fd-muted-foreground" title="GitHub stars">★ {compact(r.stars)}</span>}
         </div>
         <p className="text-fd-muted-foreground">{r.by && <span className="text-fd-foreground">{r.by} · </span>}{r.why}</p>
-        {showTopics && <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-fd-muted-foreground">Used in {r.topics.map(t => <Pill key={t.url} href={t.url} className="max-md:py-2">{t.title}</Pill>)}</p>}
+        {showTopics && <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-fd-muted-foreground">Used in {r.topics.map(t => <Pill key={t.url} href={t.url} className="max-md:inline-flex max-md:min-h-11 max-md:items-center">{t.title}</Pill>)}</p>}
       </div>
     </ListRow>
   )
@@ -41,11 +41,13 @@ export function Resources({ resources }) {
 export function CheckYourself({ quiz }) {
   const [picks, setPicks] = useState({})
   if (!quiz.length) return null
+  const answered = Object.keys(picks).length, score = quiz.filter((q, i) => picks[i] === q.answer).length
   return (
     <section className="mt-10">
       <SectionHeading lesson className="mb-3">Check yourself</SectionHeading>
       <Panel className="space-y-6">
         {quiz.map((q, i) => <Quiz key={i} quiz={q} picked={picks[i]} onPick={n => setPicks(p => ({ ...p, [i]: n }))} />)}
+        <p aria-live="polite" className={`border-t pt-4 text-sm font-medium ${answered === quiz.length ? '' : 'invisible'}`}>You got {score} of {quiz.length} right.</p>
       </Panel>
     </section>
   )
@@ -55,8 +57,8 @@ export function CheckYourself({ quiz }) {
 export function Terms({ terms }) {
   if (!terms.length) return null
   return (
-    <Panel as="details" padding="px-4 py-3" className="my-6 text-sm">
-      <summary className="cursor-pointer font-medium">Words on this page ({terms.length})</summary>
+    <Panel as="details" padding="px-4 py-1 md:py-3" className="my-6 text-sm">
+      <summary className="cursor-pointer font-medium max-md:flex max-md:min-h-11 max-md:items-center">Words on this page ({terms.length})</summary>
       <dl className="mt-3 space-y-2">{terms.map(t => <div key={t.term}><dt className="inline font-semibold">{t.term}</dt><dd className="inline text-fd-muted-foreground">: {t.def}</dd></div>)}</dl>
     </Panel>
   )

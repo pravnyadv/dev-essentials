@@ -20,8 +20,8 @@ course | AI Agents for Beginners | https://github.com/microsoft/ai-agents-for-be
 ```
 
 ```quiz
-You can list the three steps of a task in advance. What fits best? | A fixed workflow ; An autonomous agent ; A swarm of agents | 0 | Known steps mean a workflow is simpler, cheaper and easier to test.
-What should you do before adding an agent loop? | Add more tools to the single call to cover gaps ; Check that one good call is not already enough ; Pick a framework before testing anything | 1 | Each added layer costs tokens and debuggability, so add one only when your tests show a need.
+You can list the three steps of a task in advance. What fits best? | A fixed three-step workflow ; One autonomous agent with tools ; A swarm of cooperating agents | 0 | Known steps mean a workflow is simpler, cheaper and easier to test.
+What should you do before adding an agent loop? | Add more tools to the call to cover gaps ; Check whether one good call is enough ; Pick a framework before testing anything | 1 | Each added layer costs tokens and debuggability, so add one only when your tests show a need.
 A task branches in ways you cannot predict, such as fixing an unknown bug. What fits? | A single call with a much longer prompt ; A fixed chain of exactly three steps ; An agent with tools, limits and checks | 2 | Unpredictable steps are where an agent earns its extra cost.
 ```
 
@@ -68,8 +68,8 @@ article | Agents | https://huyenchip.com/2025/01/07/agents.html | Chip Huyen | T
 ```
 
 ```quiz
-Which task suits an agent best today? | Fixing a failing test in a repository ; Making money with no oversight ; Sending legal letters without review | 0 | Tests give a built-in way to check the result.
-What should you do if you cannot define success for a task? | Build a full agent now and watch what happens ; Start with a workflow and a human reviewer ; Add several more agents to share the work | 1 | Reliability has to be shown before autonomy is granted.
+Which task suits an agent best today? | Fixing a failing test in a repo ; Making money with no human oversight ; Sending legal letters without review | 0 | Tests give a built-in way to check the result.
+What should you do if you cannot define success for a task? | Build a full agent now and see what happens ; Start with a workflow and a reviewer ; Add several more agents to split the work | 1 | Reliability has to be shown before autonomy is granted.
 An agent is 95 percent reliable per step and a task needs 30 steps. About how often does it finish without error? | About 95 percent of the time ; About 50 percent of the time ; About 21 percent of the time | 2 | 0.95 multiplied by itself 30 times is about 0.21. Small error rates compound.
 ```
 
@@ -133,9 +133,9 @@ course | Hugging Face Agents Course | https://huggingface.co/learn/agents-course
 ```
 
 ```quiz
-What ends an agent loop? | The model gives a final answer, or a limit stops it ; It stops after exactly ten steps in every case ; It stops as soon as the first tool call returns | 0 | The loop runs until the model answers or a step, cost or time limit stops it.
-The agent calls the same failing tool again and again. What is the best fix? | A higher temperature so the model tries other ideas ; A clear error message plus a retry limit ; A longer system prompt with extra warnings | 1 | The model needs to learn what went wrong, and the harness must cap retries.
-Your loop has no step limit and the model keeps calling tools. What could happen? | The model stops on its own after three calls ; The API rejects the first tool call ; A runaway loop with a large bill | 2 | Without limits, a confused agent can keep going. Cap steps, cost and time.
+What ends an agent loop? | The model answers, or a limit stops it ; It stops after exactly ten steps always ; It stops once the first tool call returns | 0 | The loop runs until the model answers or a step, cost or time limit stops it.
+The agent calls the same failing tool again and again. What is the best fix? | A higher temperature to try other ideas ; A clear error message plus a retry limit ; A longer system prompt with more warnings | 1 | The model needs to learn what went wrong, and the harness must cap retries.
+Your loop has no step limit and the model keeps calling tools. What could happen? | The model stops by itself after three calls ; The API rejects the very first tool call ; A runaway loop that racks up a large bill | 2 | Without limits, a confused agent can keep going. Cap steps, cost and time.
 ```
 
 ```story
@@ -163,9 +163,9 @@ docs | Tool use best practices | https://docs.anthropic.com/en/docs/build-with-c
 ```
 
 ```quiz
-What is wrong with a tool that returns 40,000 tokens of raw rows? | It floods the context and hides what matters ; It arrives too fast for the model to read it properly ; It breaks the tool's declared JSON schema | 0 | Return concise, relevant results and offer filters or pagination.
-How do you know a tool is well designed? | Its description is very long and detailed ; Agents use it correctly on realistic tasks ; It offers many options and parameters | 1 | Evaluate by running tasks and reading transcripts.
-Two tools, search_orders and find_orders, confuse the model. What is the best fix? | Rename them so the names are shorter and neater ; Add a third, similar tool to cover the overlap ; Merge them or sharpen both descriptions | 2 | Overlapping tools make the model guess. Clear, distinct descriptions help.
+What is wrong with a tool that returns 40,000 tokens of raw rows? | It floods the context and buries key facts ; It arrives too fast for the model to read ; It breaks the tool's declared JSON schema | 0 | Return concise, relevant results and offer filters or pagination.
+How do you know a tool is well designed? | Its description is very long and thorough ; Agents use it correctly on real tasks ; It exposes many options and parameters | 1 | Evaluate by running tasks and reading transcripts.
+Two tools, search_orders and find_orders, confuse the model. What is the best fix? | Rename them so the names look neater ; Add a third similar tool to cover the gap ; Merge them or sharpen both descriptions | 2 | Overlapping tools make the model guess. Clear, distinct descriptions help.
 ```
 
 ```story
@@ -203,8 +203,8 @@ article | OWASP Top 10 for LLM Applications | https://genai.owasp.org/llm-top-10
 ```
 
 ```quiz
-A tool call fails. What should the loop do? | Return an instructive error and cap retries ; Crash the loop and show the user an error page ; Ignore the failure silently and carry on | 0 | The model can recover when the error says what to try.
-Why validate tool arguments? | Arguments are always correct but slow to read ; The model can produce wrong or dangerous values ; The schema is optional for most tools | 1 | Arguments come from a model that may be mistaken or manipulated.
+A tool call fails. What should the loop do? | Return an instructive error, cap retries ; Crash the loop and show an error page ; Ignore the failure silently and carry on | 0 | The model can recover when the error says what to try.
+Why validate tool arguments? | Arguments are always right but slow to read ; The model can send wrong or unsafe values ; Schemas are optional for nearly every tool | 1 | Arguments come from a model that may be mistaken or manipulated.
 A search tool builds a SQL string from the model's argument. What is the safe change? | Trust the argument because a model wrote it ; Ask the model to avoid special characters ; Use parameterized queries and an allowlist | 2 | Treat model output like user input: never build raw queries from it.
 ```
 
@@ -237,9 +237,9 @@ course | Agentic AI | https://www.deeplearning.ai/courses/agentic-ai/ | Andrew N
 ```
 
 ```quiz
-Which pattern fits "different inputs need different handling"? | Routing ; Prompt chaining ; Evaluator-optimizer | 0 | Routing classifies the input and sends it to a specialized handler.
-Which pattern needs clear criteria to work well? | Routing ; Evaluator-optimizer ; Parallelization | 1 | The evaluator needs something concrete to judge against.
-A product page needs facts extracted, copy drafted, then checked against the facts. Which pattern is this? | Routing ; Orchestrator-workers ; Prompt chaining | 2 | A fixed sequence where each step feeds the next is a chain.
+Which pattern fits "different inputs need different handling"? | Routing to specialized handlers ; Prompt chaining in a fixed order ; Evaluator-optimizer feedback loops | 0 | Routing classifies the input and sends it to a specialized handler.
+Which pattern needs clear criteria to work well? | Routing between handlers ; Evaluator-optimizer loops ; Parallelization of subtasks | 1 | The evaluator needs something concrete to judge against.
+A product page needs facts extracted, copy drafted, then checked against the facts. Which pattern is this? | A router between handlers ; An orchestrator and workers ; A prompt chain of steps | 2 | A fixed sequence where each step feeds the next is a chain.
 ```
 
 ```story
@@ -268,9 +268,9 @@ article | Effective context engineering for AI agents | https://www.anthropic.co
 ```
 
 ```quiz
-Where should an agent's notes start out? | In plain files it can read and you can edit ; In a vector database that the agent maintains ; Inside the model's weights through fine-tuning | 0 | Files are simple and inspectable. Add retrieval only when you need it.
-Why treat remembered facts as hypotheses? | They always cost money to store ; They can be wrong or stale ; Models ignore saved notes | 1 | Memory written by a model can contain errors that then compound.
-A user moves to a new database and the notes still say PostgreSQL. What is this problem? | A tokenization error hidden in the saved notes ; A normal feature of long-term memory in agents ; A stale memory that needs updating or forgetting | 2 | Deciding when something is out of date, and forgetting it, is one of the hard parts.
+Where should an agent's notes start out? | In plain files it can read and you edit ; In a vector database the agent maintains ; In the model's weights through fine-tuning | 0 | Files are simple and inspectable. Add retrieval only when you need it.
+Why treat remembered facts as hypotheses? | They always cost too much to store ; They can be wrong or out of date ; Models tend to ignore saved notes | 1 | Memory written by a model can contain errors that then compound.
+A user moves to a new database and the notes still say PostgreSQL. What is this problem? | A tokenization error in the saved notes ; A normal feature of long-term memory ; A stale memory that needs updating | 2 | Deciding when something is out of date, and forgetting it, is one of the hard parts.
 ```
 
 ```story
@@ -299,9 +299,9 @@ repo | 12-Factor Agents | https://github.com/humanlayer/12-factor-agents | Human
 ```
 
 ```quiz
-What is the state of a simple agent? | Its message list ; Its model weights ; Its API key | 0 | Save the list and the agent can resume.
-Why keep a tool call with its matching result when trimming history? | It makes the stored history much shorter ; APIs reject a tool result with no matching call ; It looks neater when the logs are printed | 1 | The pair must stay together.
-A user asks you to delete their data. What does this imply for saved conversations? | Nothing, since conversations are only temporary ; Only the most recent message must be deleted ; You need a way to find and delete their stored histories | 2 | Stored history is personal data, so keep it private, deletable and short-lived.
+What is the state of a simple agent? | Its list of messages so far ; Its model weights, saved to disk ; Its API key and account login | 0 | Save the list and the agent can resume.
+Why keep a tool call with its matching result when trimming history? | It makes the stored history much shorter ; APIs reject a result with no matching call ; It looks neater when the logs are printed | 1 | The pair must stay together.
+A user asks you to delete their data. What does this imply for saved conversations? | Nothing, since conversations are temporary ; Only the most recent message must be deleted ; You need a way to find and erase their chats | 2 | Stored history is personal data, so keep it private, deletable and short-lived.
 ```
 
 ```story
@@ -333,9 +333,9 @@ course | AI Agents in LangGraph | https://www.deeplearning.ai/short-courses/ai-a
 ```
 
 ```quiz
-Which task suits several agents best? | Searching twenty independent sources ; Editing one function in a single file ; A tightly coupled refactor across modules | 0 | Independent subtasks parallelize with little conflict.
-What is the main cost of multi-agent systems? | More lines of text in each agent's prompt ; Token use that multiplies with each agent ; Slower typing speed for the human user | 1 | Each agent carries its own context, so total tokens rise quickly.
-Two agents edit different parts of a program that must agree on an interface. What goes wrong? | They always agree because they share one model ; Nothing, since parallel work never conflicts ; They assume different things and the parts clash | 2 | Tightly coupled work belongs in one context.
+Which task suits several agents best? | Searching twenty independent sources ; Editing one function in a single file ; A tightly coupled multi-module refactor | 0 | Independent subtasks parallelize with little conflict.
+What is the main cost of multi-agent systems? | More lines of text in every prompt ; Token use that grows per agent ; Slower typing speed for the user | 1 | Each agent carries its own context, so total tokens rise quickly.
+Two agents edit different parts of a program that must agree on an interface. What goes wrong? | They always agree as they share a model ; Nothing, as parallel work never conflicts ; They assume different things and clash | 2 | Tightly coupled work belongs in one context.
 ```
 
 ```story
@@ -366,9 +366,9 @@ article | Harness design for long-running application development | https://www.
 ```
 
 ```quiz
-What is the difference between a reset and compaction? | A reset starts fresh, compaction shortens in place ; Reset and compaction are two names for one thing ; Compaction deletes files from the project folder | 0 | A reset avoids lingering context anxiety but needs a good handoff.
-What is the shared state between sessions of a long task? | The chat window that the user keeps open ; Files: progress notes, tests and git history ; The model's own memory from earlier runs | 1 | Durable artifacts let a fresh agent pick up the work.
-An agent marks its own work as done, but half the feature is missing. What helps? | A separate evaluator that runs the app and tests it ; A longer prompt that says to be thorough ; A larger context window for the same agent | 0 | Separating the doer from a skeptical checker stops generous self-grading.
+What is the difference between a reset and compaction? | A reset starts fresh, compaction trims in place ; Reset and compaction are two names for one thing ; Compaction deletes files from the project folder | 0 | A reset avoids lingering context anxiety but needs a good handoff.
+What is the shared state between sessions of a long task? | The chat window that the user keeps open ; Files such as notes, tests and git history ; The model's own memory from earlier runs | 1 | Durable artifacts let a fresh agent pick up the work.
+An agent marks its own work as done, but half the feature is missing. What helps? | A separate evaluator that tests the app ; A longer prompt that says to be thorough ; A larger context window for the same agent | 0 | Separating the doer from a skeptical checker stops generous self-grading.
 ```
 
 ```story

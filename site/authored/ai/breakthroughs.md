@@ -27,9 +27,9 @@ video | But how do AI images and videos actually work? | https://www.youtube.com
 ```
 
 ```quiz
-How does a diffusion model make an image? | It copies the closest image it saw in training ; It paints the image one pixel at a time ; It starts from noise and removes it step by step | 2 | It is trained to reverse a noising process, and applies that reversal at generation time.
-What did AlexNet show? | Features learned at scale beat hand-designed features ; Hand-designed features are still best for images ; GPUs are too slow for training networks | 0 | It started the deep learning era in vision.
-A diffusion model draws six fingers on a hand. What is the most likely reason? | It ran out of memory halfway through the image ; It learned how things usually look, not what a hand is ; The prompt was typed in capital letters | 1 | The model captures typical appearance without understanding structure, which is why hands and text were hard.
+How does a diffusion model make an image? | It copies the closest image it saw in training ; It paints the image one pixel at a time ; It cleans up random noise step by step | 2 | It is trained to reverse a noising process, and applies that reversal at generation time.
+What did AlexNet show? | Learned features beat hand-designed ones ; Hand-designed features still win on images ; GPUs are too slow to train big networks | 0 | It started the deep learning era in vision.
+A diffusion model draws six fingers on a hand. What is the most likely reason? | It ran out of memory midway through drawing it ; It learned how hands look, not how they work ; The prompt was longer than the image allows | 1 | The model captures typical appearance without understanding structure, which is why hands and text were hard.
 ```
 
 ```story
@@ -62,9 +62,9 @@ paper | Mastering Chess and Shogi by Self-Play with a General Reinforcement Lear
 ```
 
 ```quiz
-What does a reinforcement learning agent try to maximize? | The number of labelled examples ; The length of each game ; Total reward over time | 2 | It learns actions that earn reward, not copies of labelled answers.
-Why does reinforcement learning work well on math and code? | Answers can be checked automatically, giving a reward ; Those subjects are short and simple to write ; They have the most training data online | 0 | A computable reward is what the method needs.
-A cleaning robot is rewarded for "no visible mess" and learns to hide mess under a rug. What went wrong? | The robot had too little time to train properly ; The reward did not match the real goal and was exploited ; The robot's camera had a low resolution | 1 | A badly chosen reward gets gamed. Defining the reward is the hard part.
+What does a reinforcement learning agent try to maximize? | The number of labelled examples it sees ; The number of moves in each game it plays ; The total reward it collects over time | 2 | It learns actions that earn reward, not copies of labelled answers.
+Why does reinforcement learning work well on math and code? | Answers can be auto-checked for reward ; Those subjects are short and simple to write ; They have the largest amount of data online | 0 | A computable reward is what the method needs.
+A cleaning robot is rewarded for "no visible mess" and learns to hide mess under a rug. What went wrong? | The robot had too little time to train properly ; The reward missed the real goal and was gamed ; The robot's sensors could not see the rug | 1 | A badly chosen reward gets gamed. Defining the reward is the hard part.
 ```
 
 ```story
@@ -97,9 +97,9 @@ article | The Nobel Prize in Chemistry 2024 | https://www.nobelprize.org/prizes/
 ```
 
 ```quiz
-What problem did AlphaFold address? | Reading handwritten text from old documents ; Playing the game of Go at expert level ; Predicting a protein's 3D shape from its amino acids | 2 | Protein structure prediction was a long-standing open problem.
-Why should you verify AI predictions in science? | Models can be wrong beyond their training data ; They are usually wrong in every single case ; Journals require a second model's opinion | 0 | Treat outputs as strong hypotheses until experiments confirm them.
-A predicted protein shape suggests a drug could bind. What should happen next? | Publish the shape as if it were measured ; Lab tests to confirm it before relying on the result ; Skip testing because the model scored well | 1 | The prediction narrows the search. People and labs still confirm.
+What problem did AlphaFold address? | Reading handwritten text from old documents ; Beating human champions at the game of Go ; Predicting protein 3D shape from sequence | 2 | Protein structure prediction was a long-standing open problem.
+Why should you verify AI predictions in science? | Models can fail outside their training data ; Models are usually wrong on any real protein ; Journals require a second model to agree first | 0 | Treat outputs as strong hypotheses until experiments confirm them.
+A predicted protein shape suggests a drug could bind. What should happen next? | Publish the shape as if it were measured ; Test it in a lab before relying on it ; Skip testing because the model scored well | 1 | The prediction narrows the search. People and labs still confirm.
 ```
 
 ```story
@@ -134,9 +134,9 @@ paper | Learning Transferable Visual Models From Natural Language Supervision | 
 ```
 
 ```quiz
-How does a transformer read an image? | It converts the image to text first with a separate tool ; It cannot read images without extra hardware ; It cuts it into patches that become vectors, like tokens | 2 | Vision transformers treat image patches the way language models treat tokens.
-What does CLIP do? | Puts matching images and text close in vector space ; Compresses video so that it takes less storage ; Writes captions for any video, word by word | 0 | That shared space powers image search and guides image generation.
-A 224 by 224 image is cut into 16 by 16 patches. How many patches is that? | 256 ; 196 ; 14 | 1 | 224 divided by 16 is 14 in each direction, and 14 × 14 = 196.
+How does a transformer read an image? | It converts the image to text with another tool ; It cannot read images without a special chip ; It cuts it into patches, treated like tokens | 2 | Vision transformers treat image patches the way language models treat tokens.
+What does CLIP do? | Maps matching images and text close together ; Compresses video so that it takes less storage ; Writes captions for any video, word by word | 0 | That shared space powers image search and guides image generation.
+A 224 by 224 image is cut into 16 by 16 patches. How many patches is that? | 256, a 16 by 16 grid ; 196, a 14 by 14 grid ; 1,024, a 32 by 32 grid | 1 | 224 divided by 16 is 14 in each direction, and 14 × 14 = 196.
 ```
 
 ```story
@@ -171,9 +171,9 @@ paper | Evaluating Large Language Models Trained on Code | https://arxiv.org/abs
 ```
 
 ```quiz
-Why did code and math improve fastest? | They have the least ambiguous wording of all ; More money was spent on them than anything ; Results can be auto-checked to train on them | 2 | A pass or fail result can be used to train and to trust the output.
-What does SWE-bench test? | Whether an agent fixes real issues, tests passing ; How quickly a model can type out new code ; How well a model explains very old code | 0 | It scores agents on real repository tasks.
-A generated change compiles. Why is that not enough to accept it? | Compiling guarantees that the logic is correct ; It may still be wrong, so test and read the diff ; The model already tested it internally | 1 | Compiling checks syntax, not behavior. Tests and review check behavior.
+Why did code and math improve fastest? | Their wording is the least ambiguous of any field ; More money was spent on them than on anything else ; Answers can be auto-checked during training | 2 | A pass or fail result can be used to train and to trust the output.
+What does SWE-bench test? | Whether an agent fixes real repository issues ; How quickly a model can write a new function ; How well a model explains legacy code to users | 0 | It scores agents on real repository tasks.
+A generated change compiles. Why is that not enough to accept it? | Compiling guarantees that the logic is correct ; It may be wrong, so test and read the diff ; The model has already tested it internally | 1 | Compiling checks syntax, not behavior. Tests and review check behavior.
 ```
 
 ```story
@@ -208,9 +208,9 @@ course | Building with Llama 4 | https://www.deeplearning.ai/short-courses/build
 ```
 
 ```quiz
-What do open-weight models usually let you do? | Read all of the training data ; Ignore the license terms ; Download and run them yourself | 2 | The weights are published. Licenses and data availability vary.
-When is an open model a good choice? | When privacy or control matters, and you can operate it ; When you want zero setup effort ; When you need the very best quality on every task | 0 | Running it yourself keeps data in-house, at the cost of operating it.
-You classify 5 million tickets a month and have no privacy concern. What should you compare first? | Which model has the largest parameter count ; API cost against hosting cost plus maintenance time ; Which license has the longest text ; Whichever model tops a public leaderboard | 1 | At volume, total cost including your own time decides, not size or fame.
+What do open-weight models usually let you do? | Read all of their training data ; Skip reading the license terms ; Download and run them yourself | 2 | The weights are published. Licenses and data availability vary.
+When is an open model a good choice? | When data control matters and you can run it ; When you want it running with no setup work ; When you need top quality on every single task | 0 | Running it yourself keeps data in-house, at the cost of operating it.
+You classify 5 million tickets a month and have no privacy concern. What should you compare first? | Which model has the largest parameter count ; API cost against hosting cost plus upkeep ; Which license text is the shortest to read ; Whichever model tops a public leaderboard | 1 | At volume, total cost including your own time decides, not size or fame.
 ```
 
 ```story

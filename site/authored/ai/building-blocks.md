@@ -35,9 +35,9 @@ article | The Illustrated Word2vec | https://jalammar.github.io/illustrated-word
 ```
 
 ```quiz
-a = [1, 2] and b = [3, 0]. What is the dot product a · b? | 6 ; 3 ; 5 | 1 | Multiply matching entries and add: 1 × 3 + 2 × 0 = 3.
-Two embeddings have a cosine similarity near 0. What does that mean? | They are almost the same text ; They point in opposite directions ; They point in unrelated directions | 2 | Cosine 1 means the same direction, 0 means unrelated and -1 means opposite.
-You compare a short note and a very long article by raw dot product, and the long one always wins. What is going on? | Long vectors get big dot products just for being long ; The longer article is always more relevant ; Dot products ignore vector length completely | 0 | Length inflates the dot product. Cosine similarity divides the lengths out so only direction counts.
+a = [1, 2] and b = [3, 0]. What is the dot product a · b? | 3 ; 6 ; 5 | 0 | Multiply matching entries and add: 1 × 3 + 2 × 0 = 3.
+Two embeddings have a cosine similarity near 0. What does that mean? | They are nearly the same direction ; They point in opposite directions ; They are unrelated in direction | 2 | Cosine 1 means the same direction, 0 means unrelated and -1 means opposite.
+You compare a short note and a very long article by raw dot product, and the long one always wins. What is going on? | Longer vectors give bigger dot products ; Longer articles are always more relevant ; Dot products ignore vector length entirely | 0 | Length inflates the dot product. Cosine similarity divides the lengths out so only direction counts.
 ```
 
 ```story
@@ -66,8 +66,8 @@ article | Broadcasting semantics | https://numpy.org/doc/stable/user/basics.broa
 ```
 
 ```quiz
-M is a 2 by 3 matrix and x has 3 numbers. How many numbers does M x have? | 3 ; 2 ; 6 | 1 | Each of the 2 rows gives one output number.
-What does broadcasting do? | Sends data from the CPU over to the GPU ; Deletes any extra axes from an array ; Stretches a smaller array to fit a bigger one | 2 | It lets you add a bias vector to a whole batch without copying it.
+M is a 2 by 3 matrix and x has 3 numbers. How many numbers does M x have? | 3 ; 6 ; 2 | 2 | Each of the 2 rows gives one output number.
+What does broadcasting do? | Sends data from the CPU over to the GPU ; Stretches a small array to fit another ; Deletes any extra axes from an array | 1 | It lets you add a bias vector to a whole batch without copying it.
 You multiply a 4 by 3 matrix by a 2-number vector and get an error. What is the most likely cause? | The shapes do not match, since 3 is not 2 ; The numbers are too large for the computer ; The matrix must be square before it multiplies | 0 | A matrix times a vector needs the matrix's column count to equal the vector's length.
 ```
 
@@ -100,8 +100,8 @@ video | Triangle of Power | https://www.youtube.com/watch?v=sULa9Lc4pck | 3Blue1
 
 ```quiz
 You flip a fair coin three times. What is the probability of three heads? | 0.5 ; 0.125 ; 0.375 | 1 | Independent events multiply: 0.5 × 0.5 × 0.5 = 0.125.
-Why do training programs add logs of probabilities instead of multiplying the probabilities? | Logs turn every probability into exactly 1 ; Neural networks cannot multiply two numbers ; A product of tiny numbers is too small to store | 2 | The product underflows. The log of a product is the sum of logs, so the answer is kept safely.
-What is log base 2 of 32? | 5 ; 16 ; 6 | 0 | 2 to the power 5 is 32.
+Why do training programs add logs of probabilities instead of multiplying the probabilities? | Products of tiny numbers round to zero ; Logs turn every probability into exactly 1 ; Neural networks cannot multiply two numbers | 0 | The product underflows. The log of a product is the sum of logs, so the answer is kept safely.
+What is log base 2 of 32? | 16 ; 6 ; 5 | 2 | 2 to the power 5 is 32.
 ```
 
 ```story
@@ -138,8 +138,8 @@ article | Softmax function | https://en.wikipedia.org/wiki/Softmax_function | Wi
 
 ```quiz
 What does lowering the temperature do to the output distribution? | It flattens it so tokens look alike ; It sharpens it toward the top token ; It removes unlikely tokens completely | 1 | Dividing the scores by a small T makes the differences bigger, so the leader dominates.
-Softmax outputs always do which of these? | Equal whole numbers ; Fall between -1 and 1 ; Add up to 1 | 2 | That is what lets them be read as probabilities.
-Scores are [2, 1, 0.1] at T = 1 and give 66 percent for the first token. At T = 2, what happens to that 66 percent? | It falls toward 50 percent as the choice flattens ; It rises to about 86 percent as it sharpens ; It stays at exactly 66 percent | 0 | Higher temperature flattens the distribution. The worked example gives about 50, 30 and 19 percent.
+Softmax outputs always do which of these? | Be whole numbers only ; Stay between -1 and 1 ; Add up to exactly one | 2 | That is what lets them be read as probabilities.
+Scores are [2, 1, 0.1] at T = 1 and give 66 percent for the first token. At T = 2, what happens to that 66 percent? | It rises to about 86 percent ; It stays at exactly 66 percent ; It falls to about 50 percent | 2 | Higher temperature flattens the distribution. The worked example gives about 50, 30 and 19 percent.
 ```
 
 ```story
@@ -179,9 +179,9 @@ course | Essence of calculus | https://www.3blue1brown.com/topics/calculus | 3Bl
 ```
 
 ```quiz
-What is the derivative of f(x) = x² at x = 3? | 9 ; 6 ; 3 | 1 | The derivative is 2x, so at x = 3 it is 6.
+What is the derivative of f(x) = x² at x = 3? | 6 ; 9 ; 3 | 0 | The derivative is 2x, so at x = 3 it is 6.
 In which direction does the gradient point? | Toward the steepest decrease ; Toward the nearest minimum ; Toward the steepest increase | 2 | You step against it to reduce a function, which is what training does.
-f(a, b) = a² + 3b at (2, 1). Which nudge raises f the most per unit step? | Increasing a, since its slope is 4 and b's is 3 ; Increasing b, since b has the larger multiplier ; Both raise f by exactly the same amount | 0 | The gradient is [2a, 3] = [4, 3], so a changes f faster here.
+f(a, b) = a² + 3b at (2, 1). Which nudge raises f the most per unit step? | Increasing a, since its slope is 4 versus 3 ; Increasing b, since b has the larger multiplier ; Both raise f by exactly the same amount | 0 | The gradient is [2a, 3] = [4, 3], so a changes f faster here.
 ```
 
 ```story
@@ -215,9 +215,9 @@ course | Neural Networks and Deep Learning | http://neuralnetworksanddeeplearnin
 ```
 
 ```quiz
-Why does a network need an activation function? | It lets training use less memory overall ; Stacked layers would collapse into one linear function ; It converts words into numbers for the model | 1 | The bend is what lets deep networks represent complex functions.
+Why does a network need an activation function? | It lets training use less memory overall ; Without it, stacked layers act as one layer ; It converts words into numbers for the model | 1 | The bend is what lets deep networks represent complex functions.
 x = [1, 2], w = [1, 1], b = -4 and a ReLU. What is the output? | -1 ; 3 ; 0 | 2 | The sum is 1 + 2 - 4 = -1, and ReLU clips negatives to 0.
-A neuron fires for cats using whiskers (+2), ears (+1) and barking (-3), with bias -1. A barking animal with whiskers and ears gives what? | Silent: the sum is -1, so ReLU outputs 0 ; Fires strongly with an output of 3 ; Fires weakly with an output of 1 | 0 | 2 + 1 - 3 - 1 = -1, and ReLU turns a negative sum into 0.
+A neuron fires for cats using whiskers (+2), ears (+1) and barking (-3), with bias -1. A barking animal with whiskers and ears gives what? | Fires strongly: the sum is 3, so output is 3 ; Silent: the sum is -1, so output is 0 ; Fires weakly: the sum is 1, so output is 1 | 1 | 2 + 1 - 3 - 1 = -1, and ReLU turns a negative sum into 0.
 ```
 
 ```story
@@ -261,9 +261,9 @@ repo | micrograd | https://github.com/karpathy/micrograd | Andrej Karpathy | A t
 ```
 
 ```quiz
-Minimize (w - 3)² starting at w = 0 with learning rate 0.1. What is w after one step? | 3 ; 0.6 ; -0.6 | 1 | The gradient is 2(0 - 3) = -6, so w = 0 - 0.1 × (-6) = 0.6.
-What happens if the learning rate is far too large? | Training finishes faster with a better result ; Nothing changes, only the speed differs ; The steps overshoot and the loss may grow | 2 | Big steps jump past the minimum and can get bigger each time.
-Training loss keeps falling but loss on held-out data starts rising. What should you suspect? | The model is memorizing its training data ; The learning rate is too small to matter ; The held-out data is bigger than the training data | 0 | Rising held-out loss with falling training loss is the sign of overfitting.
+Minimize (w - 3)² starting at w = 0 with learning rate 0.1. What is w after one step? | 0.6 ; 3 ; -0.6 | 0 | The gradient is 2(0 - 3) = -6, so w = 0 - 0.1 × (-6) = 0.6.
+What happens if the learning rate is far too large? | The steps overshoot and the loss may grow ; Training finishes faster with a better result ; Nothing changes, only the speed differs | 0 | Big steps jump past the minimum and can get bigger each time.
+Training loss keeps falling but loss on held-out data starts rising. What should you suspect? | The learning rate is too small to matter ; The model is memorizing its training data ; The held-out set is larger than the training set | 1 | Rising held-out loss with falling training loss is the sign of overfitting.
 ```
 
 ```story
@@ -297,9 +297,9 @@ repo | micrograd | https://github.com/karpathy/micrograd | Andrej Karpathy | The
 ```
 
 ```quiz
-dL/da = -6 and da/dw = 2. What is dL/dw? | -3 ; -12 ; 12 | 1 | By the chain rule you multiply the local derivatives along the path.
-Why is backpropagation efficient? | It skips the layers that matter the least ; It needs far less data than gradient descent ; It reuses partial results, so one pass is enough | 2 | The cost is about one extra pass, however many weights there are.
-After one update, the loss goes from 9 to 0.36. What does that tell you about the step? | The gradients pointed the right way and the step was sensible ; The learning rate must have been far too small ; The model has already finished all of its training | 0 | A large drop in loss from one step means the direction and size were good.
+dL/da = -6 and da/dw = 2. What is dL/dw? | -3 ; -12 ; -18 | 1 | By the chain rule you multiply the local derivatives along the path.
+Why is backpropagation efficient? | It skips the layers that matter the least ; It needs far less data than gradient descent ; It reuses partial results in one pass | 2 | The cost is about one extra pass, however many weights there are.
+After one update, the loss goes from 9 to 0.36. What does that tell you about the step? | The direction and step size were about right ; The learning rate must have been far too small ; The model has already finished all of its training | 0 | A large drop in loss from one step means the direction and size were good.
 ```
 
 ```story
@@ -341,7 +341,7 @@ article | Kullback-Leibler divergence | https://en.wikipedia.org/wiki/Kullback%E
 ```quiz
 How much entropy does a fair coin have? | 0 bits ; 1 bit ; 2 bits | 1 | Each flip carries one bit of surprise on average.
 What is the KL divergence between two identical distributions? | 1 ; Infinite ; 0 | 2 | There is no gap when q equals p.
-A model gives the real next word 90 percent in one run and 5 percent in another. Which run has the larger loss? | The 5 percent run, since the surprise is larger ; The 90 percent run, since it was more certain ; Both are the same, since the word is right | 0 | Loss is minus the log of the probability given to the right word, so a small probability means a big loss.
+A model gives the real next word 90 percent in one run and 5 percent in another. Which run has the larger loss? | The 90 percent run, since it was more certain ; Both are the same, since the word is right ; The 5 percent run, as the surprise is larger | 2 | Loss is minus the log of the probability given to the right word, so a small probability means a big loss.
 ```
 
 ```story
@@ -378,9 +378,9 @@ video | Optimization for Deep Learning (Momentum, RMSprop, AdaGrad, Adam) | http
 ```
 
 ```quiz
-In an exponential moving average with beta 0.9, which values count the most? | The oldest ones ; The most recent ones ; All of them equally | 1 | Older values fade geometrically, so recent values weigh more.
-Why do large models use learning-rate warmup? | It saves memory in the first steps ; It makes the loss start at zero ; A high rate early on can wreck training | 2 | The rate rises slowly until training is stable.
-Gradients for one weight bounce between +1 and -1 every step. What does Adam's moving average do with this? | Smooths them so the weight barely swings back and forth ; Doubles the step size in each direction ; Stops training that weight completely and forever | 0 | Averaging noisy gradients cancels the swings, so the update follows the overall trend.
+In an exponential moving average with beta 0.9, which values count the most? | The oldest values ; The newest values ; All values equally | 1 | Older values fade geometrically, so recent values weigh more.
+Why do large models use learning-rate warmup? | It saves memory during the first steps ; It forces the loss to start at zero ; Big early steps can wreck training | 2 | The rate rises slowly until training is stable.
+Gradients for one weight bounce between +1 and -1 every step. What does Adam's moving average do with this? | Doubles the step size each time ; Smooths them so the weight barely moves ; Locks that weight and stops its training | 1 | Averaging noisy gradients cancels the swings, so the update follows the overall trend.
 ```
 
 ```story
@@ -417,9 +417,9 @@ article | The Illustrated Transformer | https://jalammar.github.io/illustrated-t
 ```
 
 ```quiz
-What produces the attention weights? | The value vectors, simply added together ; A softmax over scaled query and key dot products ; The bias term from the final layer | 1 | The weights come from how well the query matches each key.
-Why divide by the square root of d? | To save memory on the GPU during training ; To turn the output into a probability ; To stop dot products from saturating the softmax | 2 | Large unscaled scores push softmax toward one-hot with tiny gradients.
-A query matches key 1 much better than key 2. Which description of the output is right? | A blend leaning heavily toward value 1 ; Exactly value 1 and nothing from value 2 ; An even average of both values | 0 | Softmax gives a high but not total weight to the better match, so the output is a weighted blend.
+What produces the attention weights? | The value vectors, simply added together ; A softmax over query-key dot products ; The positional signal added to inputs | 1 | The weights come from how well the query matches each key.
+Why divide by the square root of d? | To save GPU memory during training ; To turn the output into a probability ; To keep softmax from saturating | 2 | Large unscaled scores push softmax toward one-hot with tiny gradients.
+A query matches key 1 much better than key 2. Which description of the output is right? | A blend leaning heavily toward value 1 ; Exactly value 1 and nothing from value 2 ; An even split between both values | 0 | Softmax gives a high but not total weight to the better match, so the output is a weighted blend.
 ```
 
 ```story

@@ -31,6 +31,9 @@ const repoOf = url => url.match(/^https:\/\/github\.com\/([^/]+\/[^/#?]+)\/?$/)?
 // Escapes characters MDX would read as markup, then wraps the first use of each glossary term in <Term def="...">.
 // Code, links and headings-free prose only: fences, tables, quotes and existing <Term> tags are left alone.
 const mdxText = t => t.replace(/</g, '&lt;').replace(/[{}]/g, c => '\\' + c)
+// The story is shown by its own component, so it is not in the page body. Repeating it in a hidden block puts it in the search index.
+const hiddenStory = story => (story ? `<div hidden>\n\n${toMdx(story, [])}\n\n</div>` : '')
+
 function toMdx(md, terms) {
   const pending = terms.map(t => ({ ...t, re: termRe[t.term] })), protect = /(\[[^\]]*\]\([^)]*\)|`[^`]*`|<Term def=\{"(?:[^"\\]|\\.)*"\}>[^<]*<\/Term>)/
   let fenced = false
@@ -127,7 +130,7 @@ for (const tier of TIERS) {
   for (const c of chapters.filter(c => c.tier === tier.id)) {
     rootPages.push(c.id)
     write(join(out, c.id, 'meta.json'), JSON.stringify({ title: c.title, pages: c.topics.map(t => t.slug) }, null, 2))
-    for (const t of c.topics) write(join(out, c.id, `${t.slug}${t.source ? '.md' : '.mdx'}`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : toMdx(t.body, t.terms)}\n`)
+    for (const t of c.topics) write(join(out, c.id, `${t.slug}${t.source ? '.md' : '.mdx'}`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : `${toMdx(t.body, t.terms)}\n\n${hiddenStory(t.story)}`}\n`)
   }
 }
 write(join(out, 'meta.json'), JSON.stringify({ pages: ['[Dashboard](/ai)', '[Learning map](/ai/map)', ...rootPages, '---Reference---', '[Model atlas](/ai/models)', '[Resource library](/ai/library)', '[Glossary](/ai/glossary)'] }, null, 2))

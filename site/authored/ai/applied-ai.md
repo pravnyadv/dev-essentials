@@ -23,9 +23,9 @@ course | Kaggle Learn | https://www.kaggle.com/learn | Kaggle | Short free lesso
 ```
 
 ```quiz
-Which task is the best first candidate for AI? | A rare task where mistakes are very costly ; A one-time task with no way to measure it ; A frequent task with data and a clear success test | 2 | Frequent, measurable tasks with data are where a model can be tested and improved.
-Why write a simple rule before building a model? | It gives a baseline the model must beat ; It makes the model train faster overall ; It removes the need to collect any data | 0 | Without a baseline you cannot tell whether the model adds value.
-A team says "let us add AI" with no problem named. What is the risk? | They will pay too little for the models ; They build a demo that solves nothing real ; They will run out of training data soon | 1 | A solution without a problem has no way to measure success.
+Which task is the best first candidate for AI? | A rare task where every mistake is very costly ; A one-off task with no way to measure the result ; A frequent task with data and a success test | 2 | Frequent, measurable tasks with data are where a model can be tested and improved.
+Why write a simple rule before building a model? | It sets a baseline the model must beat ; It makes the model train faster overall ; It removes the need to collect any data | 0 | Without a baseline you cannot tell whether the model adds value.
+A team says "let us add AI" with no problem named. What is the risk? | The model will be too expensive to ever run ; They build a demo that solves nothing ; They will run out of training data too soon | 1 | A solution without a problem has no way to measure success.
 ```
 
 ```story
@@ -52,13 +52,13 @@ Measuring only accuracy on past data. What counts is what happens when real user
 ```resources
 course | Recommendation Systems | https://developers.google.com/machine-learning/recommendation | Google | A short course on candidate generation, scoring and ranking.
 article | Netflix Prize | https://en.wikipedia.org/wiki/Netflix_Prize | Wikipedia | The contest that made collaborative filtering famous, and why the winning model was not shipped.
-article | Patterns for Building LLM-based Systems | https://eugeneyan.com/writing/llm-patterns/ | Eugene Yan | Includes recommendation and ranking patterns beside language models.
+article | System Design for Recommendations and Search | https://eugeneyan.com/writing/system-design-for-discovery/ | Eugene Yan | How real recommenders split into candidate retrieval and ranking.
 ```
 
 ```quiz
-What does collaborative filtering rely on? | The text description of every item ; Overlap in what different people liked ; A hand-written list of rules for taste | 1 | It only needs the record of who interacted with which items.
-A brand new user opens the app. Which problem appears? | Cold start, since there is no history to match ; Overfitting, since there is too much data ; Latency, since the model is too large | 0 | With no past behavior, the system has nothing to compare.
-Why do big systems use a candidate stage first? | It lets them skip ranking altogether ; It is cheaper than using a vector database ; Ranking every item with a heavy model is too slow | 2 | A fast filter narrows millions to hundreds so a careful model can rank them.
+What does collaborative filtering rely on? | Overlap in what people have liked ; The text description of every item ; A hand-written list of rules for taste | 0 | It only needs the record of who interacted with which items.
+A brand new user opens the app. Which problem appears? | Overfitting, since there is too much data ; Cold start, as there is no history yet ; Latency, since the model is too large | 1 | With no past behavior, the system has nothing to compare.
+Why do big systems use a candidate stage first? | It lets them skip the ranking step altogether ; It is cheaper than using a vector database ; It avoids slow ranking of every single item | 2 | A fast filter narrows millions to hundreds so a careful model can rank them.
 ```
 
 ```story
@@ -77,7 +77,7 @@ For tables of numbers, simple models (linear models, decision trees, boosted tre
 Actual sales over three days: 100, 120, 110. Forecast: 105, 115, 120. Errors: 5, 5, 10. The mean absolute error is (5 + 5 + 10) / 3 = 6.7 units a day. The naive "same as yesterday" forecast can only be scored on days 2 and 3: it predicts 100 and 120, so it is off by 20 and 10, a mean of 15. On those same two days the model is off by 5 and 10, a mean of 7.5, so it beats the baseline.
 
 ## A worked example: rare events
-Out of 100,000 card payments, 100 are fraud. A model that always says "not fraud" is 99.9 percent accurate and catches nothing. This is class imbalance. Use precision (of the cases flagged, how many were right) and recall (of the real cases, how many were found). Say a model flags 200 payments and 80 are truly fraud. Precision is 80 / 200 = 40 percent. Recall is 80 / 100 = 80 percent. Which matters more depends on what a miss costs against what a false alarm costs.
+Out of 100,000 card payments, 100 are fraud. A model that always says "not fraud" is 99.9 percent accurate and catches nothing. This is class imbalance. Use precision (of the cases flagged, how many were right) and recall (of the real cases, how many were found). Say a model flags 200 payments and 80 are truly fraud. Precision is 80 / 200 = 40 percent. Recall is 80 / 100 = 80 percent. Which matters more depends on what a miss costs against what a false alarm costs. Try it in the demo above: slide the threshold and watch the false alarms rise as you catch every fraud.
 
 ## Common mistake
 Using accuracy on rare events, or testing on data from before the model's training period. Test on later data than you trained on, since the model will always be used on the future.
@@ -89,9 +89,9 @@ course | Kaggle Learn: Intro to Machine Learning | https://www.kaggle.com/learn/
 ```
 
 ```quiz
-A model says "not fraud" every time and is 99.9 percent accurate. What does this show? | The model is nearly perfect ; Accuracy is misleading on rare events ; The data set is too large to use | 1 | With rare positives, always guessing the common label looks accurate while finding nothing.
-Why compare a forecast against "same as last week"? | It is the fastest method to compute ; It proves the data is correct ; It sets a baseline any model must beat | 2 | A forecast is only worth its cost if it beats the simple guess.
-When is anomaly detection a good fit? | You have few or no labeled examples of the bad cases ; You have thousands of labeled examples of every case ; You need to write long text for customers | 0 | It finds cases that differ from normal without needing labels for the rare kind.
+A model says "not fraud" every time and is 99.9 percent accurate. What does this show? | Accuracy misleads on rare events ; The model is nearly perfect already ; The dataset is too big to be useful | 0 | With rare positives, always guessing the common label looks accurate while finding nothing.
+Why compare a forecast against "same as last week"? | It is the cheapest method to compute ; It proves the data is free of errors ; It sets a bar any model must beat | 2 | A forecast is only worth its cost if it beats the simple guess.
+When is anomaly detection a good fit? | You have thousands of labeled examples of each case ; You have few labeled examples of bad cases ; You need to sort items into known categories | 1 | It finds cases that differ from normal without needing labels for the rare kind.
 ```
 
 ```story
@@ -125,8 +125,8 @@ course | Practical Deep Learning for Coders | https://course.fast.ai/ | fast.ai 
 
 ```quiz
 What does object detection return? | One label for the whole image ; Boxes around each object found ; The text written inside the image | 1 | Detection says what is in the image and where it is.
-Why can a model with low precision still help in screening? | A human reviews far fewer cases than before ; It removes all false alarms in the end ; It never misses a real case | 0 | A human checks the flagged few, which saves time if recall stays high.
-A model works in the lab but fails on the factory floor. A likely cause? | The factory has fewer images in total ; The model is using the wrong programming language ; Lighting and cameras differ from the training data | 2 | A change in conditions between training and use breaks learned shortcuts.
+Why can a model with low precision still help in screening? | Staff review far fewer cases than before ; It guarantees it never misses a real case ; It removes every false alarm before review | 0 | A human checks the flagged few, which saves time if recall stays high.
+A model works in the lab but fails on the factory floor. A likely cause? | The factory has fewer total images to check ; The model was written in the wrong language ; Lighting and cameras differ from the lab | 2 | A change in conditions between training and use breaks learned shortcuts.
 ```
 
 ```story
@@ -156,12 +156,12 @@ Testing with clean studio audio. Real users talk in cars and kitchens, and the e
 ```resources
 repo | Whisper | https://github.com/openai/whisper | OpenAI | Open speech recognition model for many languages.
 course | Hugging Face Audio Course | https://huggingface.co/learn/audio-course | Hugging Face | Free course on speech and audio models.
-article | Patterns for Building LLM-based Systems | https://eugeneyan.com/writing/llm-patterns/ | Eugene Yan | Design patterns that also apply to voice pipelines.
+paper | Robust Speech Recognition via Large-Scale Weak Supervision | https://arxiv.org/abs/2212.04356 | OpenAI | The Whisper paper: how a speech model is trained and how its error rate is measured.
 ```
 
 ```quiz
 What does word error rate measure? | How fast the system answers a question ; How many words in the audio are wrong ; How natural the voice sounds to people | 1 | WER counts substitutions, deletions and insertions against the true words.
-Why do voice assistants stream their output? | Streaming makes the transcript more accurate in noise ; It lets them store the audio for later use ; It starts speaking before the whole answer exists | 2 | Streaming overlaps the steps, which cuts the wait the user feels.
+Why do voice assistants stream their output? | It makes the transcript more accurate in noise ; It lets them store the audio for later use ; It speaks before the whole answer exists | 2 | Streaming overlaps the steps, which cuts the wait the user feels.
 A demo works in a quiet room. What should you do next? | Test with noise, accents and real names ; Launch it, since the demo proves it works ; Switch to a bigger language model first | 0 | Real conditions raise error rates, so test in them before launch.
 ```
 
@@ -192,13 +192,13 @@ Treating a smooth demo video as proof. Ask how many attempts it took and how oft
 ```resources
 repo | LeRobot | https://github.com/huggingface/lerobot | Hugging Face | Open models, data and tools for real-world robotics.
 article | RT-2: vision-language-action models | https://robotics-transformer2.github.io/ | Google DeepMind | A model that turns images and instructions into robot actions.
-article | People + AI Guidebook | https://pair.withgoogle.com/guidebook/ | Google PAIR | How to keep a person in control of automated systems.
+paper | Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World | https://arxiv.org/abs/1703.06907 | Tobin et al. | A classic attack on the sim-to-real gap.
 ```
 
 ```quiz
-What is the sim-to-real gap? | Simulated training differs from real conditions ; Robots cost more than simulations do ; Robots move slower than their software does | 0 | Friction, light and wear in the real world are not captured in simulation.
-A task has 10 steps, each 95 percent reliable. About how often does it fully succeed? | About 95 percent of the time ; About 60 percent of the time ; About 10 percent of the time | 1 | 0.95 multiplied ten times is about 0.60, because errors compound.
-Why is invoice automation easier than a warehouse robot? | The invoices contain fewer words overall ; Robots cannot read any printed text ; It needs no motors and mistakes are easy to undo | 2 | Software tasks are reversible and cheap to retry, unlike physical movement.
+What is the sim-to-real gap? | A simulation differs from the real world ; Real robots cost much more than simulated ones ; Robots move more slowly than their software | 0 | Friction, light and wear in the real world are not captured in simulation.
+A task has 10 steps, each 95 percent reliable. About how often does it fully succeed? | About 95 percent of the time ; About 60 percent of the time ; Roughly 10 percent of the time | 1 | 0.95 multiplied ten times is about 0.60, because errors compound.
+Why is invoice automation easier than a warehouse robot? | The invoices have fewer words to process ; Robots cannot read printed text or labels ; Mistakes are cheap and easy to undo | 2 | Software tasks are reversible and cheap to retry, unlike physical movement.
 ```
 
 ```story
@@ -225,11 +225,11 @@ Copying a success from another industry without its safeguards. A tool that is f
 ```resources
 article | AI-enabled medical devices | https://www.fda.gov/medical-devices/artificial-intelligence-enabled-medical-devices/list-artificial-intelligence-enabled-medical-devices | US FDA | The official list of AI devices cleared in the United States.
 article | Stanford AI Index | https://hai.stanford.edu/ai-index | Stanford HAI | Data on adoption by industry.
-article | People + AI Guidebook | https://pair.withgoogle.com/guidebook/ | Google PAIR | Design guidance for explaining and correcting AI decisions.
+article | AI Risk Management Framework | https://www.nist.gov/itl/ai-risk-management-framework | NIST | A US government framework for judging and managing AI risk.
 ```
 
 ```quiz
-Which factor should set how much human control a task needs? | How impressive the model looks in demos ; How expensive the model is per call ; The cost of a mistake and how checkable it is | 2 | High-cost, hard-to-check decisions need a person in charge.
+Which factor should set how much human control a task needs? | How impressive the model looks in demos ; The cost of mistakes and how checkable ; How expensive each model call is to run | 1 | High-cost, hard-to-check decisions need a person in charge.
 Why did Amazon drop its resume screening tool? | It reproduced bias from past hiring data ; It was too slow for large applicant pools ; It could not read the resume formats | 0 | Learning from biased history teaches the model the same bias.
 What went wrong in the court brief case? | The model's answer was in the wrong format ; Nobody checked the cited cases were real ; The court did not allow any typed filings | 1 | The tool made up cases and no person verified them before filing.
 ```
@@ -257,14 +257,14 @@ Declaring victory after a demo. Adoption, review time and drift decide the real 
 
 ```resources
 article | Rules of Machine Learning | https://developers.google.com/machine-learning/guides/rules-of-ml | Google | Launch, monitor and iterate advice from experience.
-article | People + AI Guidebook | https://pair.withgoogle.com/guidebook/ | Google PAIR | Guidance on trust, feedback and error handling.
+paper | Hidden Technical Debt in Machine Learning Systems | https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html | Sculley et al. | Why running a model costs more than building it.
 article | Patterns for Building LLM-based Systems | https://eugeneyan.com/writing/llm-patterns/ | Eugene Yan | Evals, guardrails and feedback loops in production.
 ```
 
 ```quiz
-Which cost is most often forgotten in an AI project estimate? | The name of the model vendor ; The color scheme of the interface ; The people time spent reviewing outputs | 2 | Review and monitoring time can outweigh model call costs.
-What is shadow mode? | Hiding the system from all of the users ; Running the system beside people without acting on it ; Training the model without using real data | 1 | It lets you compare AI output to real decisions with no risk.
-Scores drop six months after launch with no code change. What is a likely cause? | Data drift, since real inputs changed ; The model weights shrank on their own ; The users typed faster than before | 0 | Real inputs move away from the data the system was tested on.
+Which cost is most often forgotten in an AI project estimate? | Staff time spent reviewing outputs ; The per-token price of each model call ; The monthly fee for the cloud servers | 0 | Review and monitoring time can outweigh model call costs.
+What is shadow mode? | Hiding the system from all of the users ; Training the model without using real data ; Running beside staff, taking no action | 2 | It lets you compare AI output to real decisions with no risk.
+Scores drop six months after launch with no code change. What is a likely cause? | The model weights decayed over the months ; The users typed faster than before ; Data drift, since real inputs changed | 2 | Real inputs move away from the data the system was tested on.
 ```
 
 ```story

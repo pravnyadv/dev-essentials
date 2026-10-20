@@ -23,7 +23,7 @@ for (const r of show) console.log(`${r.id.padEnd(58)} w${String(r.words).padStar
 const avg = k => (rows.reduce((n, r) => n + r[k], 0) / rows.length).toFixed(1)
 console.log(`\n${rows.length} lessons. avg words ${avg('words')}, avg FK grade ${avg('fk')}, avg sentence ${avg('sent')}; flagged ${show.length}`)
 
-// Content checks that fail `npm run lint:ai -- --strict`: sections that restate each other, and quiz keys that give the answer away.
+// Content checks that fail `npm run lint:ai -- --strict`: sections that restate each other, and quiz keys that give the answer away (one position, or always the longest option).
 const words = t => new Set(t.toLowerCase().match(/[a-z]{4,}/g) ?? [])
 const problems = []
 for (const l of readLessons()) {
@@ -38,6 +38,9 @@ for (const c of all) {
   const keys = c.topics.flatMap(t => t.quiz.map(q => q.answer)), n = keys.length
   const top = Math.max(...[0, 1, 2].map(k => keys.filter(x => x === k).length))
   if (n >= 6 && top / n > 0.5) problems.push(`${c.id}: ${Math.round((top / n) * 100)}% of quiz keys sit at one position`)
+  const qs = c.topics.flatMap(t => t.quiz)
+  const longest = qs.filter(q => q.options[q.answer].length === Math.max(...q.options.map(o => o.length))).length
+  if (n >= 6 && longest / n > 0.5) problems.push(`${c.id}: the keyed option is the longest in ${Math.round((longest / n) * 100)}% of quiz questions`)
 }
 for (const p of problems) console.log('PROBLEM', p)
 if (process.argv.includes('--strict') && problems.length) process.exit(1)

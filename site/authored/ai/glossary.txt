@@ -149,3 +149,12 @@ word error rate [WER] | Speech recognition accuracy: substitutions, deletions an
 sim-to-real | The gap between a robot trained in simulation and the same robot in the real world.
 data drift | Real-world inputs slowly changing from what a system was tested on, so quality falls with no code change.
 ROI | Return on investment: what a project gains compared with what it costs.
+baseline | A simple method, such as "same as last week", that any model must beat to be worth its cost.
+shadow mode | Running a new system beside people on real cases without acting on its output, so you can compare it with their decisions at no risk.
+A/B test | Showing two versions to different groups of real users and comparing a measured result, such as clicks or sales.
+object detection | A vision task that finds each object in an image and draws a box around it.
+segmentation | A vision task that labels every pixel by which object it belongs to.
+deepfake [deepfakes] | A realistic fake image, video or voice made with AI to look like a real person or event.
+C2PA | A standard for attaching a signed record of where an image or video came from and how it was edited.
+allowlist | A list of the only actions or sites something is permitted to use. Everything not on it is refused.
+least privilege | Giving a person or program only the access it needs for the job and nothing more.

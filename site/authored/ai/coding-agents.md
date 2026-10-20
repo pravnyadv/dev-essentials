@@ -38,9 +38,9 @@ video | Software Is Changing (Again) | https://www.youtube.com/watch?v=LCEmiRjPE
 ```
 
 ```quiz
-What lets a coding agent fix its own mistakes? | A bigger model with a longer prompt ; Checks it can run and read, such as tests ; A reminder to be careful in each message | 1 | Feedback it can observe, like a failing test, lets it iterate without you in the loop.
-Which phase do people most often skip? | Plan ; Implement ; Verify | 2 | Skipping verification is how plausible but wrong code reaches review.
-"Fix this crash" becomes "keep our app crash-free". Which kind of ambition is this? | Altitude: asking for the outcome, not the task ; Speed: doing the same work in less time ; Range: borrowing methods from another field | 0 | Altitude means asking for the goal beyond the individual task, and it needs data and checks to match.
+What lets a coding agent fix its own mistakes? | Tests it can run and read for itself ; A longer prompt that stresses accuracy ; A bigger model with more training data | 0 | Feedback it can observe, like a failing test, lets it iterate without you in the loop.
+Which phase do people most often skip? | Plan the full task ; Write the new code ; Verify the work | 2 | Skipping verification is how plausible but wrong code reaches review.
+"Fix this crash" becomes "keep our app crash-free". Which kind of ambition is this? | Speed: finishing the same task in less time ; Altitude: aiming at the goal, not the task ; Range: borrowing methods from another field | 1 | Altitude means asking for the goal beyond the individual task, and it needs data and checks to match.
 ```
 
 ```story
@@ -75,13 +75,52 @@ tool | Codex | https://chatgpt.com/codex | OpenAI | OpenAI's coding agent in the
 ```
 
 ```quiz
-What transfers between coding agents? | The exact keyboard shortcuts of one specific tool ; The habits: plan, small steps, verify, clean context ; The pricing plan of the vendor you chose | 1 | The workflow is tool-independent. The details are not.
-Which kind of agent suits many parallel background tasks? | Inline autocomplete in an editor ; A chat window used for questions only ; Cloud agents that return a pull request | 2 | They run remotely and finish while you do other work.
-You try five tools for one day each. Why might that mislead you? | You never learn any tool's memory, permissions or habits ; Free trials always hide the real quality of tools ; Five different tools always give the same answers | 0 | Depth in one tool teaches skills that carry across. Shallow tries only show first impressions.
+What transfers between coding agents? | The exact keyboard shortcuts of one tool ; The pricing plan of the vendor you chose ; The habits: plan, small steps, verify | 2 | The workflow is tool-independent. The details are not.
+Which kind of agent suits many parallel background tasks? | Cloud agents that return a pull request ; Inline autocomplete shown inside an editor ; A chat window used only for quick questions | 0 | They run remotely and finish while you do other work.
+You try five tools for one day each. Why might that mislead you? | Trial accounts always give worse answers than paid ones ; You never learn its memory file or permissions ; Tools released recently are always worse than older ones | 1 | Depth in one tool teaches skills that carry across. Shallow tries only show first impressions.
 ```
 
 ```story
 A designer, a data analyst and a backend developer each try a different AI tool. The designer likes a visual app builder. The analyst likes a notebook assistant. The developer likes a terminal agent that edits files and runs tests. All three are good. They match how each person works.
+```
+
+# permissions-and-sandboxes | Permissions, sandboxes and first-session setup | 1 | 12
+A coding agent can read files, run commands and change code. Before the first real task, decide what it may do alone, what needs your approval and what it must never touch.
+
+## What it is
+Every coding agent has a permission system. Reading files is usually allowed. Running a command or editing a file asks you first. You can allow some actions for good, such as running your tests, and block others, such as deleting files or pushing to the main branch. A list of actions that are always allowed is an allowlist. The idea behind all of it is least privilege: give the agent only the access the job needs.
+
+A sandbox goes one step further. It is a restricted space, such as a container or a separate checkout of the repo, where the agent can act freely because a mistake there cannot reach your real files, other projects or secrets.
+
+## Your first session
+Work through this list once, before any real task.
+1. Open the agent in one project folder, not your whole home directory.
+2. Start on a new git branch or worktree, so every change can be thrown away.
+3. Keep approvals on for commands. Allow only safe, repeatable ones (tests, linting, reading git history).
+4. Keep secrets out of reach: no `.env` files, keys or production credentials in the folder the agent can read.
+5. Write down in the memory file what must never be done, such as "never run migrations on production".
+
+## A worked example: sorting commands
+You ask the agent to fix a failing test. It wants to run seven commands. Allow `npm test` and `git diff` for the rest of the session, because they only read or check. Approve `npm install lodash` once after looking at the package. Refuse `rm -rf build` unless you read the path, and refuse `git push --force` outright. Four commands never interrupt you again, one needed a decision, two were blocked. That is a few seconds of attention instead of a prompt on every step.
+
+## Common mistake
+Turning off all approvals to go faster, in a folder that contains secrets or production access. The speed is real, and so is the damage when the agent follows a bad instruction hidden in a web page or a file.
+
+```resources
+docs | Claude Code permissions | https://code.claude.com/docs/en/permissions | Anthropic | How to allow, ask for or deny each kind of action.
+docs | Claude Code sandboxing | https://code.claude.com/docs/en/sandboxing | Anthropic | Running commands in a restricted environment.
+docs | Claude Code security | https://code.claude.com/docs/en/security | Anthropic | The safeguards built in and what is still your job.
+article | The lethal trifecta for AI agents | https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/ | Simon Willison | Why private data, untrusted content and outside access are risky together.
+```
+
+```quiz
+What does least privilege mean for a coding agent? | Letting it use every tool to avoid slowdowns ; Running it under your own main user account ; Giving it only the access the job needs | 2 | Limiting access limits the damage when it makes a mistake or follows a bad instruction.
+Which command is safest to allow permanently? | Deleting the build folder to start each run fresh ; Running your tests, which changes nothing ; Pushing the current branch to the main remote | 1 | Read-only and check commands carry little risk, unlike deleting or publishing.
+Why start an agent on a new branch or worktree? | Any bad change can be thrown away safely ; It gives the agent a larger context window ; It stops the agent from reading other files | 0 | A separate branch turns a bad run into something you can delete.
+```
+
+```story
+A developer turns off every approval prompt so an agent can finish a refactor overnight. The agent reads a README that says "to build, first run the cleanup script", and the script wipes the local database. A single allowlist for tests and a separate branch would have cost thirty seconds of setup and kept the database.
 ```
 
 # project-memory-files | CLAUDE.md and AGENTS.md | 1 | 10
@@ -106,9 +145,9 @@ article | Claude Code: Best practices for agentic coding | https://www.anthropic
 ```
 
 ```quiz
-What belongs in CLAUDE.md? | The complete text of every design document ; What it cannot infer: commands and sharp edges ; Every function name in the whole project | 1 | It loads every session, so keep it to high-value facts and link to the rest.
-The agent repeats the same mistake. What do you do? | Retype the correction each session ; Switch to a different tool ; Add one line to the memory file | 2 | One line fixes it for every future session.
-Your memory file has grown past 300 lines. What is a sensible response? | Move detail to linked files, keep the main short ; Add a table of contents and keep on growing it ; Delete the commands section to save some space | 0 | A short file keeps attention on what matters, and detail loads only when needed.
+What belongs in CLAUDE.md? | The full text of every design document ; Facts it cannot infer, like test commands ; Every function name across the whole project | 1 | It loads every session, so keep it to high-value facts and link to the rest.
+The agent repeats the same mistake. What do you do? | Retype the correction every session ; Switch to another tool and try again ; Add one line to the memory file | 2 | One line fixes it for every future session.
+Your memory file has grown past 300 lines. What is a sensible response? | Move detail to linked files and keep it short ; Add a table of contents and keep on growing it ; Delete the commands section to save some space | 0 | A short file keeps attention on what matters, and detail loads only when needed.
 ```
 
 ```story
@@ -140,9 +179,9 @@ repo | superpowers | https://github.com/obra/superpowers | Jesse Vincent | A pop
 ```
 
 ```quiz
-A rule must apply every single time, with no exceptions. What do you use? | A line in the prompt ; A hook ; A skill | 1 | Hooks are code run by the harness, so they do not depend on the model remembering.
-Why do skills keep context small? | They are compressed into far fewer tokens ; They always run on a smaller, cheaper model ; Only a name and description load until needed | 2 | Progressive loading means the full instructions appear only when relevant.
-You keep typing "review the last commit for security issues". What is the best fit? | A saved command you run by name ; A hook on every file edit ; A new section in the system prompt | 0 | A command is a reusable prompt you trigger on demand.
+A rule must apply every single time, with no exceptions. What do you use? | A strongly worded prompt line ; A hook set up in the harness ; A skill with detailed steps | 1 | Hooks are code run by the harness, so they do not depend on the model remembering.
+Why do skills keep context small? | Their text is compressed into far fewer tokens ; They always run on a smaller and cheaper model ; Only a short description loads until needed | 2 | Progressive loading means the full instructions appear only when relevant.
+You keep typing "review the last commit for security issues". What is the best fit? | A saved command you run by name ; A hook that runs on every file edit ; A new section in the system prompt | 0 | A command is a reusable prompt you trigger on demand.
 ```
 
 ```story
@@ -174,9 +213,9 @@ docs | git worktree | https://git-scm.com/docs/git-worktree | Git | The referenc
 ```
 
 ```quiz
-Why run two agents in separate worktrees? | Git refuses to run two agents at the same time ; Worktrees are the only way to make a branch ; They would overwrite each other's files and tests | 2 | A shared checkout means shared half-finished edits. Separate worktrees isolate them.
-What does a subagent return to the main agent? | Its entire context window ; A focused summary of its result ; Nothing, it works silently | 1 | The point is to keep the main context clean by returning only the result.
-You need a five-minute fix in one file. What should you do? | Start three agents to be safe ; Create a worktree for each line of the change ; Use one session, since extra agents add overhead | 2 | For a small change, parallel agents cost more than they save.
+Why run two agents in separate worktrees? | Git blocks two agents from using one repository at once ; Two agents would have to share a single context window ; They would overwrite each other's files and tests | 2 | A shared checkout means shared half-finished edits. Separate worktrees isolate them.
+What does a subagent return to the main agent? | Its full context window and history ; A focused summary of its result ; Nothing, because it works in silence | 1 | The point is to keep the main context clean by returning only the result.
+You need a five-minute fix in one file. What should you do? | Start three parallel agents to be on the safe side ; Create a separate worktree for every changed line ; Stay in one session to avoid the overhead | 2 | For a small change, parallel agents cost more than they save.
 ```
 
 ```story
@@ -211,8 +250,8 @@ article | Building effective agents | https://www.anthropic.com/engineering/buil
 ```
 
 ```quiz
-Where do intermediate results live in a dynamic workflow? | In script variables ; In the main context window ; In a database the model queries | 0 | That is the point: the main context only receives the final answer.
-When is a workflow overkill? | A 500-file migration ; A single focused bug fix ; A codebase-wide audit | 1 | One session is cheaper and simpler for a small change.
+Where do intermediate results live in a dynamic workflow? | In variables inside the script ; In the main agent's context window ; In a database the model queries | 0 | That is the point: the main context only receives the final answer.
+When is a workflow overkill? | A 500-file migration ; A one-file bug fix ; A codebase-wide audit | 1 | One session is cheaper and simpler for a small change.
 A post says a three-model setup will "cut your bill by 90 percent". What should you do? | Adopt it on faith, since the idea is documented ; Reject the pattern because the number is high ; Measure cost and quality on your own task | 2 | The pattern is real, but savings depend on how large and parallel your work is.
 ```
 
@@ -242,9 +281,9 @@ article | Industrial Agentic Engineering | https://research.google/pubs/industri
 ```
 
 ```quiz
-The agent built the wrong thing. What do you fix first? | The spec and acceptance checks ; The generated code, by hand ; The model you are using | 0 | If the spec was ambiguous, a better spec fixes the cause instead of the symptom.
-What makes a spec useful? | Its length and level of detail ; Checks that someone or something can run ; A formal template with many headings | 1 | A spec you cannot verify cannot tell you when the agent is done.
-A spec says "make the reset flow secure". What is wrong with it? | It is too short for an agent to work from ; It names the wrong feature for the task ; It cannot be checked, so make it testable behavior | 2 | Say what to test, such as "a reset link works once and expires after 30 minutes".
+The agent built the wrong thing. What do you fix first? | The spec and its checks ; The generated code, by hand ; The model you are paying for | 0 | If the spec was ambiguous, a better spec fixes the cause instead of the symptom.
+What makes a spec useful? | Plenty of background detail on each part ; Checks that anyone can run to confirm ; A formal template with many headings | 1 | A spec you cannot verify cannot tell you when the agent is done.
+A spec says "make the reset flow secure". What is wrong with it? | It is too short for an agent to work from ; It does not name the framework and language ; It cannot be checked, so make it testable | 2 | Say what to test, such as "a reset link works once and expires after 30 minutes".
 ```
 
 ```story
@@ -276,9 +315,9 @@ repo | mem0 | https://github.com/mem0ai/mem0 | Mem0 | A memory layer for agents 
 ```
 
 ```quiz
-Why keep the raw sources next to the wiki? | Because Obsidian needs them to work ; To save disk space ; So the wiki loads faster ; So claims can be traced and errors caught | 3 | Summaries can drift. Raw sources let you verify what a page claims.
-What does the control file do? | It tells the agent how to ingest, link and answer ; It stores the notes themselves inside the file ; It encrypts the vault for safe keeping | 0 | It is the harness for the system: the rules the agent follows each session.
-After a month, a wiki page states a fact that no source supports. What likely happened? | The raw file was deleted by the model ; The summarizer drifted from its source ; The wiki was too small | 1 | Compiled summaries can introduce errors, which is why sources and spot-checks matter.
+Why keep the raw sources next to the wiki? | Because Obsidian refuses to open without them ; To save disk space on the notes folder ; So the wiki loads faster in the viewer ; So claims can be traced and errors caught | 3 | Summaries can drift. Raw sources let you verify what a page claims.
+What does the control file do? | It tells the agent how to file and answer ; It holds the notes themselves inside one file ; It encrypts the vault so others cannot read it | 0 | It is the harness for the system: the rules the agent follows each session.
+After a month, a wiki page states a fact that no source supports. What likely happened? | The model quietly deleted the original file ; The summary drifted from its source ; The wiki grew too big for the viewer | 1 | Compiled summaries can introduce errors, which is why sources and spot-checks matter.
 ```
 
 ```story

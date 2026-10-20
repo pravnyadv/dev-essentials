@@ -30,9 +30,9 @@ course | Neural Networks: Zero to Hero | https://karpathy.ai/zero-to-hero.html |
 ```
 
 ```quiz
-Validation loss rises while training loss falls. What is happening? | Overfitting ; Underfitting ; A bug in the data loader only | 0 | The model is memorizing the training set instead of generalizing.
-What does a residual connection do? | Deletes layers that the network does not need ; Adds a layer's input to its output so signals flow ; Halves the batch size during the training run | 1 | It makes deep networks trainable.
-Your tiny GPT outputs repeated nonsense after one minute of training. What is the most likely reason? | The context length is set far too long ; The text file was too clean for it ; It has barely started, so the loss is still high | 2 | Early in training the loss is high and the output is gibberish. Watch the loss fall.
+Validation loss rises while training loss falls. What is happening? | Underfitting, the model is too small to learn ; Overfitting, it memorizes the training set ; A bug that leaks validation data into training | 1 | The model is memorizing the training set instead of generalizing.
+What does a residual connection do? | Halves the batch size for each training step ; Deletes any layers that the network does not need ; Adds a layer's input back onto its output | 2 | It makes deep networks trainable.
+Your tiny GPT outputs repeated nonsense after one minute of training. What is the most likely reason? | It has barely started and the loss is high ; The training text is too clean to learn from ; The context length is too long for a laptop | 0 | Early in training the loss is high and the output is gibberish. Watch the loss fall.
 ```
 
 ```story
@@ -72,9 +72,9 @@ paper | GLU Variants Improve Transformer | https://arxiv.org/abs/2002.05202 | No
 ```
 
 ```quiz
-A card says "671B total, 37B active". What does that mean? | About 37B parameters run per token, via experts ; The model was trained on 37B tokens in total ; The model has exactly 37 layers | 0 | MoE routes each token to a few experts, so compute follows the active parameters.
-What does grouped-query attention save? | Training data ; KV cache memory ; Vocabulary size | 1 | Sharing key and value heads shrinks the cache that grows with context length.
-Two models have the same total size, but one is a mixture of experts with fewer active parameters. Which is cheaper to run per token? | The dense one, since all its parameters are used ; They cost the same ; It depends only on the tokenizer ; The mixture of experts, since fewer parameters do the work | 3 | Cost per token follows active parameters, not total size.
+A card says "671B total, 37B active". What does that mean? | The model was trained on only 37B tokens ; About 37B parameters are used per token ; The model has exactly 37 layers in total | 1 | MoE routes each token to a few experts, so compute follows the active parameters.
+What does grouped-query attention save? | Disk space used by the training data ; Space taken by the token vocabulary ; KV cache memory at long inputs | 2 | Sharing key and value heads shrinks the cache that grows with context length.
+Two models have the same total size, but one is a mixture of experts with fewer active parameters. Which is cheaper to run per token? | The dense one, as it uses every parameter ; Both, since total size is what sets the cost ; Neither, since the tokenizer sets the cost ; The expert one, as fewer parameters run | 3 | Cost per token follows active parameters, not total size.
 ```
 
 ```story
@@ -111,9 +111,9 @@ docs | PEFT | https://huggingface.co/docs/peft | Hugging Face | The standard lib
 ```
 
 ```quiz
-You want a model to know last week's product changes. Should you fine-tune? | Yes, fine-tuning is best for new facts ; Only if you use QLoRA ; No, use retrieval or context | 2 | Fine-tuning is poor at adding facts and hard to update.
-A rank-8 LoRA on a 4096 by 4096 matrix stores about what share of its numbers? | 0.4 percent ; 50 percent ; 100 percent | 0 | Two 4096 by 8 matrices are 65,536 numbers in total, versus 16.8 million: about 0.4 percent.
-You have 800 clean examples and a prompt that works 90 percent of the time. What should you try first? | Collect 100,000 messy examples to fine-tune on ; Improve the prompt first, then compare with tuning ; Train a new model from scratch | 1 | Prompting is cheaper to try. Fine-tune when it falls short on your tests.
+You want a model to know last week's product changes. Should you fine-tune? | Yes, tuning teaches the model new facts well ; No, retrieval is easy to update ; Only if you first quantize it with QLoRA | 1 | Fine-tuning is poor at adding facts and hard to update.
+A rank-8 LoRA on a 4096 by 4096 matrix stores about what share of its numbers? | About 5 percent ; About 25 percent ; Under 1 percent | 2 | Two 4096 by 8 matrices are 65,536 numbers in total, versus 16.8 million: about 0.4 percent.
+You have 800 clean examples and a prompt that works 90 percent of the time. What should you try first? | Tighten the prompt, then compare with tuning ; Train a smaller model from scratch instead ; Gather 100,000 messy examples and fine-tune | 0 | Prompting is cheaper to try. Fine-tune when it falls short on your tests.
 ```
 
 ```story
@@ -151,9 +151,9 @@ course | Hugging Face Deep RL Course | https://huggingface.co/learn/deep-rl-cour
 ```
 
 ```quiz
-What is the GRPO advantage of a correct answer when rewards are 1, 0, 0, 1? | +0.5 ; 0 ; +1 | 2 | Reward minus the group mean is 0.5, and dividing by the standard deviation (0.5) gives +1.
-Why does reinforcement learning for reasoning work best on math and code? | Answers can be auto-checked to give rewards ; Those subjects are shorter than the others ; They have the most data online | 0 | A computable reward is the requirement.
-A model learns to print the expected final number with no reasoning. What is this? | A sign of genuine understanding ; Reward hacking, gaming a weak check ; A normal step inside GRPO | 1 | If the reward only checks the final number, the model may find shortcuts. Better rewards check more.
+What is the GRPO advantage of a correct answer when rewards are 1, 0, 0, 1? | +0.5, since reward minus the group mean is 0.5 ; +1, since 0.5 divided by the std of 0.5 ; 0, since the correct answers cancel each other | 1 | Reward minus the group mean is 0.5, and dividing by the standard deviation (0.5) gives +1.
+Why does reinforcement learning for reasoning work best on math and code? | They have the largest training sets online ; These subjects use shorter reasoning chains ; Their answers can be checked automatically | 2 | A computable reward is the requirement.
+A model learns to print the expected final number with no reasoning. What is this? | Reward hacking: gaming a check that is weak ; A normal group sampling step inside GRPO ; Genuine understanding that comes with scale | 0 | If the reward only checks the final number, the model may find shortcuts. Better rewards check more.
 ```
 
 ```story
@@ -191,9 +191,9 @@ paper | Efficient Memory Management for LLM Serving with PagedAttention | https:
 ```
 
 ```quiz
-How much memory do the weights of a 70B model need at 4-bit? | About 140 GB ; About 4 GB ; About 35 GB | 2 | 70 billion parameters at half a byte each is about 35 GB.
-Which generation phase is limited by memory bandwidth? | Decode ; Prefill ; Tokenization | 0 | Producing one token at a time repeatedly reads the weights and KV cache.
-A 4-bit quantized small model performs noticeably worse than its 16-bit version. Why? | Quantization always fails on small models ; Small models lose more accuracy when squeezed ; The 16-bit model had more training data | 1 | Large models tolerate low precision better than small ones.
+How much memory do the weights of a 70B model need at 4-bit? | About 140 GB ; About 35 GB ; About 70 GB | 1 | 70 billion parameters at half a byte each is about 35 GB.
+Which generation phase is limited by memory bandwidth? | Tokenization, which splits text into tokens ; Prefill, which reads the whole prompt at once ; Decode, which writes one token at a time | 2 | Producing one token at a time repeatedly reads the weights and KV cache.
+A 4-bit quantized small model performs noticeably worse than its 16-bit version. Why? | Small models lose more accuracy at 4-bit ; The 16-bit copy saw more training data ; Quantization breaks every model under 70B | 0 | Large models tolerate low precision better than small ones.
 ```
 
 ```story
@@ -223,9 +223,9 @@ tool | r/LocalLLaMA | https://www.reddit.com/r/LocalLLaMA/ | Community | The mai
 ```
 
 ```quiz
-Roughly how much memory does a 4-bit 8B model need? | About 64 GB ; About 500 MB ; About 5 to 6 GB | 2 | Half a byte per parameter is 4 GB, plus overhead.
-Why switch to a local model for some work? | Data stays local and tokens cost nothing ; It always beats the largest cloud models ; It has a larger context window than they do | 0 | Privacy and cost are the main reasons.
-Your laptop has 8 GB of memory. Which model size is realistic at 4-bit? | Around 70 billion parameters ; Around 7 to 8 billion parameters ; Around 400 billion parameters | 1 | Larger models will not fit in memory without heavy swapping.
+Roughly how much memory does a 4-bit 8B model need? | About 16 GB ; About 5 to 6 GB ; About 1 to 2 GB | 1 | Half a byte per parameter is 4 GB, plus overhead.
+Why switch to a local model for some work? | It usually gives longer context windows ; It matches the largest cloud models on quality ; Data stays local and has no per-token fee | 2 | Privacy and cost are the main reasons.
+Your laptop has 8 GB of memory. Which model size is realistic at 4-bit? | About 8 billion parameters ; About 70 billion parameters ; About 30 billion parameters | 0 | Larger models will not fit in memory without heavy swapping.
 ```
 
 ```story

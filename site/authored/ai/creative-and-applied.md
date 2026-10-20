@@ -21,9 +21,9 @@ repo | awesome-claude-5-5-videos | https://github.com/athemeroy/awesome-claude-5
 ```
 
 ```quiz
-Why is code-based video good for agents? | Code files are always smaller than video files ; Videos made from code do not need any preview ; The agent can write, render, look and fix in a loop | 2 | Verification by rendering closes the loop.
-What stays with you in this workflow? | Taste, pacing and direction ; Writing every line of the syntax ; Rendering all of the frames | 0 | The agent handles mechanics. You decide what is good.
-An agent's scene has text overlapping an image. What is the quickest fix loop? | Rewrite the entire video again in one prompt ; Render a still, look at it, and ask for a layout fix ; Add more scenes to cover up the overlap | 1 | Checking rendered stills scene by scene catches layout problems early.
+Why is code-based video good for agents? | Rendered video needs no review before sharing ; The agent can render, look and fix in a loop ; Code files are always smaller than video files | 1 | Verification by rendering closes the loop.
+What stays with you in this workflow? | Rendering every frame by hand ; Typing out every line of syntax ; Taste, pacing and direction | 2 | The agent handles mechanics. You decide what is good.
+An agent's scene has text overlapping an image. What is the quickest fix loop? | Render a still and ask for a layout fix ; Rewrite the whole video in one new prompt ; Add more scenes to cover up the overlap | 0 | Checking rendered stills scene by scene catches layout problems early.
 ```
 
 ```story
@@ -54,9 +54,9 @@ article | How we built our multi-agent research system | https://www.anthropic.c
 ```
 
 ```quiz
-What does a citation prove? | That the claim being made is definitely true ; Nothing at all about the claim ; That a source exists, not that it supports the claim | 2 | Always check important claims against the source.
-Why run verifier agents? | To cross-check claims independently ; To save tokens on the later steps ; To make the final report shorter | 0 | Independent checking filters unsupported claims.
-A report claims "filings fell 8 percent [3]". What should you do before relying on it? | Trust it, since a source is cited ; Open source 3 and check the figure ; Ask the report to repeat the number | 1 | A cited figure can be close but narrower or different, so check the source.
+What does a citation prove? | That the claim is current and up to date ; That a source exists, not that it backs it ; That the claim was checked by an editor | 1 | Always check important claims against the source.
+Why run verifier agents? | To make the final report shorter ; To save tokens in the later steps ; To check claims independently | 2 | Independent checking filters unsupported claims.
+A report claims "filings fell 8 percent [3]". What should you do before relying on it? | Open source 3 and check the figure ; Trust it, since a source is cited ; Ask the report to repeat the number | 0 | A cited figure can be close but narrower or different, so check the source.
 ```
 
 ```story

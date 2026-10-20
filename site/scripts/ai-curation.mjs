@@ -102,6 +102,7 @@ export const EXPLAINERS = {
   'similarity-metrics': 'dot',
   'harness-engineering': 'harness',
   'tooling-map': 'stack',
+  'forecasting-and-fraud': 'threshold',
 }
 
 export const KINDS = ['article', 'video', 'course', 'repo', 'paper', 'docs', 'tool', 'book']

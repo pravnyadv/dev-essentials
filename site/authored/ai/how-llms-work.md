@@ -28,9 +28,9 @@ article | Effective context engineering for AI agents | https://www.anthropic.co
 ```
 
 ```quiz
-You paste a 300-page PDF and the answers get vague. What is the most likely cause? | The model forgot how to read PDF files ; The relevant facts are buried in a huge context ; The model got tired after a long document | 1 | Long contexts dilute attention. Retrieving or summarizing the relevant part usually works better than pasting everything.
-Which text costs more tokens for the same number of characters? | Plain English prose ; Text written in capital letters only ; Source code and non-English text | 2 | Tokenizers are tuned on common English, so code and rare words split into more pieces.
-A chat has used 95 percent of the context window. What is a problem with asking for a long answer? | The answer shares the window and may be cut short ; The model will refuse to answer at all ; The extra tokens are free, so nothing changes | 0 | The reply also uses window space, so a nearly full window leaves little room to answer.
+You paste a 300-page PDF and the answers get vague. What is the most likely cause? | The model cannot parse long PDF files ; Key facts get buried in a huge context ; The model only ever reads the first page | 1 | Long contexts dilute attention. Retrieving or summarizing the relevant part usually works better than pasting everything.
+Which text costs more tokens for the same number of characters? | Everyday English with common words ; Text made of many short sentences ; Source code and non-English text | 2 | Tokenizers are tuned on common English, so code and rare words split into more pieces.
+A chat has used 95 percent of the context window. What is a problem with asking for a long answer? | The reply shares the window and may cut off ; The model refuses any request near the limit ; The extra tokens are free, so nothing changes | 0 | The reply also uses window space, so a nearly full window leaves little room to answer.
 ```
 
 ```story
@@ -68,8 +68,8 @@ course | Neural Networks: Zero to Hero | https://karpathy.ai/zero-to-hero.html |
 
 ```quiz
 An extraction job must return the same JSON every run. What should you change? | Raise the temperature to 1.5 ; Lower the temperature toward 0 ; Add a longer greeting to the prompt | 1 | Low temperature makes the most likely token win almost every time, so output is repeatable.
-Why does "think step by step" often improve answers? | It switches the model over to a larger version ; It makes the model look facts up online ; The written reasoning becomes context for later tokens | 2 | The model predicts one token at a time, so intermediate steps give it something to build the answer on.
-A model's top token is "Paris" at 92 percent. At temperature 0, what does it output? | Paris, almost every time ; A random token from the list ; Lyon, one time in ten | 0 | Temperature near 0 makes the highest-probability token win nearly always.
+Why does "think step by step" often improve answers? | It switches the model over to a larger version ; It unlocks a hidden reasoning mode in the model ; Written steps become context for later tokens | 2 | The model predicts one token at a time, so intermediate steps give it something to build the answer on.
+A model's top token is "Paris" at 92 percent. At temperature 0, what does it output? | Paris, nearly every time it runs ; A random token from the likely few ; Paris, but only 92 percent of the time | 0 | Temperature near 0 makes the highest-probability token win nearly always.
 ```
 
 ```story
@@ -104,9 +104,9 @@ video | Let's build GPT: from scratch, in code, spelled out | https://www.youtub
 ```
 
 ```quiz
-Token probabilities are A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Which does top-p 0.9 keep? | Only A ; A, B and C ; All five tokens | 1 | 0.50 + 0.25 + 0.15 reaches 0.90, so D and E are dropped.
-What does a stop sequence do? | Raises the temperature for one token ; Blocks the model from a topic ; Ends generation when the string appears | 2 | It cuts the output at a chosen marker, such as the end of a field.
-You want ten different product name ideas. Which setting fits best? | A higher temperature such as 0.9 ; Temperature 0 with top-k 1 ; A very short maximum output | 0 | Brainstorming benefits from variety, which higher temperature provides.
+Token probabilities are A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Which does top-p 0.9 keep? | Only A and B ; A, B and C ; A, B, C and D | 1 | 0.50 + 0.25 + 0.15 reaches 0.90, so D and E are dropped.
+What does a stop sequence do? | Raises the temperature for one token ; Blocks the model from mentioning a topic ; Stops output when the string appears | 2 | It cuts the output at a chosen marker, such as the end of a field.
+You want ten different product name ideas. Which setting fits best? | A higher temperature such as 0.9 ; Temperature 0 with top-k set to 1 ; A very small maximum output length | 0 | Brainstorming benefits from variety, which higher temperature provides.
 ```
 
 ```story
@@ -147,9 +147,9 @@ paper | Attention Is All You Need | https://arxiv.org/abs/1706.03762 | Vaswani e
 ```
 
 ```quiz
-What does attention let a token do? | Look only at the single token just before it ; Weigh all earlier tokens by how relevant they are ; Skip the feed-forward step in each block | 1 | Queries are matched against keys of earlier tokens, and the best matches contribute their values.
-Why are very long inputs expensive? | Longer words use a different tokenizer entirely ; The vocabulary grows with the length of the input ; Attention compares every token with all earlier ones | 2 | Cost rises roughly with the square of the length because of those comparisons.
-In "The bank approved my loan", what moves the meaning of "bank" toward money? | Attention pulling in "approved" and "loan" ; The word being capitalized in the sentence ; The sentence being short enough to fit | 0 | Neighbouring words set the meaning: attention blends their information into the word's vector.
+What does attention let a token do? | Look only at the single token just before it ; Weigh earlier tokens by their relevance ; Pick the single most frequent earlier token | 1 | Queries are matched against keys of earlier tokens, and the best matches contribute their values.
+Why are very long inputs expensive? | Longer words use a different tokenizer entirely ; The vocabulary grows with the length of the input ; Every token is compared with earlier ones | 2 | Cost rises roughly with the square of the length because of those comparisons.
+In "The bank approved my loan", what moves the meaning of "bank" toward money? | Attention pulling in "approved", "loan" ; The word being capitalized in the sentence ; The sentence being short enough to fit | 0 | Neighbouring words set the meaning: attention blends their information into the word's vector.
 ```
 
 ```story
@@ -192,9 +192,9 @@ course | Hugging Face LLM Course | https://huggingface.co/learn/llm-course | Hug
 ```
 
 ```quiz
-A model does not know about a product released last month. What is the right fix? | Fine-tune it on one sentence about the product ; Raise the temperature so it guesses more ; Give it the facts through the prompt or retrieval ; Wait for the next pretraining run | 2 | Knowledge comes from pretraining and has a cutoff. Supplying facts in context is cheap and reliable.
-Which stage mainly produces instruction-following behavior? | Pretraining on a very large text corpus ; Supervised fine-tuning and preference tuning ; Tokenizing the text before any training starts | 1 | A base model only continues text. Post-training teaches the assistant behavior.
-You want every answer in a strict house format, millions of times a day. What should you consider? | Retraining the base model from scratch each month ; A longer system prompt with the facts included ; Fine-tuning a smaller model on examples of that format | 2 | Fine-tuning shines for consistent style or format at scale, and a smaller tuned model can be cheaper.
+A model does not know about a product released last month. What is the right fix? | Fine-tune it on one sentence about the product ; Raise the temperature so it guesses better ; Wait until the next pretraining run happens ; Put the facts in the prompt or retrieve them | 3 | Knowledge comes from pretraining and has a cutoff. Supplying facts in context is cheap and reliable.
+Which stage mainly produces instruction-following behavior? | Pretraining on a very large web text corpus ; Supervised and preference fine-tuning ; Tokenizing text before any training starts | 1 | A base model only continues text. Post-training teaches the assistant behavior.
+You want every answer in a strict house format, millions of times a day. What should you consider? | Retraining the base model every single month ; A much longer system prompt that has the facts ; Fine-tuning a small model on that format | 2 | Fine-tuning shines for consistent style or format at scale, and a smaller tuned model can be cheaper.
 ```
 
 ```story
@@ -228,8 +228,8 @@ article | Building LLM applications for production | https://huyenchip.com/2023/
 ```
 
 ```quiz
-Which fix reduces arithmetic mistakes most reliably? | Letting the model call a calculator or run code ; Writing a longer and more polite prompt ; Raising the temperature a little | 0 | Hand exact computation to a tool instead of asking the model to compute it token by token.
-How can you reduce made-up citations? | Ask the model to be honest in the prompt ; Provide sources and require checkable quotes ; Request shorter answers on every question | 1 | Grounding in given text and requiring checkable quotes gives you something to verify mechanically.
+Which fix reduces arithmetic mistakes most reliably? | Letting the model call a calculator tool ; Writing a much longer and more polite prompt ; Telling the model to concentrate harder | 0 | Hand exact computation to a tool instead of asking the model to compute it token by token.
+How can you reduce made-up citations? | Ask the model to be honest in the prompt ; Give sources and demand exact quotes ; Request shorter answers on every question | 1 | Grounding in given text and requiring checkable quotes gives you something to verify mechanically.
 The model states a date in a confident tone. What does the tone tell you? | That the date is probably correct ; That the date came from a trusted database ; Nothing about whether the date is right | 2 | Fluent confidence is the same whether the answer is right or wrong, so check what matters.
 ```
 

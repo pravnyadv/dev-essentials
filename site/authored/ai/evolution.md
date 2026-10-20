@@ -30,9 +30,9 @@ article | Industrial Agentic Engineering | https://research.google/pubs/industri
 ```
 
 ```quiz
-What is the clearest sign a term is rebranding rather than new? | It is popular on social media right now ; It names no mechanism you could not name before ; It comes with a catchy hashtag attached | 1 | Useful terms name a mechanism you can implement and measure.
-What stayed constant across the eras? | The exact format of the prompt text ; The design of the provider's API ; The model stayed the core component | 2 | The scope of what engineers design grew, while the model stayed at the center.
-A vendor announces "agentic harness orchestration". What is your first question? | What did they change, and what did the eval show ; Which hashtag are they promoting this week ; How many models do they list as supported | 0 | Look for the mechanism and a measurement.
+What is the clearest sign a term is rebranding rather than new? | It was coined by a well known engineer ; It names no new mechanism or method ; It trended on social media this week | 1 | Useful terms name a mechanism you can implement and measure.
+What stayed constant across the eras? | The model as the core part ; The wording of every prompt ; The design of each provider API | 0 | The scope of what engineers design grew, while the model stayed at the center.
+A vendor announces "agentic harness orchestration". What is your first question? | What changed, and what did the eval show ; Which conference are they presenting it at ; How many models does it list as supported | 0 | Look for the mechanism and a measurement.
 ```
 
 ```story
@@ -68,9 +68,9 @@ article | Prompt Engineering | https://lilianweng.github.io/posts/2023-03-15-pro
 ```
 
 ```quiz
-Why does few-shot prompting work? | The model memorizes the examples permanently ; The model infers the task from patterns in context ; It retrains itself on each prompt | 1 | In-context learning lets the model pick up the task from examples in the prompt.
-What happened to the "prompt engineer" job title? | It became the core role at most companies ; It was made illegal in many countries ; It mostly merged into wider engineering work | 2 | A prompt is one part of a system that also needs data, tools and tests.
-You find a viral "magic prompt" online. How do you decide whether to use it? | Test it against your prompt on your own inputs ; Trust it because many people have shared it ; Use it only if the prompt is very long | 0 | Count results on twenty inputs before adopting any prompt.
+Why does few-shot prompting work? | It memorizes the examples for good ; It infers the task from the examples ; It retrains its weights on every prompt | 1 | In-context learning lets the model pick up the task from examples in the prompt.
+What happened to the "prompt engineer" job title? | It became a separate licensed trade ; It became the top role at most firms ; It merged into wider engineering | 2 | A prompt is one part of a system that also needs data, tools and tests.
+You find a viral "magic prompt" online. How do you decide whether to use it? | Adopt it because it went viral ; Test it on your own inputs ; Adopt it if its author is famous | 1 | Count results on twenty inputs before adopting any prompt.
 ```
 
 ```story
@@ -107,9 +107,9 @@ repo | 12-Factor Agents | https://github.com/humanlayer/12-factor-agents | Human
 ```
 
 ```quiz
-A model grades its own output as excellent but it is mediocre. Which harness change helps? | Raise the temperature of the model ; Separate the generator from a skeptical evaluator ; Shorten the prompt that asks for grading | 1 | Tuning a standalone evaluator to be skeptical is easier than making a generator self-critical.
-Which statement about harness engineering is most accurate? | It replaces software engineering with something new ; It only matters for coding agents and nothing else ; It applies familiar engineering to an uncertain part | 2 | The parts are old ideas. The new context is that the central component is probabilistic.
-An agent keeps editing a folder it should not touch. Which harness part addresses this? | A permission rule or hook ; A longer system prompt ; A larger model | 0 | Rules enforced in code cannot be argued around.
+A model grades its own output as excellent but it is mediocre. Which harness change helps? | Give the generator a higher temperature ; Add a separate, skeptical evaluator ; Ask the generator for a longer self-review | 1 | Tuning a standalone evaluator to be skeptical is easier than making a generator self-critical.
+Which statement about harness engineering is most accurate? | It applies old ideas to an uncertain part ; It replaces software engineering entirely ; It only matters when you build coding agents | 0 | The parts are old ideas. The new context is that the central component is probabilistic.
+An agent keeps editing a folder it should not touch. Which harness part addresses this? | A firmer line in the prompt ; A switch to a larger model ; A permission rule or hook | 2 | Rules enforced in code cannot be argued around.
 ```
 
 ```story
@@ -162,9 +162,9 @@ article | AI Snake Oil | https://www.aisnakeoil.com/ | Narayanan and Kapoor | A 
 ```
 
 ```quiz
-What question best tests a new buzzword? | Who coined the phrase, and how popular is it ; What mechanism does it name, and how can I measure it ; Does it have a slick logo and website | 1 | A useful term names something you can implement and measure.
-When is a multi-agent system justified? | Always, because more agents are always smarter ; Never, since a single agent is cheaper ; For parallel, independent work such as research | 2 | Coordination cost makes it overkill for most tasks, but it fits parallel independent subtasks.
-A study finds developers were 19 percent slower with AI tools. How should you treat this? | As one data point from a small early study ; As proof that AI never helps developers ; As irrelevant because it is only one study | 0 | The study had 16 developers and early-2025 tools, so weigh it as evidence, not a verdict.
+What question best tests a new buzzword? | Who coined the term, and how popular is it ; Does it have a polished logo and website ; What does it name, and can I measure it | 2 | A useful term names something you can implement and measure.
+When is a multi-agent system justified? | For parallel tasks such as research ; Always, because more agents are smarter ; Never, because one agent always costs less | 0 | Coordination cost makes it overkill for most tasks, but it fits parallel independent subtasks.
+A study finds developers were 19 percent slower with AI tools. How should you treat this? | As proof AI never helps developers ; As irrelevant, since it is one study ; As one small, early data point | 2 | The study had 16 developers and early-2025 tools, so weigh it as evidence, not a verdict.
 ```
 
 ```story

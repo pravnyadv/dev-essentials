@@ -26,9 +26,9 @@ article | Your AI product needs evals | https://hamel.dev/blog/posts/evals/ | Ha
 ```
 
 ```quiz
-What is the best way to choose between two models for your product? | Pick the top entry on a leaderboard ; Run both on a set of your own examples ; Pick the cheaper of the two | 1 | Leaderboards shortlist. Only your own examples show how each model behaves on your task.
-Why route different steps to different model sizes? | Small models are always worse than large ones ; It reduces the number of tokens in every call ; Hard steps need strength, easy steps need cheapness | 2 | Matching size to difficulty cuts cost and latency without losing quality where it matters.
-Model A gets 96 percent at $0.020 per email and model C gets 88 percent at $0.0005. What decides the choice? | The cost of a wrong answer in your use case ; Always the model with the highest score ; Always the model with the lowest price | 0 | A medical triage tool might pay for A. A low-stakes tagger might pick C.
+What is the best way to choose between two models for your product? | Pick the top entry on a public leaderboard ; Run both on a set of your own examples ; Pick whichever one is cheaper per token | 1 | Leaderboards shortlist. Only your own examples show how each model behaves on your task.
+Why route different steps to different model sizes? | Small models are always worse than large ones ; Splitting work cuts the tokens in every call ; Hard steps need power, easy steps need savings | 2 | Matching size to difficulty cuts cost and latency without losing quality where it matters.
+Model A gets 96 percent at $0.020 per email and model C gets 88 percent at $0.0005. What decides the choice? | The cost of a wrong answer in your use case ; Always the model with the highest accuracy score ; Always the model with the lowest price tag | 0 | A medical triage tool might pay for A. A low-stakes tagger might pick C.
 ```
 
 ```story
@@ -85,9 +85,9 @@ course | Generative AI for Beginners | https://github.com/microsoft/generative-a
 ```
 
 ```quiz
-The API is stateless. How do you continue a conversation? | The server remembers the earlier turns ; Send the full message history each call ; Reuse the previous request id | 1 | Each call is independent, so your code owns the history.
-What should you log from day one? | Only the errors, to keep logs small ; Nothing at all until the app goes live ; The request, the response and the token counts | 2 | You cannot debug or budget what you did not record.
-Your script works, but the API key is in the source file you push to a public repo. What should you do? | Revoke it and use an environment variable ; Keep it, since the repository is small ; Rename the file so it is harder to find | 0 | Assume a published key is stolen. Revoke it and keep secrets out of code.
+The API is stateless. How do you continue a conversation? | The server remembers the earlier turns itself ; Send the full message history on each call ; Reuse the request id from the previous call | 1 | Each call is independent, so your code owns the history.
+What should you log from day one? | Only the errors, to keep the logs small ; Nothing until the app has real users ; The request, response and token counts | 2 | You cannot debug or budget what you did not record.
+Your script works, but the API key is in the source file you push to a public repo. What should you do? | Revoke it and use an environment variable ; Keep it, since the repository has few readers ; Rename the file so the key is harder to find | 0 | Assume a published key is stolen. Revoke it and keep secrets out of code.
 ```
 
 ```story
@@ -148,9 +148,9 @@ course | Prompt Engineering Interactive Tutorial | https://github.com/anthropics
 ```
 
 ```quiz
-How does a model remember what was said earlier? | The API stores the whole chat on its servers ; You send the earlier messages again on each call ; The model keeps its own notes between calls | 1 | The API is stateless, so your code resends the history.
-Why pin a dated model snapshot in production? | It is always cheaper than using an alias ; It makes every response noticeably faster ; Behavior stays fixed until you choose to upgrade | 2 | An alias can move to a new version that changes behavior.
-A chat grows to 10 turns and each call is getting slower and costlier. What is the sensible fix? | Trim or summarize old turns ; Switch to a larger model ; Lower the temperature | 0 | Every call pays for the whole history, so shorten it.
+How does a model remember what was said earlier? | The API stores the whole chat on its servers ; You resend the earlier messages each time ; The model keeps its own notes between calls | 1 | The API is stateless, so your code resends the history.
+Why pin a dated model snapshot in production? | It is always cheaper than using an alias ; It makes every response noticeably faster ; Behavior stays fixed until you upgrade | 2 | An alias can move to a new version that changes behavior.
+A chat grows to 10 turns and each call is getting slower and costlier. What is the sensible fix? | Trim or summarize the oldest turns ; Switch to a much larger and smarter model ; Lower the temperature setting to zero | 0 | Every call pays for the whole history, so shorten it.
 ```
 
 ```story
@@ -205,9 +205,9 @@ article | Why we built the Responses API | https://developers.openai.com/blog/re
 ```
 
 ```quiz
-Why stream tokens to the user? | The answer costs less ; They see output almost immediately ; The answer becomes more accurate | 1 | Streaming reduces the perceived wait.
-How should you handle rate limits? | Retry immediately in a tight loop until it works ; Switch models over and over until one answers ; Retry with exponential backoff and queue the work | 2 | Backoff gives the limit time to reset without hammering the API.
-You must label 100,000 reviews overnight, and speed does not matter. What fits best? | A batch API at a lower price ; Streaming each request ; A larger model with a longer prompt | 0 | Batch processing trades speed for a discount on non-urgent bulk work.
+Why stream tokens to the user? | The full answer costs noticeably less ; They start seeing output right away ; The answer comes out more accurate | 1 | Streaming reduces the perceived wait.
+How should you handle rate limits? | Retry immediately in a tight loop until it works ; Switch models over and over until one answers ; Retry with growing delays and queue the work | 2 | Backoff gives the limit time to reset without hammering the API.
+You must label 100,000 reviews overnight, and speed does not matter. What fits best? | A discounted batch job run overnight ; Streaming each request as it arrives ; A larger model with a longer prompt | 0 | Batch processing trades speed for a discount on non-urgent bulk work.
 ```
 
 ```story
@@ -237,9 +237,9 @@ article | Exponential backoff and jitter | https://aws.amazon.com/builders-libra
 ```
 
 ```quiz
-You get a 429 response. What should you do? | Retry instantly in a loop until it works ; Wait with exponential backoff, then retry ; Give up and show the raw stack trace | 1 | Backoff gives the limit time to reset without hammering the API.
-Where should an API key live? | In the browser code ; In the repository, in a config file ; In a server-side environment variable | 2 | Anything shipped to a browser can be copied by anyone.
-A model's reply contains an HTML script tag and your page inserts it as HTML. What is the risk? | It could run code in other visitors' browsers ; The reply will be cut off before the end ; The model will lose track of the context | 0 | Treat model output as untrusted. Sanitize it or render markdown safely.
+You get a 429 response. What should you do? | Retry instantly in a loop until it works ; Wait with growing delays, then retry ; Give up and show the user the stack trace | 1 | Backoff gives the limit time to reset without hammering the API.
+Where should an API key live? | In the front-end code sent to browsers ; In a config file committed to the repo ; In a server-side environment variable | 2 | Anything shipped to a browser can be copied by anyone.
+A model's reply contains an HTML script tag and your page inserts it as HTML. What is the risk? | It could run code in visitors' browsers ; The reply may be cut off before the end ; The model will forget the earlier context | 0 | Treat model output as untrusted. Sanitize it or render markdown safely.
 ```
 
 ```story
@@ -306,9 +306,9 @@ article | How to build an agent | https://ampcode.com/how-to-build-an-agent | Th
 ```
 
 ```quiz
-Who executes a tool call? | The model ; Your program ; The user's browser | 1 | The model only emits the request. Your code runs it and returns the result.
-What most affects whether the model uses a tool well? | The programming language of the function ; The speed of the function ; The name and description of the tool | 2 | The model only sees the description and schema, so they are the real interface.
-The model asks to run delete_file with path "../../secrets". What should your code do? | Validate the path and refuse it ; Run it, since the model chose it ; Ask the model to try again with a longer path | 0 | Tool arguments come from a model that can be tricked, so validate before running.
+Who executes a tool call? | The model, once it decides to call it ; Your program, on seeing the request ; The user's browser, once the page loads | 1 | The model only emits the request. Your code runs it and returns the result.
+What most affects whether the model uses a tool well? | The programming language the function uses ; How fast the function runs once called ; The name and description of the tool | 2 | The model only sees the description and schema, so they are the real interface.
+The model asks to run delete_file with path "../../secrets". What should your code do? | Check the path and refuse to run it ; Run it, since the model chose that path ; Ask the model to retry with a longer path | 0 | Tool arguments come from a model that can be tricked, so validate before running.
 ```
 
 ```story
@@ -343,9 +343,9 @@ docs | OpenAI built-in tools | https://platform.openai.com/docs/guides/tools | O
 ```
 
 ```quiz
-Who runs a server-side web search tool? | Your program ; The provider ; The user's browser | 1 | You enable it, and the provider runs it and returns results.
-Why be careful combining web search with sensitive tools? | Search results arrive too slowly to be safe ; Search tools cannot return any links ; Pages can hide instructions that steer the model | 2 | Untrusted content plus powerful tools is the injection risk.
-You need the status of customer 4412's tickets from your own database. Which tool fits? | Your own tool with your permissions ; The provider's web search ; File search over public documents | 0 | Private data and your access rules belong in a tool you control.
+Who runs a server-side web search tool? | Your program, calling a search site ; The provider, on its own servers ; The user's browser, as the page loads | 1 | You enable it, and the provider runs it and returns results.
+Why be careful combining web search with sensitive tools? | Search results arrive too slowly to be safe ; Search tools cannot return links to pages ; Pages can hide text that steers the model | 2 | Untrusted content plus powerful tools is the injection risk.
+You need the status of customer 4412's tickets from your own database. Which tool fits? | Your own tool with your permissions ; The provider's built-in web search tool ; A file search over public documents | 0 | Private data and your access rules belong in a tool you control.
 ```
 
 ```story
@@ -379,9 +379,9 @@ article | Code execution with MCP | https://www.anthropic.com/engineering/code-e
 ```
 
 ```quiz
-Why not connect every MCP server you can find? | MCP servers conflict with each other by default ; Descriptions use context and servers hold real access ; Each extra connection slows the model's training | 1 | Context budget and trust both argue for connecting only what the task needs.
+Why not connect every MCP server you can find? | MCP servers conflict with each other by default ; Descriptions use context and servers get access ; Each extra connection slows the model's training | 1 | Context budget and trust both argue for connecting only what the task needs.
 What does MCP standardize? | The binary format used to store model weights ; The exact wording of every system prompt ; How agents discover and call tools and data | 2 | It is the protocol between a client app and tool servers.
-You install a small server from a stranger and give it access to your files. What is the risk? | It can read or act with the permissions you gave it ; It will slow down your computer's disk ; It will change the model's behavior permanently | 0 | A server runs with real access, so a malicious one can misuse it.
+You install a small server from a stranger and give it access to your files. What is the risk? | It can act with the access you gave it ; It will slow down your computer's disk ; It will change the model's weights for good | 0 | A server runs with real access, so a malicious one can misuse it.
 ```
 
 ```story
@@ -447,9 +447,9 @@ docs | MCP architecture | https://modelcontextprotocol.io/docs/learn/architectur
 ```
 
 ```quiz
-What are the three things an MCP server can expose? | Models, weights and datasets ; Tools, resources and prompts ; Agents, loops and memories | 1 | They are functions to call, data to read and reusable templates.
-Which transport is simplest for a local server? | WebSockets ; Email ; Stdio | 2 | The host starts the server as a subprocess and talks over standard input and output.
-Your notes server returns every matching line from 400 files. What is wrong? | It floods the context, so cap and shorten results ; Servers are not allowed to return a second line ; The tool should return whole files, not text | 0 | Return small, useful answers, such as five matches, and say what to try next.
+What are the three things an MCP server can expose? | Models, weights and datasets ; Tools, resources and prompts ; Agents, loops and memory stores | 1 | They are functions to call, data to read and reusable templates.
+Which transport is simplest for a local server? | WebSockets on a public port ; Email between the programs ; Standard input and output | 2 | The host starts the server as a subprocess and talks over standard input and output.
+Your notes server returns every matching line from 400 files. What is wrong? | It floods the context, so cap the results ; Servers may not return more than one line ; The tool should return whole files instead | 0 | Return small, useful answers, such as five matches, and say what to try next.
 ```
 
 ```story
@@ -487,9 +487,9 @@ article | The lethal trifecta for AI agents | https://simonwillison.net/2025/Jun
 ```
 
 ```quiz
-Which is read-only context chosen by the app or user? | A tool ; A resource ; A transport | 1 | Resources are identified data. Tools are actions the model runs.
-Why are a server's tool descriptions a security concern? | They make the connection slower ; They are sent to the user's browser ; The model reads them as instructions | 2 | A malicious description can steer the model.
-A server that reads untrusted web pages and one that can send email are both connected. What is the risk? | A page could instruct the model to email private data ; The two servers will compete for system memory ; Email tools cannot run alongside web tools | 0 | Untrusted content plus an exfiltration path is the dangerous combination.
+Which is read-only context chosen by the app or user? | A tool the model decides to call ; A resource the app can attach ; A transport that carries messages | 1 | Resources are identified data. Tools are actions the model runs.
+Why are a server's tool descriptions a security concern? | They slow the connection to the server ; They get sent on to the user's browser ; The model reads them as instructions | 2 | A malicious description can steer the model.
+A server that reads untrusted web pages and one that can send email are both connected. What is the risk? | A page could tell the model to email data ; The servers will compete for system memory ; Email tools cannot run next to web tools | 0 | Untrusted content plus an exfiltration path is the dangerous combination.
 ```
 
 ```story
@@ -527,9 +527,9 @@ course | Multimodal models | https://huggingface.co/learn/computer-vision-course
 ```
 
 ```quiz
-How is video usually given to a model? | As one very large image file in a single call ; As sampled frames, often with the transcript ; It cannot be given to a model at all | 1 | Frames are sampled at intervals and sent together with the transcript.
-Why downscale large images before sending? | Models reject images over a megapixel ; Smaller images are always sharper ; Image tokens are priced by size | 2 | Smaller images cost less and are often enough for the task.
-You must extract a total, date and vendor from a receipt photo. What should you ask for? | Structured output, such as JSON with those fields ; A free-text paragraph describing the receipt ; A short poem about the receipt | 0 | Structured output makes the data easy to check and use in code.
+How is video usually given to a model? | As one huge image file in a single call ; As sampled frames, often with a transcript ; Only the audio track can be given to a model | 1 | Frames are sampled at intervals and sent together with the transcript.
+Why downscale large images before sending? | Models reject any image over one megapixel ; Smaller images are always sharper to read ; Image cost grows with the image size | 2 | Smaller images cost less and are often enough for the task.
+You must extract a total, date and vendor from a receipt photo. What should you ask for? | JSON output with exactly those fields ; A free-text paragraph about the receipt ; A short poem summing up the receipt | 0 | Structured output makes the data easy to check and use in code.
 ```
 
 ```story

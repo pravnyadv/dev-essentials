@@ -24,9 +24,9 @@ tool | roadmap.sh AI Engineer | https://roadmap.sh/ai-engineer | roadmap.sh | A 
 ```
 
 ```quiz
-A new tool claims to replace everything. What do you do first? | Install it on your main project now ; Find which layer of the stack it belongs to ; Wait a year for more reviews | 1 | Placing it in a layer shows what job it does and what it leaves to others.
-What is the minimum stack for most AI features? | A vector database and a framework ; Fine-tuning and a GPU cluster ; A model, a call path, retrieval or tools, evals | 2 | Add other layers only when a concrete problem requires them.
-Your team wants a vector database for 20,000 chunks. What should you ask? | Whether a table in your current database would do ; Which vendor has the nicest logo ; How to shard it across several regions | 0 | Match infrastructure to the size of the problem.
+A new tool claims to replace everything. What do you do first? | Rewrite your main project with it ; Find which stack layer it replaces ; Wait a year before looking at it | 1 | Placing it in a layer shows what job it does and what it leaves to others.
+What is the minimum stack for most AI features? | A vector database, a framework, agents ; Fine-tuning, a GPU cluster, a registry ; A model, a call path, tools, evals | 2 | Add other layers only when a concrete problem requires them.
+Your team wants a vector database for 20,000 chunks. What should you ask? | Could our current database hold it ; How to shard it across three regions ; Which vendor has the best dashboard | 0 | Match infrastructure to the size of the problem.
 ```
 
 ```story
@@ -69,8 +69,8 @@ tool | Mistral AI | https://mistral.ai | Mistral | Open and hosted models from a
 
 ```quiz
 Why wrap model calls in one function? | It makes each single call run faster ; It makes switching providers and models easy ; It removes the need for an API key | 1 | Portability is a single point of change.
-What does an OpenAI-compatible endpoint let you do? | Get free tokens from every lab ; Skip authentication on all requests ; Use one client library across many providers | 2 | The request format is shared.
-Your only provider has an outage. What would have made recovery easy? | A tested second provider behind one wrapper ; A longer timeout on every request ; A bigger model from the same provider | 0 | Keeping a tested fallback behind one function turns an outage into a config change.
+What does an OpenAI-compatible endpoint let you do? | Get free tokens from every lab ; Skip authentication on every request ; Reuse one client across providers | 2 | The request format is shared.
+Your only provider has an outage. What would have made recovery easy? | A tested backup behind one wrapper ; A longer timeout on every request ; A bigger model from the same provider | 0 | Keeping a tested fallback behind one function turns an outage into a config change.
 ```
 
 ```story
@@ -109,8 +109,8 @@ article | Introducing AgentKit | https://openai.com/index/introducing-agentkit |
 ```
 
 ```quiz
-When is a framework most worth using? | For a script that is only 20 lines long ; When you need durable state, approvals, tracing ; When you want to hide the prompts | 1 | Those are costly to build and are what frameworks provide.
-What is the main risk of a framework? | The license is always very restrictive ; It cannot call any tools at all ; Hidden prompts and loops make debugging harder | 2 | You must be able to see what the model saw.
+When is a framework most worth using? | For a quick script of about 20 lines ; When you need approvals and tracing ; When you want to avoid reading the docs | 1 | Those are costly to build and are what frameworks provide.
+What is the main risk of a framework? | Its license is nearly always restrictive ; It cannot call tools you define yourself ; Hidden prompts make debugging harder | 2 | You must be able to see what the model saw.
 You can write your agent loop in 80 lines. Why might that be a good first step? | You learn what a framework would hide ; Frameworks never work with tools ; It is always faster than any framework | 0 | Writing the loop once teaches you what to look for when you later pick a framework.
 ```
 
@@ -155,9 +155,9 @@ docs | Inference client | https://huggingface.co/docs/huggingface_hub/en/package
 ```
 
 ```quiz
-What does a model card tell you? | The current price of using the model ; How it was trained, its limits and its license ; How many people downloaded it today | 1 | Always read it before using a model.
-What does Transformers.js do? | Trains models on a cluster ; Hosts demo apps for you ; Runs models in the browser | 2 | It brings inference to JavaScript environments.
-You find a promising model but its license is unclear. What should you do? | Check the license before using it commercially ; Use it anyway, since it is public ; Delete the model card to avoid confusion | 0 | Licenses vary and some forbid commercial use.
+What does a model card tell you? | Its current price per million tokens ; Its training, limits and license ; How many people downloaded it today | 1 | Always read it before using a model.
+What does Transformers.js do? | Trains models on a GPU cluster ; Hosts demo apps for other people ; Runs models in the browser | 2 | It brings inference to JavaScript environments.
+You find a promising model but its license is unclear. What should you do? | Check the license before commercial use ; Use it anyway, since the weights are public ; Delete the model card to avoid confusion | 0 | Licenses vary and some forbid commercial use.
 ```
 
 ```story

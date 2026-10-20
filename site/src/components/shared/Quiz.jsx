@@ -6,13 +6,13 @@ export default function Quiz({ quiz, picked, onPick }) {
   const right = picked === quiz.answer
   return (
     <div className="w-full">
-      <p className="mb-2 text-center text-sm font-medium">{quiz.q}</p>
-      <div className="flex flex-wrap justify-center gap-2">
+      <p className="mb-3 font-medium">{quiz.q}</p>
+      <div className="flex flex-col gap-2">
         {quiz.options.map((o, n) => (
-          <button key={n} onClick={() => onPick(n)} className={buttonClass(picked === n ? (right ? 'primary' : 'secondary') : 'outline', 'sm', 'rounded-full px-3')}>{o}</button>
+          <button key={n} onClick={() => onPick(n)} aria-pressed={picked === n} className={buttonClass(picked === n ? (right ? 'primary' : 'secondary') : 'outline', 'sm', 'h-auto min-h-9 w-full justify-start whitespace-normal rounded-lg px-3 py-2 text-left leading-snug')}>{o}</button>
         ))}
       </div>
-      <p aria-live="polite" className={`mt-2 min-h-14 text-center text-xs leading-relaxed ${picked === undefined ? 'invisible' : right ? 'text-success' : 'text-danger'}`}>{right ? 'Right. ' : 'Not quite. '}{quiz.why}</p>
+      <p aria-live="polite" className={`mt-3 min-h-12 text-sm leading-relaxed ${picked === undefined ? 'invisible' : right ? 'text-success' : 'text-danger'}`}>{right ? 'Right. ' : 'Not quite. '}{quiz.why}</p>
     </div>
   )
 }

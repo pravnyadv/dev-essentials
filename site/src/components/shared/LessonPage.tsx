@@ -4,6 +4,7 @@ import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/components/mdx';
 import type { dsaSource } from '@/lib/source';
 import MarkDone from './MarkDone';
+import ReportError from './ReportError';
 import { StatusButton } from './progress';
 
 type Source = typeof dsaSource;
@@ -24,7 +25,7 @@ interface LessonPageProps {
 export default function LessonPage({ source, page, topicId, description, next, badges, before, after }: LessonPageProps) {
   const MDX = page.data.body;
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage toc={page.data.toc} full={page.data.full} tableOfContentPopover={{ enabled: false }}>
       <DocsTitle>{page.data.title}</DocsTitle>
       {description && <DocsDescription className="mb-0">{description}</DocsDescription>}
       <div className="flex flex-row items-center gap-2 border-b pb-6">{topicId && <StatusButton id={topicId} />}</div>
@@ -35,6 +36,7 @@ export default function LessonPage({ source, page, topicId, description, next, b
       </DocsBody>
       {after}
       {topicId && <MarkDone id={topicId} next={next} />}
+      <ReportError title={page.data.title} url={page.url} />
     </DocsPage>
   );
 }

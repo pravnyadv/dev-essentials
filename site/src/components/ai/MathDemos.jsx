@@ -201,3 +201,27 @@ export function AttentionDemo() {
     </Box>
   )
 }
+
+// 20 card payments with a risk score. Moving the threshold trades missed fraud against false alarms.
+const PAYMENTS = [[95, 1], [88, 1], [80, 0], [72, 1], [62, 0], [55, 0], [45, 1], [40, 0], [35, 0], [30, 0], [28, 0], [25, 0], [22, 0], [20, 0], [18, 0], [15, 0], [12, 0], [10, 0], [8, 0], [6, 0]]
+export function ThresholdDemo() {
+  const [t, setT] = useState(50)
+  const flagged = PAYMENTS.filter(([score]) => score >= t)
+  const caught = flagged.filter(([, fraud]) => fraud).length
+  const fraudTotal = PAYMENTS.filter(([, fraud]) => fraud).length
+  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : 'n/a')
+  return (
+    <Box title="Fraud threshold: 20 payments, 4 are fraud">
+      <Slider label="Flag if score is at least" value={t} onChange={setT} min={5} max={95} step={1} />
+      <div className="mt-4 grid grid-cols-5 gap-2 sm:grid-cols-10" role="img" aria-label={`${flagged.length} payments flagged, ${caught} of ${fraudTotal} fraud caught`}>
+        {PAYMENTS.map(([score, fraud]) => (
+          <div key={score} className={`grid h-12 place-items-center rounded-md border text-center text-xs font-medium leading-tight transition ${score >= t ? 'bg-fd-primary text-fd-primary-foreground' : 'bg-fd-card text-fd-muted-foreground'} ${fraud ? 'border-2 border-fd-foreground' : ''}`}>
+            <span>{score}<br />{fraud ? 'fraud' : 'ok'}</span>
+          </div>
+        ))}
+      </div>
+      <Line>Flagged {flagged.length} · caught {caught} of {fraudTotal} fraud · precision {pct(caught, flagged.length)} · recall {pct(caught, fraudTotal)}</Line>
+      <Hint>Filled cells are flagged. Lower the threshold to catch every fraud and watch the false alarms pile up.</Hint>
+    </Box>
+  )
+}

@@ -48,3 +48,10 @@ html > body[data-scroll-locked] {
 /* The GitHub code theme's orange (light) and comment grey (dark) are 3.5:1 on the code background, under the 4.5:1 AA minimum. */
 .shiki [style*='--shiki-light:#E36209'] { --shiki-light: #b34700 !important; }
 .shiki [style*='--shiki-dark:#6A737D'] { --shiki-dark: #9aa4ae !important; }
+
+/* Fumadocs' own header icons and sidebar rows are 34px and 39px tall. Phones get 44px targets. */
+@media (max-width: 767px) {
+  button[aria-label='Open Search'],
+  button[aria-label='Open Sidebar'] { min-width: 2.75rem; min-height: 2.75rem; }
+  [id^='nd-sidebar'] a { min-height: 2.75rem; }
+}

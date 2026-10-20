@@ -35,9 +35,9 @@ docs | Introduction to embeddings | https://docs.cohere.com/docs/embeddings | Co
 ```
 
 ```quiz
-What do embeddings of similar sentences have in common? | They contain the same words ; Their vectors point in similar directions ; They have the same length in characters | 1 | The model is trained to place similar meanings close together.
-Which is a common use of embeddings? | Compiling a program into machine code ; Encrypting a message before sending ; Searching documents by meaning | 2 | Searching by meaning is the most common use.
-"I forgot my login" and "How do I reset my password?" share no keyword. How can search still match them? | Their embeddings are close in meaning ; A keyword filter links them ; The words forgot and reset are synonyms in a dictionary | 0 | Embedding similarity captures meaning, not just shared words.
+What do embeddings of similar sentences have in common? | They share most of their exact words ; Their vectors lie close together ; They have the same character count | 1 | The model is trained to place similar meanings close together.
+Which is a common use of embeddings? | Compiling code to machine code ; Encrypting messages before sending ; Searching documents by meaning | 2 | Searching by meaning is the most common use.
+"I forgot my login" and "How do I reset my password?" share no keyword. How can search still match them? | A keyword filter links the two phrases ; Their embeddings are close in meaning ; A dictionary marks them as exact synonyms | 1 | Embedding similarity captures meaning, not just shared words.
 ```
 
 ```story
@@ -67,9 +67,9 @@ tool | Embedding models on Hugging Face | https://huggingface.co/models?pipeline
 ```
 
 ```quiz
-Can you mix vectors from two different embedding models in one index? | Yes, if both are normalized ; No, they live in different spaces ; Yes, if both have the same length | 1 | Each model defines its own space, so distances across models are meaningless.
-How should you pick a model? | Choose the one with the most dimensions ; Choose the newest release ; Measure retrieval quality on your own queries | 2 | Leaderboards shortlist. Your data decides.
-You switch embedding models and keep the old vectors. What happens? | Results become unreliable, so re-embed it all ; Nothing, the old vectors still match fine ; Only the new documents are affected | 0 | Old and new vectors cannot be compared, so the whole index must be rebuilt.
+Can you mix vectors from two different embedding models in one index? | Yes, once both are normalized ; No, each lives in its own space ; Yes, if both have equal dimensions | 1 | Each model defines its own space, so distances across models are meaningless.
+How should you pick a model? | Pick the one with the most dimensions ; Pick whichever model came out last ; Test retrieval on your own queries | 2 | Leaderboards shortlist. Your data decides.
+You switch embedding models and keep the old vectors. What happens? | Results get unreliable, so re-embed it all ; Nothing, the old vectors still match fine ; Only the new documents get odd results | 0 | Old and new vectors cannot be compared, so the whole index must be rebuilt.
 ```
 
 ```story
@@ -104,8 +104,8 @@ docs | NumPy linalg.norm | https://numpy.org/doc/stable/reference/generated/nump
 
 ```quiz
 a = [3, 4] and b = [6, 8]. What is their cosine similarity? | 0 ; 1 ; 0.5 | 1 | They point the same way, so cosine is 1 even though b is longer.
-After normalizing all vectors to length 1, how do cosine and dot product rank results? | Differently, with dot product favoring long vectors ; Randomly ; Identically | 2 | With unit lengths the dot product equals cosine.
-You index with cosine but query with Euclidean distance. What is the problem? | The scores are not comparable, so results may be off ; Nothing, since all metrics rank the same ; Euclidean distance cannot be used on vectors | 0 | Use the same metric for indexing and querying, as the model recommends.
+After normalizing all vectors to length 1, how do cosine and dot product rank results? | Differently, since dot product favors length ; Randomly, since the order is arbitrary ; Identically, as the lengths are all 1 | 2 | With unit lengths the dot product equals cosine.
+You index with cosine but query with Euclidean distance. What is the problem? | Scores differ, so the ranking may be off ; Nothing, since all metrics rank the same ; Euclidean distance cannot be used on vectors | 0 | Use the same metric for indexing and querying, as the model recommends.
 ```
 
 ```story
@@ -137,9 +137,9 @@ docs | PDF support | https://docs.anthropic.com/en/docs/build-with-claude/pdf-su
 ```
 
 ```quiz
-Why can plain text extraction from a two-column PDF hurt retrieval? | The file is encrypted so the text comes out scrambled ; Lines from both columns get mixed, so chunks stop making sense ; Columns are too wide to fit in the model's context window | 1 | Reading straight across the page interleaves the columns, so each chunk mixes unrelated sentences and its embedding becomes a blur.
-A scanned PDF returns empty text from your parser. What is the most likely cause? | The document is too long for the parser to open ; The embedding model rejected the file format ; The pages are pictures, so you need OCR or a vision model | 2 | A scan has no text layer. OCR or a vision model has to read the page image.
-You will index 5,000 pages. What is the most useful quick check first? | Compare ten parsed pages with the originals ; Run the embedding model twice on each page ; Raise the chunk size to 2,000 tokens | 0 | Looking at real parsed pages catches broken tables, wrong order and empty pages while they are cheap to fix.
+Why can plain text extraction from a two-column PDF hurt retrieval? | The file is encrypted, so the text comes out garbled ; Lines from both columns mix, ruining the chunks ; Columns are too wide to fit in the context window | 1 | Reading straight across the page interleaves the columns, so each chunk mixes unrelated sentences and its embedding becomes a blur.
+A scanned PDF returns empty text from your parser. What is the most likely cause? | The file is too long for the parser to open ; The embedding model rejected the file format ; The pages are pictures, so you need OCR | 2 | A scan has no text layer. OCR or a vision model has to read the page image.
+You will index 5,000 pages. What is the most useful quick check first? | Compare ten parsed pages to the originals ; Run the embedding model twice on each page ; Raise the chunk size to 2,000 tokens at once | 0 | Looking at real parsed pages catches broken tables, wrong order and empty pages while they are cheap to fix.
 ```
 
 ```story
@@ -172,9 +172,9 @@ tool | ChunkViz | https://chunkviz.up.railway.app/ | Greg Kamradt | Visualize ho
 ```
 
 ```quiz
-Why use overlap between chunks? | It makes the embeddings take up less space ; A cut sentence still appears whole in one chunk ; It speeds up the vector search a lot | 1 | Overlap protects against a split landing in the middle of an important sentence.
-What is wrong with chunks that are too small? | They cannot be embedded at all ; They make the index too large to store ; They lose the context needed to make sense | 2 | A fragment may not say which product or date it describes.
-Your answers are wrong and you see a key fact split between two chunks. What is the quick fix to try? | Overlap the chunks or split on headings ; Raise the temperature of the model ; Use a larger embedding model | 0 | Better chunk boundaries keep facts together. Then measure recall.
+Why use overlap between chunks? | It makes the embeddings take up less space ; A cut sentence still sits whole in a chunk ; It speeds up the vector search a great deal | 1 | Overlap protects against a split landing in the middle of an important sentence.
+What is wrong with chunks that are too small? | They are rejected by the embedding model ; They make the index too large to store ; They lose the context around each fact | 2 | A fragment may not say which product or date it describes.
+Your answers are wrong and you see a key fact split between two chunks. What is the quick fix to try? | Add overlap or split on the headings ; Raise the temperature of the model a bit ; Switch to a much larger embedding model | 0 | Better chunk boundaries keep facts together. Then measure recall.
 ```
 
 ```story
@@ -215,9 +215,9 @@ tool | FAISS | https://ai.meta.com/tools/faiss | Meta | Library for efficient si
 ```
 
 ```quiz
-Why use approximate nearest neighbor search? | Exact search returns wrong results ; Exact search checks every vector, too slow at scale ; It stores vectors more cheaply on disk | 1 | ANN indexes skip most comparisons while almost always finding the true nearest.
-Under a million vectors, how should you choose a database? | By the longest benchmark chart you can find ; By the price per vector alone ; By what you already run and can operate | 2 | Most options perform fine at that size, so operational simplicity wins.
-You already run Postgres and have 80,000 chunks. What is a reasonable choice? | pgvector in your existing database ; A new managed cluster for vectors ; A custom index you write yourself | 0 | One system to run is simpler, and the size is small.
+Why use approximate nearest neighbor search? | Exact search often returns wrong results ; Checking every vector is slow at scale ; It stores vectors more cheaply on disk | 1 | ANN indexes skip most comparisons while almost always finding the true nearest.
+Under a million vectors, how should you choose a database? | By the most impressive benchmark chart ; By the lowest price per stored vector ; By what you already run and can operate | 2 | Most options perform fine at that size, so operational simplicity wins.
+You already run Postgres and have 80,000 chunks. What is a reasonable choice? | pgvector in your current database ; A new managed cluster just for vectors ; A custom index that you write yourself | 0 | One system to run is simpler, and the size is small.
 ```
 
 ```story
@@ -251,9 +251,9 @@ paper | Reciprocal Rank Fusion outperforms Condorcet and individual rank learnin
 ```
 
 ```quiz
-Which search is better at finding the exact string ERR_4021? | Semantic search ; Keyword search (BM25) ; Both are equally good | 1 | Exact rare tokens are where keyword matching is strongest.
-A document ranks 1st in keyword and 3rd in semantic results. What does reciprocal rank fusion with k = 60 give it? | About 0.5 ; About 1 ; About 0.032 | 2 | 1/61 + 1/63 is about 0.0323.
-Users type "my screen is frozen" but the page says "Application not responding". Which search helps? | Semantic search, which matches meaning ; Keyword search used on its own ; An exact-match filter on the text | 0 | Semantic search connects different wording with the same meaning.
+Which search is better at finding the exact string ERR_4021? | Semantic search by meaning ; Keyword search with BM25 ; Both are equally good here | 1 | Exact rare tokens are where keyword matching is strongest.
+A document ranks 1st in keyword and 3rd in semantic results. What does reciprocal rank fusion with k = 60 give it? | About 0.5 ; About 0.03 ; About 0.33 | 1 | 1/61 + 1/63 is about 0.0323.
+Users type "my screen is frozen" but the page says "Application not responding". Which search helps? | Semantic search, matching by meaning ; Keyword search used entirely on its own ; An exact-match filter on the page text | 0 | Semantic search connects different wording with the same meaning.
 ```
 
 ```story
@@ -283,9 +283,9 @@ tool | bge-reranker-v2-m3 | https://huggingface.co/BAAI/bge-reranker-v2-m3 | BAA
 ```
 
 ```quiz
-What does a cross-encoder reranker do that the first search cannot? | It stores every passage as a longer vector ; It reads the question and the passage together before scoring ; It runs on the full database instead of candidates | 1 | Reading both texts together lets it notice negations, numbers and conditions that a single stored vector blurs.
-A team passes the top 5 search results to a reranker and keeps all 5. What is wrong? | Rerankers only accept exactly 5 passages at a time ; The reranker will delete two of the five results ; Nothing is left to reorder, so fetch more candidates first | 2 | Reranking helps when you fetch many candidates, such as 50, and then keep the best few.
-How should you decide whether to keep a reranker? | Compare recall at 5 before and after, weigh delay ; Keep it because most search systems use one ; Remove it if answers feel slower in a demo | 0 | A measured gain in recall that outweighs the added latency and cost is the reason to keep it.
+What does a cross-encoder reranker do that the first search cannot? | It stores each passage as a longer vector ; It reads question and passage together ; It scans the whole database, not candidates | 1 | Reading both texts together lets it notice negations, numbers and conditions that a single stored vector blurs.
+A team passes the top 5 search results to a reranker and keeps all 5. What is wrong? | Rerankers only accept five passages at once ; The reranker will delete two of the results ; Nothing to reorder, so fetch more candidates | 2 | Reranking helps when you fetch many candidates, such as 50, and then keep the best few.
+How should you decide whether to keep a reranker? | Compare recall before and after, weigh delay ; Keep it because most search systems use one ; Remove it if answers feel slower in a demo | 0 | A measured gain in recall that outweighs the added latency and cost is the reason to keep it.
 ```
 
 ```story
@@ -325,9 +325,9 @@ repo | RAGFlow | https://github.com/infiniflow/ragflow | InfiniFlow | An open-so
 ```
 
 ```quiz
-A RAG answer is wrong. What do you check first? | The temperature of the model ; Whether the right chunk was retrieved ; The font used in the interface | 1 | Retrieval quality is the most common root cause, and it can be tested without the model.
-What should the prompt tell the model to do when the sources lack the answer? | Guess the most likely answer ; Search the web instead ; Say that it cannot find it | 2 | Allowing "I do not know" cuts confident wrong answers.
-The right chunk was retrieved but the answer ignores it. What should you adjust? | The prompt telling it to use the chunks ; The vector database settings ; The size of each chunk | 0 | Retrieval did its job, so the instruction or the model is the weak link.
+A RAG answer is wrong. What do you check first? | The temperature setting of the model ; Whether the right chunk came back ; The font used in the chat interface | 1 | Retrieval quality is the most common root cause, and it can be tested without the model.
+What should the prompt tell the model to do when the sources lack the answer? | Give its best guess at the answer ; Search the web for the answer instead ; Say that the sources do not cover it | 2 | Allowing "I do not know" cuts confident wrong answers.
+The right chunk was retrieved but the answer ignores it. What should you adjust? | The prompt that tells it to use them ; The vector database index settings ; The size and overlap of each chunk | 0 | Retrieval did its job, so the instruction or the model is the weak link.
 ```
 
 ```story
@@ -362,9 +362,9 @@ repo | RAG Techniques | https://github.com/NirDiamant/RAG_Techniques | Nir Diama
 ```
 
 ```quiz
-A user asks "And for gift cards?" mid-chat and search returns junk. What fixes it? | Raise the number of results to 100 ; Rewrite it as a standalone question from history ; Switch to a larger embedding model | 1 | The follow-up depends on earlier turns. A standalone rewrite makes it searchable.
-What is the idea behind HyDE? | Hide the question from the retriever to avoid bias ; Replace the vector database with a language model ; Search with a made-up answer that reads like a document | 2 | A short invented answer shares more words and meaning with the real document than the question does.
-What must a good rewrite keep? | Every name, date, number and place ; Only the main noun of the question ; As few words as it possibly can | 0 | Dropping a constraint such as a region or an amount changes what is searched for and returns the wrong passages.
+A user asks "And for gift cards?" mid-chat and search returns junk. What fixes it? | Raise the number of results returned to 100 ; Rewrite it as a standalone question ; Switch to a larger embedding model overall | 1 | The follow-up depends on earlier turns. A standalone rewrite makes it searchable.
+What is the idea behind HyDE? | Hide the question from the retriever to cut bias ; Replace the vector database with a language model ; Search with an invented answer, not the query | 2 | A short invented answer shares more words and meaning with the real document than the question does.
+What must a good rewrite keep? | Every name, date, number, place ; Only the main noun of the question ; As few words as it possibly can | 0 | Dropping a constraint such as a region or an amount changes what is searched for and returns the wrong passages.
 ```
 
 ```story
@@ -396,9 +396,9 @@ article | Contextual Retrieval | https://www.anthropic.com/news/contextual-retri
 ```
 
 ```quiz
-Where should access permissions be enforced in RAG? | In the prompt text sent to the model ; In metadata filters applied by your own code ; In the embedding model itself | 1 | Chunks the user cannot see must never reach the prompt at all.
-What can a model extract from a question for filtering? | Raw SQL that you then run directly ; The user's saved password ; Filter values as validated structured output | 2 | Validate the structure before using it.
-A Canadian customer gets a policy from another country. What is the likely cause? | No region filter was applied to the search ; The embedding model ignores countries ; The prompt was too short | 0 | Metadata filters narrow the candidates to the right region before searching.
+Where should access permissions be enforced in RAG? | In the system prompt sent to the model ; In metadata filters in your own code ; In the embedding model's own settings | 1 | Chunks the user cannot see must never reach the prompt at all.
+What can a model extract from a question for filtering? | Raw SQL to run directly on the database ; The user's saved account password ; Filter values as structured output | 2 | Validate the structure before using it.
+A Canadian customer gets a policy from another country. What is the likely cause? | No region filter was used in search ; The embedding model ignores all countries ; The prompt was too short to name a country | 0 | Metadata filters narrow the candidates to the right region before searching.
 ```
 
 ```story
@@ -424,9 +424,9 @@ paper | Fine-Tuning or Retrieval? Comparing Knowledge Injection in LLMs | https:
 ```
 
 ```quiz
-Your product docs change weekly and the model must answer from them. Best choice? | Fine-tuning every week ; RAG over the documents ; A longer system prompt | 1 | Re-indexing is cheap and keeps answers citable.
-When does fine-tuning make sense? | To teach the model brand new facts ; To avoid having to write evals ; To lock in a style, format or narrow skill | 2 | Fine-tuning is for behavior, not for facts.
-Your assistant needs both a formal tone and up-to-date prices. What fits? | Prompt or tune for tone, RAG for prices ; Fine-tuning for both tone and prices ; RAG for both tone and prices | 0 | They solve different problems and are often combined.
+Your product docs change weekly and the model must answer from them. Best choice? | Fine-tuning the model every week ; RAG over the current documents ; A far longer system prompt | 1 | Re-indexing is cheap and keeps answers citable.
+When does fine-tuning make sense? | To teach the model brand new facts ; To avoid having to write any evals ; To lock in a style or a format | 2 | Fine-tuning is for behavior, not for facts.
+Your assistant needs both a formal tone and up-to-date prices. What fits? | Tune for tone, use RAG for prices ; Fine-tuning for both tone and prices ; RAG for both tone and for prices | 0 | They solve different problems and are often combined.
 ```
 
 ```story
@@ -462,9 +462,9 @@ docs | DeepEval docs | https://deepeval.com/docs/introduction | Confident AI | T
 ```
 
 ```quiz
-The right answer ranks 1st, 4th and 2nd for three questions. What is the MRR? | About 2.33 ; About 0.58 ; About 0.25 | 1 | (1 + 0.25 + 0.5) / 3 is about 0.58.
-Why evaluate retrieval separately from generation? | It is required by the vector database ; It makes the model answer faster ; To know which stage to fix | 2 | A wrong answer can come from either, and the fix differs.
-You change the chunk size and the reranker at once and recall rises. What is the problem? | You cannot tell which change helped ; Recall cannot be measured twice ; Rerankers hide the chunk size effect | 0 | Change one thing at a time so you know what to keep.
+The right answer ranks 1st, 4th and 2nd for three questions. What is the MRR? | About 2.33 ; About 0.6 ; About 0.25 | 1 | (1 + 0.25 + 0.5) / 3 is about 0.58.
+Why evaluate retrieval separately from generation? | Because the vector database requires it ; Because it makes the model answer faster ; Because it shows which stage to fix | 2 | A wrong answer can come from either, and the fix differs.
+You change the chunk size and the reranker at once and recall rises. What is the problem? | You cannot tell which change did it ; Recall cannot be measured after two changes ; Rerankers always hide the chunk size effect | 0 | Change one thing at a time so you know what to keep.
 ```
 
 ```story

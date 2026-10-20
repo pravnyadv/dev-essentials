@@ -31,9 +31,9 @@ article | Artificial intelligence: a brief history | https://ourworldindata.org/
 ```
 
 ```quiz
-Why did interest in neural networks fall after 1969? | Governments banned research on neural networks that year ; Single-layer perceptrons cannot learn simple functions like XOR ; Computers became too fast for neural networks to use | 1 | The analysis showed a hard limit of single-layer perceptrons. Multi-layer networks trained with backpropagation came later.
-What separates symbolic AI from the learning approach? | Symbolic systems need data but learning systems do not ; Learning systems were invented before symbolic ones ; Symbolic follows written rules, learning fits data | 2 | Symbolic systems encode knowledge by hand. Learning systems extract it from data.
-A team writes 5,000 rules to catch spam and spammers keep finding gaps. Which idea would help most? | Train a model on many labelled spam emails ; Write 5,000 more rules and ban more words ; Make every rule stricter than the last | 0 | A learning system finds patterns that no person thought to write down, so it can keep up as spam changes.
+Why did interest in neural networks fall after 1969? | Hardware makers stopped building chips for networks ; Governments banned neural network research that year ; Perceptrons were proved unable to learn XOR | 2 | The analysis showed a hard limit of single-layer perceptrons. Multi-layer networks trained with backpropagation came later.
+What separates symbolic AI from the learning approach? | Symbolic uses written rules, learning fits data ; Symbolic needs training data, learning uses fixed rules ; Learning systems were invented before symbolic ones | 0 | Symbolic systems encode knowledge by hand. Learning systems extract it from data.
+A team writes 5,000 rules to catch spam and spammers keep finding gaps. Which idea would help most? | Add 5,000 more rules covering banned words ; Train a model on labelled spam emails ; Make each rule stricter than the one before | 1 | A learning system finds patterns that no person thought to write down, so it can keep up as spam changes.
 ```
 
 ```story
@@ -72,9 +72,9 @@ book | The Hundred-Page Machine Learning Book | https://themlbook.com/ | Andriy 
 ```
 
 ```quiz
-A spam filter is trained on emails that people labelled as spam or not. What kind of learning is this? | Unsupervised learning ; Supervised learning ; Reinforcement learning | 1 | Labels are the correct answers that the model learns to predict.
-Training accuracy is 99 percent and validation accuracy is 70 percent. What is happening? | The model is underfitting and has learned too little ; The validation set is too easy for the model ; The model is overfitting and memorizing its training data | 2 | A large gap between training and validation scores means the model memorized instead of generalizing.
-You want to predict a house's sale price from its area and age. Which task is this? | Regression, because the answer is a number ; Classification, because there are many houses ; Clustering, because houses are alike | 0 | Predicting a number is regression. Classification picks a category.
+A spam filter is trained on emails that people labelled as spam or not. What kind of learning is this? | Reinforcement learning ; Unsupervised learning ; Supervised learning | 2 | Labels are the correct answers that the model learns to predict.
+Training accuracy is 99 percent and validation accuracy is 70 percent. What is happening? | Underfitting: the model learned too little ; Overfitting: it memorized training data ; Easy test: the validation set is too simple | 1 | A large gap between training and validation scores means the model memorized instead of generalizing.
+You want to predict a house's sale price from its area and age. Which task is this? | Clustering, because houses are alike ; Regression, because the answer is a number ; Classification, because there are many houses | 1 | Predicting a number is regression. Classification picks a category.
 ```
 
 ```story
@@ -110,9 +110,9 @@ paper | Neural Machine Translation by Jointly Learning to Align and Translate | 
 ```
 
 ```quiz
-What changed the field in 2012? | A new programming language made training faster ; A deep GPU network beat hand-built methods ; A famous lab released its very first chatbot | 1 | AlexNet showed that features learned at scale beat hand-designed ones, and the field followed.
+What changed the field in 2012? | A deep GPU network beat hand-built methods ; A new programming language made training faster ; A famous lab released its first chatbot | 0 | AlexNet showed that features learned at scale beat hand-designed ones, and the field followed.
 What does machine learning replace in a program? | The computer's processor, replaced by a faster chip ; The data, replaced by rules chosen by experts ; Hand-written rules, replaced by fitted parameters | 2 | You supply examples and a training algorithm finds the rules.
-Why did graphics cards matter so much for deep learning? | They do thousands of multiplications at once, as networks need ; They store more training data than normal chips ; They make the network's design simpler to write down | 0 | A network is mostly matrix multiplication, and GPUs were built to do many of those at once.
+Why did graphics cards matter so much for deep learning? | They run thousands of multiplications at once ; They store more training data than normal chips ; They make the network design simpler to write | 0 | A network is mostly matrix multiplication, and GPUs were built to do many of those at once.
 ```
 
 ```story
@@ -150,9 +150,9 @@ article | The Illustrated GPT-2 | https://jalammar.github.io/illustrated-gpt2/ |
 ```
 
 ```quiz
-Why did the transformer scale better than earlier language models? | It uses far fewer parameters than older models ; It trains on all tokens in parallel, which suits GPUs ; It does not need large amounts of training data | 1 | Parallel training made it practical to build much larger models on much more data.
-What did GPT-3 show? | Models must be fine-tuned for every new task ; Attention turned out to be unnecessary for language ; A big enough model can learn tasks from examples in the prompt | 2 | In-context learning is why prompting became a useful skill.
-BERT hides a word in the middle of a sentence and guesses it. GPT guesses the next word. Which is better for writing text? | GPT, because predicting the next word is writing ; BERT, because it sees words on both sides ; They are equally suited to writing text | 0 | Generating text means predicting what comes next, which is exactly GPT's training task.
+Why did the transformer scale better than earlier language models? | It uses far fewer parameters than older models ; It trains on all tokens in parallel on GPUs ; It needs far less training data than older ones | 1 | Parallel training made it practical to build much larger models on much more data.
+What did GPT-3 show? | Models must be fine-tuned for every new task ; Attention proved unnecessary for language models ; Big models can learn tasks from prompt examples | 2 | In-context learning is why prompting became a useful skill.
+BERT hides a word in the middle of a sentence and guesses it. GPT guesses the next word. Which is better for writing text? | GPT, because next-word prediction is writing ; BERT, because it reads words on both sides of a gap ; Both equally, because both learn to predict words | 0 | Generating text means predicting what comes next, which is exactly GPT's training task.
 ```
 
 ```story
@@ -191,9 +191,9 @@ article | Scaling laws | https://epoch.ai/blog/scaling-laws-literature-review | 
 ```
 
 ```quiz
-Loss follows L = (Nc/N)^0.07. What happens to loss when N grows 10 times? | It drops to half its value ; It drops about 15 percent ; It stays about the same | 1 | 10 to the power -0.07 is about 0.85, so loss falls by roughly 15 percent.
-What is Chinchilla's rule of thumb? | About 1 training token for each parameter ; Parameters matter and data does not ; About 20 training tokens for each parameter | 2 | Compute-optimal training balances model size with the amount of training data.
-A lab has a fixed budget and trains a huge model on very little data. What does Chinchilla suggest? | A smaller model on more data would likely do better ; The model should have been even larger ; The budget should be spent on a longer prompt | 0 | Many large models were undertrained: size and data should grow together.
+Loss follows L = (Nc/N)^0.07. What happens to loss when N grows 10 times? | It falls by a factor of ten ; It drops to half its value ; It drops about 15 percent | 2 | 10 to the power -0.07 is about 0.85, so loss falls by roughly 15 percent.
+What is Chinchilla's rule of thumb? | About 1 training token for each parameter ; About 20 training tokens for each parameter ; About 200 training tokens for each parameter | 1 | Compute-optimal training balances model size with the amount of training data.
+A lab has a fixed budget and trains a huge model on very little data. What does Chinchilla suggest? | A smaller model with more data would do better ; A bigger model with the same data would do better ; A longer prompt at answer time would do better | 0 | Many large models were undertrained: size and data should grow together.
 ```
 
 ```story
@@ -231,9 +231,9 @@ article | State of AI | https://www.stateof.ai/ | Air Street Capital | Yearly fr
 ```
 
 ```quiz
-What turned GPT-3 into ChatGPT? | A much larger model with no other changes ; Instruction tuning with feedback plus a chat interface ; A new architecture that replaced the transformer | 1 | Post-training made the model follow instructions, and the interface made it usable by anyone.
-What is test-time compute? | Running the same model on faster chips ; Testing the code that the model wrote ; Spending extra tokens thinking before it answers | 2 | Reasoning models trade latency and cost for accuracy on hard problems.
-Two labs release models in the same month. How should a company decide which to use? | Test both on its own examples before choosing ; Pick whichever one the news covers more ; Pick the one with the biggest parameter count | 0 | Models differ in quality, speed and price, so your own examples decide.
+What turned GPT-3 into ChatGPT? | A model 100 times larger with no other changes ; Feedback-based tuning and a chat interface ; A new architecture that replaced the transformer | 1 | Post-training made the model follow instructions, and the interface made it usable by anyone.
+What is test-time compute? | Running the same model on faster cloud hardware ; Running unit tests on the code the model wrote ; Extra tokens spent thinking before answering | 2 | Reasoning models trade latency and cost for accuracy on hard problems.
+Two labs release models in the same month. How should a company decide which to use? | Test both on its own examples before choosing ; Pick whichever model the news covers more ; Pick the model with the largest parameter count | 0 | Models differ in quality, speed and price, so your own examples decide.
 ```
 
 ```story
@@ -273,7 +273,7 @@ article | Start AI Engineering in 2026 | https://github.com/louisfb01/start-ai-e
 ```quiz
 How does an AI engineer differ from an ML engineer? | AI engineers never write code, ML engineers always do ; AI engineers build on models, ML engineers train them ; AI engineers work only on images, ML engineers on text | 1 | The first builds systems around existing models. The second trains models.
 Why not design a product around AGI? | It is illegal to build products with it ; It has already been fully achieved ; It has no agreed definition or test | 2 | Design around measured behavior on your own task today.
-You are starting out and the field changes every month. What is the best first step? | Build one small project and test how it fails ; Wait until the tools settle down ; Read every new paper before writing any code | 0 | Building something small teaches more than waiting, and the habits carry over.
+You are starting out and the field changes every month. What is the best first step? | Build a small project and see how it fails ; Wait until the tools stop changing so fast ; Read every new paper before writing any code | 0 | Building something small teaches more than waiting, and the habits carry over.
 ```
 
 ```story

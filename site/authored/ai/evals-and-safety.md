@@ -27,9 +27,9 @@ repo | promptfoo | https://github.com/promptfoo/promptfoo | promptfoo | Open-sou
 ```
 
 ```quiz
-Why is "it worked in the demo" weak evidence? | Demos are always slower than real use ; Demos use different models from production ; It shows one success, not how often it works | 2 | Reliability needs a set of examples and a pass rate.
-Which kind of check should you prefer when you can? | Code-based checks, which are cheap and exact ; Model-graded checks, which are flexible ; Human review of every output | 0 | Deterministic checks are fast and unambiguous. Save judgment for what code cannot check.
-You change a prompt and answers look better in three tries. What should you do before shipping? | Ship it, since three tries is enough ; Run your test set and compare pass rates ; Ask the model if the new prompt is better | 1 | A fixed set shows whether the change helps across cases, not just the ones you tried.
+Why is "it worked in the demo" weak evidence? | It shows one success, not a pass rate ; Demos always run slower than real use ; Demos use other models than production | 0 | Reliability needs a set of examples and a pass rate.
+Which kind of check should you prefer when you can? | Model grading, which is flexible ; Code checks, which are exact ; Human review, which is thorough | 1 | Deterministic checks are fast and unambiguous. Save judgment for what code cannot check.
+You change a prompt and answers look better in three tries. What should you do before shipping? | Ship it, since three tries is enough ; Ask the model if the new prompt is better ; Run a test set and compare pass rates | 2 | A fixed set shows whether the change helps across cases, not just the ones you tried.
 ```
 
 ```story
@@ -62,9 +62,9 @@ article | Demystifying evals for AI agents | https://www.anthropic.com/engineeri
 ```
 
 ```quiz
-Which kind of eval is exact, free and fast? | Model-based grading with a rubric ; Human review of each output ; Deterministic checks in code | 2 | Code checks have no ambiguity or cost.
-Why label some data by hand? | To calibrate the model judge against people ; To train the model on the labelled data ; To make the whole test set larger | 0 | The judge is only as good as its agreement with humans.
-A summary must name every attendee. Which check is cheapest and exact? | A model judge reading the summary ; A code check that looks for each name ; A manager reading every summary | 1 | When the rule is exact, test it in code.
+Which kind of eval is exact, free and fast? | Deterministic checks in code ; Model-based grading with a rubric ; Human review of each output | 0 | Code checks have no ambiguity or cost.
+Why label some data by hand? | To train the model on the labels ; To check the judge against people ; To make the test set bigger | 1 | The judge is only as good as its agreement with humans.
+A summary must name every attendee. Which check is cheapest and exact? | A model judge scoring each one ; A manager reading each summary ; A code check for each name | 2 | When the rule is exact, test it in code.
 ```
 
 ```story
@@ -96,9 +96,9 @@ repo | Arize Phoenix | https://github.com/Arize-ai/phoenix | Arize | Open-source
 ```
 
 ```quiz
-What is a trace? | A single summary score for the whole run ; A bug report written by a user ; The full record of one run, step by step | 2 | You read traces to see how a run went wrong.
-What do you do with failure categories? | Count them, fix the biggest, turn each into a test ; Report them to the vendor and wait for a fix ; Ignore both the small ones and the large ones | 0 | Counting directs effort and the categories become tests.
-After reading 50 traces you see 17 "old policy", 11 "wrong tool" and 9 "ignored filter". What do you fix first? | The wrong-tool failures ; The stale policy documents ; The ignored filter, since it is newest | 1 | Fix the biggest category first. Here that is the old policy.
+What is a trace? | A step-by-step record of one run ; One summary score for the whole run ; A bug report written by a user | 0 | You read traces to see how a run went wrong.
+What do you do with failure categories? | Send them to the vendor and wait ; Count them, fix the biggest first ; Fix the most recent one, then stop | 1 | Counting directs effort and the categories become tests.
+After reading 50 traces you see 17 "old policy", 11 "wrong tool" and 9 "ignored filter". What do you fix first? | The wrong-tool failures ; The ignored-filter failures ; The old-policy failures | 2 | Fix the biggest category first. Here that is the old policy.
 ```
 
 ```story
@@ -130,9 +130,9 @@ repo | OpenAI Evals | https://github.com/openai/evals | OpenAI | Framework and r
 ```
 
 ```quiz
-How do you know your judge is any good? | It sounds confident in its verdicts ; It is a large, expensive model ; It agrees with human labels on a sample | 2 | Validate the grader against human judgments before trusting its scores.
-Why prefer pass or fail to a 1 to 10 score? | It is clearer, easier to act on and less noisy ; It is cheaper per token than a number scale ; Models cannot output numbers at all | 0 | Narrow binary criteria give a clearer signal.
-The judge and the writer are the same model. What bias should you expect? | Strictness about every small mistake ; Leniency toward its own style of answer ; No bias, since they agree on facts | 1 | Models tend to favor their own outputs, so use a different judge and spot-check.
+How do you know your judge is any good? | It matches human labels on a sample ; It sounds confident in its verdicts ; It is a large, expensive model | 0 | Validate the grader against human judgments before trusting its scores.
+Why prefer pass or fail to a 1 to 10 score? | It costs fewer tokens than a number ; Each verdict is clear and less noisy ; Models cannot output numbers at all | 1 | Narrow binary criteria give a clearer signal.
+The judge and the writer are the same model. What bias should you expect? | Strictness about every small mistake ; No bias, since they agree on facts ; Leniency toward its own answers | 2 | Models tend to favor their own outputs, so use a different judge and spot-check.
 ```
 
 ```story
@@ -164,9 +164,9 @@ tool | SWE-bench | https://www.swebench.com/ | Princeton NLP | Real GitHub issue
 ```
 
 ```quiz
-Why run each agent task several times? | To use up the free token allowance each month ; To warm the provider's cache before launch ; Agents vary run to run, so you need a pass rate | 2 | One run can pass or fail by luck.
-What does trajectory evaluation catch that output evaluation can miss? | Right answers reached by skipping checks or unsafe steps ; Final answers that are plainly and simply wrong ; Answers that are slow to arrive for the user | 0 | The path matters when the result cannot be fully verified.
-An agent makes the tests pass by deleting the failing test. What kind of eval spots this? | A check that the final message sounds sure ; A path check that flags edits to test files ; A latency measurement | 1 | The outcome passes, but a trajectory check shows what the agent did.
+Why run each agent task several times? | Runs vary, so a pass rate is needed ; Free tokens expire at the end of month ; The provider's cache needs warming | 0 | One run can pass or fail by luck.
+What does trajectory evaluation catch that output evaluation can miss? | Final answers that are clearly incorrect ; Answers that take too long to arrive ; Right answers reached by unsafe steps | 2 | The path matters when the result cannot be fully verified.
+An agent makes the tests pass by deleting the failing test. What kind of eval spots this? | A tone check on the final message ; A path check on test file edits ; A latency check on each response | 1 | The outcome passes, but a trajectory check shows what the agent did.
 ```
 
 ```story
@@ -202,8 +202,8 @@ repo | OpenAI Evals | https://github.com/openai/evals | OpenAI | A framework and
 
 ```quiz
 What is a good rule for merging a prompt change? | It feels better on a handful of examples ; It makes the prompt noticeably shorter ; The suite stays above a set threshold | 2 | A fixed threshold makes the decision objective.
-Why run each case several times? | Outputs vary, so one failure may be noise ; Repeated runs warm up the provider's cache ; It reduces the cost for each call | 0 | Compare pass rates, not single outcomes.
-A provider retires your model version next month. What is the safe approach? | Switch on the retirement date and watch complaints ; Run the full suite on the new version before switching ; Wait until users report errors | 1 | Treat a model version change like a library upgrade and test it first.
+Why run each case several times? | Outputs vary, so one failure may be noise ; Repeated runs warm up the provider's cache ; Later runs are cheaper than the first | 0 | Compare pass rates, not single outcomes.
+A provider retires your model version next month. What is the safe approach? | Switch on the retirement date and hope ; Run your suite on the new version ; Wait until users start reporting errors | 1 | Treat a model version change like a library upgrade and test it first.
 ```
 
 ```story
@@ -236,9 +236,9 @@ docs | Arize docs | https://arize.com/docs/ax | Arize | Production observability
 ```
 
 ```quiz
-Why tag runs with prompt and model versions? | To make the logs smaller to store ; To hide errors from the users ; To compare behavior across changes | 2 | Without versions you cannot tell which change caused a difference.
-What is a privacy risk of tracing? | Traces store user data, so redact and limit retention ; Traces make the models slower for users ; Traces are public by default on every platform | 0 | Redact sensitive data and set a retention period.
-Cost jumps from $40 to $210 in a day. Which step finds the cause fastest? | Switch to a cheaper model first and wait ; Sort that day's traces by tokens, open the top ; Wait and see if it repeats tomorrow | 1 | Traces show the expensive run and exactly what it did.
+Why tag runs with prompt and model versions? | To compare runs across changes ; To shrink the logs you must store ; To hide errors from the users | 0 | Without versions you cannot tell which change caused a difference.
+What is a privacy risk of tracing? | Traces slow the model for end users ; Traces hold user data, so redact it ; Traces are public on most platforms | 1 | Redact sensitive data and set a retention period.
+Cost jumps from $40 to $210 in a day. Which step finds the cause fastest? | Switch to a cheaper model and watch ; Wait to see if it repeats tomorrow ; Sort that day's traces by token count | 2 | Traces show the expensive run and exactly what it did.
 ```
 
 ```story
@@ -269,9 +269,9 @@ article | Building effective agents | https://www.anthropic.com/engineering/buil
 ```
 
 ```quiz
-What should you always be able to do on any model call? | Hide the prompt from logs ; Skip logging to save space ; Print exactly what the model saw | 2 | Owning the context makes bugs findable.
-When is a framework risky? | When it hides the prompt and the loop ; When it happens to be open source ; When it supports a great many models | 0 | Hidden prompts and control flow make failures harder to diagnose.
-A bug appears and the framework builds the prompt internally. What is the first step? | Rewrite the whole app in another framework ; Print the exact messages sent on that call ; Lower the temperature | 1 | You need to see what the model saw before you can reason about the bug.
+What should you always be able to do on any model call? | Print exactly what the model saw ; Hide the prompt text from your logs ; Skip logging to save storage space | 0 | Owning the context makes bugs findable.
+When is a framework risky? | When it happens to be open source ; When it hides the prompt and loop ; When it supports many different models | 1 | Hidden prompts and control flow make failures harder to diagnose.
+A bug appears and the framework builds the prompt internally. What is the first step? | Rewrite the app in another framework ; Switch to a larger model and retry ; Print the messages sent on that call | 2 | You need to see what the model saw before you can reason about the bug.
 ```
 
 ```story
@@ -300,9 +300,9 @@ course | Prompt Injection Attacks | https://learnprompting.org/docs/prompt_hacki
 ```
 
 ```quiz
-Which combination makes an agent dangerous? | Private data, untrusted content and a way to send data out ; A large context window together with fast responses ; Tools together with a long system prompt ; Streaming output together with detailed logs | 0 | With all three, injected text can exfiltrate private data.
+Which combination makes an agent dangerous? | A large context window with fast, cheap responses ; Many tools combined with a long system prompt ; Streaming output combined with detailed logging ; Private data, untrusted text, and a send channel | 3 | With all three, injected text can exfiltrate private data.
 What is the best first defense? | Write a stronger and longer system prompt ; Raise the model's temperature a little ; Remove one leg and limit permissions | 2 | Prompts cannot guarantee safety. Architecture can.
-An email assistant can read your inbox and send mail. A stranger's email says to forward your messages. What stops it? | Requiring your approval before any message is sent ; Telling the model to ignore strangers in the prompt ; Using a larger model | 0 | A human approval step removes the exfiltration path.
+An email assistant can read your inbox and send mail. A stranger's email says to forward your messages. What stops it? | A prompt line that says ignore strangers ; Your approval before any mail is sent ; Switching to a larger, newer model | 1 | A human approval step removes the exfiltration path.
 ```
 
 ```story
@@ -332,7 +332,7 @@ article | Fairness and machine learning | https://fairmlbook.org/ | Barocas, Har
 
 ```quiz
 You want to check a resume screener for bias. What is the most direct test? | Ask the model whether it thinks it is biased ; Swap names in identical resumes and compare ; Check that the prompt contains the word fair ; Measure how fast each resume is processed | 1 | Counterfactual tests change one attribute at a time, so any difference in the score is caused by it.
-Overall accuracy is 94 percent. Why can the screener still be unfair? | Accuracy and fairness are exactly the same measure ; A high score proves that there is no bias ; The errors may fall on one group, which an average hides ; Averages are only ever used for images | 2 | A good average can hide large gaps between groups, so results must be compared by group.
+Overall accuracy is 94 percent. Why can the screener still be unfair? | Accuracy and fairness are the same measure ; A score that high proves there is no bias ; The average can hide one group's errors ; Averages are only ever used for image tasks | 2 | A good average can hide large gaps between groups, so results must be compared by group.
 Who should own a high-stakes decision such as hiring? | The model, since it is always consistent ; The user who happened to ask the question ; Whoever wrote the original prompt ; A person who can review and override it | 3 | A model can inform a decision, but a person should stay accountable for outcomes that change lives.
 ```
 
@@ -362,9 +362,9 @@ repo | NeMo Guardrails | https://github.com/NVIDIA/NeMo-Guardrails | NVIDIA | Pr
 ```
 
 ```quiz
-Why send an end-user identifier with each request to the provider? | Misuse can be traced to one single account ; It improves the quality of every answer ; Every provider requires it on every request ; It lowers the price for each token | 0 | If abuse comes from one user, the provider and you can act on that account without blocking everyone.
+Why send an end-user identifier with each request to the provider? | Abuse can be traced to a single user ; It improves the quality of every answer ; Every provider requires it on every request ; It lowers the price for each token | 0 | If abuse comes from one user, the provider and you can act on that account without blocking everyone.
 A red-team prompt gets past your safeguards. What should you do with it? | Delete the prompt so nobody else sees it ; Fix it and add the prompt to your test set ; Ignore it, since real users will not try it ; Raise the model's temperature a little | 1 | Adding each success to the test set makes sure the same attack cannot quietly return.
-Where should the rules that must never break live? | In the system prompt and nowhere else ; In the model's temperature setting ; In code and permissions, not just the prompt ; In the wording of the interface text | 2 | A prompt can be overridden. Enforced rules in code and permissions cannot be talked around.
+Where should the rules that must never break live? | In the system prompt and nowhere else ; In the model's temperature setting ; In permissions and code checks ; In the wording of the interface text | 2 | A prompt can be overridden. Enforced rules in code and permissions cannot be talked around.
 ```
 
 ```story

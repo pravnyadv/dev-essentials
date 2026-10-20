@@ -19,9 +19,9 @@ docs | Prompt engineering overview | https://docs.anthropic.com/en/docs/build-wi
 ```
 
 ```quiz
-Which prompt helps you learn the most? | Write my full homework answers in my own style ; Summarize the chapter in one line so I can skip reading ; Give me only the final results of each problem ; Explain it with an example, then quiz me and grade my answers | 3 | Explaining, then testing and grading you, makes you do the thinking. The others skip it.
-You wrote an essay draft. What is a strong thing to ask a model? | What is the weakest argument here, and why? ; Please make this essay sound smarter overall ; Rewrite it completely in a different voice ; Tell me it is great so I can submit it | 0 | Asking for the weakest part uses the model as a critic and keeps the writing yours.
-A model gives a confident answer you cannot check. What is the sensible next step? | Trust it, since confident answers are usually right ; Verify the key facts with another source before relying on it ; Ask the same question again and pick the longer reply ; Add the word please to the question next time | 1 | Confidence is not evidence. Check anything that matters against something independent.
+Which prompt helps you learn the most? | Write my full homework answers in my own style ; Summarize the chapter in one line so I can skip reading ; Give me only the final results of each problem ; Explain it, then quiz me and grade my answers | 3 | Explaining, then testing and grading you, makes you do the thinking. The others skip it.
+You wrote an essay draft. What is a strong thing to ask a model? | What is the weakest argument here, and why? ; Please make this essay sound smarter overall ; Rewrite the whole thing in a different voice ; Tell me it is great so I can hand it in | 0 | Asking for the weakest part uses the model as a critic and keeps the writing yours.
+A model gives a confident answer you cannot check. What is the sensible next step? | Trust it, since confident answers are usually right ; Check the key facts against another source first ; Ask again and keep whichever reply is longer ; Add the word please to the question next time | 1 | Confidence is not evidence. Check anything that matters against something independent.
 ```
 
 ```story
@@ -53,8 +53,8 @@ course | Calling Bullshit | https://www.callingbullshit.org/ | Bergstrom and Wes
 
 ```quiz
 A model gives you a citation. What is the best first check? | Assume it is real because it includes a year ; Ask the model whether the source is real ; Find the source and confirm it says that ; Count how many authors the citation lists | 2 | Invented citations look real. Only finding the actual source proves it exists.
-How much checking does a question about medicine or law deserve? | A quick glance, since models are trained on expert text ; None, if the model sounds sure ; Only a spelling check ; A lot, using authoritative sources or a professional | 3 | The higher the stakes, the more independent verification you need.
-You ask a model "are you sure?" and it says yes. What have you learned? | Very little, it checked nothing outside itself ; That the answer has now been verified ; That it consulted a second source ; That its confidence is well calibrated | 0 | Models often agree or flip when asked. Verification has to come from an outside source.
+How much checking does a question about medicine or law deserve? | A quick glance, since models train on expert text ; None, if the model sounds completely sure ; Only a spelling check on the names involved ; A lot, with expert sources or a professional | 3 | The higher the stakes, the more independent verification you need.
+You ask a model "are you sure?" and it says yes. What have you learned? | Very little, it never looked outside itself ; That the answer has now been double-checked ; That it looked up a second source to confirm ; That its confidence level is well calibrated | 0 | Models often agree or flip when asked. Verification has to come from an outside source.
 ```
 
 ```story
@@ -83,9 +83,9 @@ article | AI Risk Management Framework | https://www.nist.gov/itl/ai-risk-manage
 ```
 
 ```quiz
-Which of these should you keep out of a chat with an AI service? | A request for a chicken recipe ; Passwords, ID numbers and others' private details ; A question about how volcanoes form ; A draft of a poem you wrote yourself | 1 | Credentials, identity numbers and private information about others are risky to share, whatever the provider promises.
-You want help rewording a customer email. What is a safe way to do it? | Paste the real email and hope for the best ; Post it in a public forum for advice ; Swap names and numbers for placeholders first ; Send it through a free translation app first | 2 | Redacting the details loses nothing the model needs and keeps the sensitive parts with you.
-Where do you find out whether a service uses your chats to train its models? | The name of the app you happen to use ; The color of the logo on the home screen ; The number of users the service has ; The current privacy policy and your settings page | 3 | Policies differ by service and plan and they change, so the current policy and your settings are the source of truth.
+Which of these should you keep out of a chat with an AI service? | A request for a simple chicken recipe with rice ; Passwords, ID numbers, private data of others ; A question about how volcanoes actually form ; A draft of a short poem you wrote yourself | 1 | Credentials, identity numbers and private information about others are risky to share, whatever the provider promises.
+You want help rewording a customer email. What is a safe way to do it? | Paste the real email and hope for the best ; Post it in a public forum and ask for edits ; Replace names and numbers with placeholders ; Send it through a free translation app first | 2 | Redacting the details loses nothing the model needs and keeps the sensitive parts with you.
+Where do you find out whether a service uses your chats to train its models? | The name of the app you happen to be using ; The color of the logo on the home screen ; The number of users the service has signed up ; The current privacy policy and your settings | 3 | Policies differ by service and plan and they change, so the current policy and your settings are the source of truth.
 ```
 
 ```story
@@ -114,9 +114,9 @@ article | One Useful Thing | https://www.oneusefulthing.org/ | Ethan Mollick | P
 ```
 
 ```quiz
-What is a good test of whether you used AI to learn or to skip learning? | You can explain every part without the chat open ; The assignment was submitted on time ; The answer scored well on a detector ; The reply was longer than the question | 0 | If you can explain and redo the work yourself, you learned it. If not, you only borrowed it.
-Why is it risky to accuse someone based on an AI detector? | Detectors are always right but quite slow ; Detectors are unreliable and can flag honest work ; The law forbids using such tools at all ; They only work properly on short texts | 1 | Evidence shows high error rates, so a flag alone is not proof.
-Your school has no clear rule for an assignment. What should you do? | Use it and say nothing ; Avoid reading the policy ; Ask your teacher before you use it ; Ask the AI whether it is allowed | 2 | The person who set the assignment decides what is fair. Asking first protects you.
+What is a good test of whether you used AI to learn or to skip learning? | You can explain it all with the chat closed ; The assignment was handed in before the deadline ; The answer scored well on an AI-text detector ; The reply was much longer than your question | 0 | If you can explain and redo the work yourself, you learned it. If not, you only borrowed it.
+Why is it risky to accuse someone based on an AI detector? | Detectors are always right but take hours to run ; Detectors often err and can flag honest work ; The law forbids schools from using such tools ; They only work properly on very short texts | 1 | Evidence shows high error rates, so a flag alone is not proof.
+Your school has no clear rule for an assignment. What should you do? | Use it quietly and say nothing to anyone ; Skip the policy and assume it is fine ; Ask your teacher before you use it ; Ask the AI itself whether it is allowed | 2 | The person who set the assignment decides what is fair. Asking first protects you.
 ```
 
 ```story
@@ -145,9 +145,9 @@ article | Scammers use AI to enhance their family emergency schemes | https://co
 ```
 
 ```quiz
-You get an urgent voice message from a relative asking for money. What do you do? | Send the money fast because the voice sounds right ; Reply to the message and ask for proof ; Wait to see if a second message arrives ; Call back on a number you already know first | 3 | A cloned voice can sound perfect, so verify through a separate channel you already trust.
-In the US, who can hold copyright in an image made entirely by an AI? | Generally no one, since it lacks human authorship ; The company that built the model, in every case ; The first person to post it online ; Whoever wrote the best prompt | 0 | The US Copyright Office requires human authorship, so purely AI output is not protected, though human contributions can be.
-A video has no Content Credentials label. What does that tell you? | That it is definitely fake, with no doubt ; Very little, labels are often missing or stripped ; That it is definitely real, with no doubt ; That it was recorded by a physical camera | 1 | The standard helps when present, but most media do not have it, and it can be removed.
+You get an urgent voice message from a relative asking for money. What do you do? | Send the money fast because the voice sounds right ; Reply to that same message and ask for proof ; Wait a day to see if a second message comes ; Call back on a number you already know first | 3 | A cloned voice can sound perfect, so verify through a separate channel you already trust.
+In the US, who can hold copyright in an image made entirely by an AI? | Generally no one, as it lacks a human author ; The company that built the model, in every case ; The first person who posts it on the internet ; Whoever wrote the most detailed prompt for it | 0 | The US Copyright Office requires human authorship, so purely AI output is not protected, though human contributions can be.
+A video has no Content Credentials label. What does that tell you? | That it is definitely fake, with no doubt ; Very little, labels are often missing ; That it is definitely real, with no doubt ; That it was recorded by a physical camera | 1 | The standard helps when present, but most media do not have it, and it can be removed.
 ```
 
 ```story
