@@ -16,8 +16,9 @@ import { usePathname } from 'next/navigation';
 
 export default function DefaultSearchDialog(props: SharedProps) {
   const { locale } = useI18n(); // (optional) for i18n
-  // Each track has its own index.
-  const track = usePathname().startsWith('/ai') ? 'ai' : 'dsa';
+  // Each track has its own index at /api/search/<track>; the landing page searches DSA.
+  const first = usePathname().split('/')[1];
+  const track = ['ai', 'sd'].includes(first) ? first : 'dsa';
   const search = useStaticSearch({
     from: `/api/search/${track}`,
     locale,

@@ -2,8 +2,8 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const dir = new URL('../authored/ai/', import.meta.url).pathname
-export function readLessons() {
+export function readLessons(track) {
+  const dir = new URL(`../authored/${track}/`, import.meta.url).pathname
   const out = []
   for (const f of readdirSync(dir).filter(f => f.endsWith('.md'))) {
     const text = readFileSync(join(dir, f), 'utf8')

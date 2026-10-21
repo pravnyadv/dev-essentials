@@ -7,7 +7,7 @@ import { Bar } from './ui.jsx'
 
 const line = 'fill-none stroke-current'
 
-// A small drawing per track, in currentColor: an array with a pointer for DSA, a layered network for AI.
+// A small drawing per track, in currentColor: an array with a pointer for DSA, a layered network for AI, servers for System Design.
 const ArrayArt = () => (
   <svg viewBox="0 0 240 100" className="h-full w-full" aria-hidden>
     {[0, 1, 2, 3, 4].map(i => <rect key={i} x={22 + i * 40} y="40" width="34" height="34" rx="7" strokeWidth="1.5" className={i === 3 ? 'fill-current' : `${line} opacity-40`} />)}
@@ -24,7 +24,20 @@ const NetworkArt = () => (
   </svg>
 )
 
-const ART = { array: ArrayArt, network: NetworkArt }
+// Clients, a load balancer, three servers and a database.
+const ServersArt = () => (
+  <svg viewBox="0 0 240 100" className="h-full w-full" aria-hidden>
+    {[30, 70].map(y => <line key={y} x1="36" y1={y} x2="84" y2="50" className={`${line} opacity-25`} strokeWidth="1" />)}
+    {[22, 50, 78].map(y => <line key={y} x1="100" y1="50" x2="136" y2={y} className={`${line} opacity-25`} strokeWidth="1" />)}
+    {[22, 50, 78].map(y => <line key={y} x1="164" y1={y} x2="196" y2="50" className={`${line} opacity-25`} strokeWidth="1" />)}
+    {[30, 70].map(y => <circle key={y} cx="28" cy={y} r="7" strokeWidth="1.5" className="fill-fd-card stroke-current" />)}
+    <rect x="84" y="40" width="16" height="20" rx="4" strokeWidth="1.5" className="fill-current stroke-current" />
+    {[22, 50, 78].map((y, i) => <rect key={y} x="136" y={y - 9} width="28" height="18" rx="4" strokeWidth="1.5" className={i === 1 ? 'fill-current stroke-current' : 'fill-fd-card stroke-current'} />)}
+    <path d="M196 40 a12 5 0 0 0 24 0 a12 5 0 0 0 -24 0 v20 a12 5 0 0 0 24 0 v-20" strokeWidth="1.5" className="fill-fd-card stroke-current" />
+  </svg>
+)
+
+const ART = { array: ArrayArt, network: NetworkArt, servers: ServersArt }
 
 // Landing page: pick a track and see how far you are in each.
 export default function TrackPicker({ tracks, repoUrl }) {

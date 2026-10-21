@@ -1,13 +1,17 @@
-// Coverage check against the roadmap.sh AI Engineer map: downloads the topic tree and prints only the node titles
-// that do not appear in our lessons. Titles are used as a checklist. roadmap.sh's license forbids reusing its text, so write gaps in your own words.
+// Coverage check against a roadmap.sh map: downloads the topic tree and prints only the node titles that do not
+// appear in a track's lessons. Usage: node scripts/coverage-roadmap.mjs <ai|sd>
+// Titles are used as a checklist. roadmap.sh's license forbids reusing its text, so write gaps in your own words.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const dir = new URL('../content/ai/', import.meta.url).pathname
-const ours = readdirSync(dir, { recursive: true }).filter(f => f.endsWith('.md')).map(f => readFileSync(join(dir, f), 'utf8')).join('\n').toLowerCase()
-// Resource titles live in ai.json, not the page markdown.
-const resources = readFileSync(new URL('../src/generated/ai.json', import.meta.url), 'utf8').toLowerCase()
-const { nodes } = await (await fetch('https://roadmap.sh/ai-engineer.json')).json()
+const ROADMAPS = { ai: 'ai-engineer', sd: 'system-design' }
+const track = process.argv[2]
+if (!ROADMAPS[track]) throw new Error(`usage: coverage-roadmap.mjs <${Object.keys(ROADMAPS).join('|')}>`)
+const dir = new URL(`../content/${track}/`, import.meta.url).pathname
+const ours = readdirSync(dir, { recursive: true }).filter(f => /\.mdx?$/.test(f)).map(f => readFileSync(join(dir, f), 'utf8')).join('\n').toLowerCase()
+// Resource titles live in the generated JSON, not the page markdown.
+const resources = readFileSync(new URL(`../src/generated/${track}.json`, import.meta.url), 'utf8').toLowerCase()
+const { nodes } = await (await fetch(`https://roadmap.sh/${ROADMAPS[track]}.json`)).json()
 const norm = s => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
 const text = norm(ours + resources)
 const labels = [...new Set(nodes.filter(n => ['topic', 'subtopic'].includes(n.type) && n.data.label).map(n => n.data.label.trim()))]

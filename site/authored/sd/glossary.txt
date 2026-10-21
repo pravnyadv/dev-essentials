@@ -1,0 +1,301 @@
+# System Design glossary: term [aliases] | plain-language definition. One line per term.
+202 Accepted [202] | An HTTP status that means the server received the request and will process it later, not that the work is done.
+301 redirect [301] | An HTTP response saying a page has moved permanently, so browsers and caches may remember the new address.
+302 redirect [302] | An HTTP response saying a page has moved temporarily, so clients keep asking the original address.
+ACID | Four promises a transaction makes: atomicity, consistency, isolation and durability.
+acknowledgement [acknowledgements, ack, acks] | A signal from a consumer saying a message was processed, so the broker can delete it.
+active-active | A pair or group of machines that all serve traffic at the same time.
+active-passive | A pair of machines where one serves traffic and a standby takes over only if it fails.
+activity ID | A unique ID given to a request at the edge and passed to every service, so records from different machines can be joined.
+adjacency list [adjacency lists] | A graph stored as, for each node, the list of its neighbors, for example a person and their friend ids.
+alert fatigue | When people get so many pages that they start ignoring them, and a real incident is missed.
+ambassador [ambassadors] | A helper proxy next to a client that sends its network calls and adds retries, TLS and monitoring.
+anti-corruption layer [anti-corruption layers, ACL] | A translation layer that lets a new system talk to an old one without adopting the old system's data model.
+antipattern [antipatterns] | A common fix or habit that looks sensible but causes problems, especially under heavy load.
+API gateway [API gateways, gateway] | A reverse proxy for APIs that also handles login checks, rate limits, routing and request combining.
+at-least-once | A delivery guarantee: nothing is lost, but a message may arrive more than once.
+authentication | Proving who you are.
+authorization | Deciding what an identified user is allowed to do.
+autoscaling [autoscale, autoscaling group] | Automatically adding or removing servers based on a schedule or a metric such as CPU, within a minimum and maximum size.
+availability [uptime] | The share of time a service works and can answer requests, usually written as a percentage.
+availability zone [availability zones, zone, zones, AZ, AZs] | A separate data centre building inside a cloud region, with its own power and network.
+B-tree [B-trees] | A balanced, wide search tree used by most database indexes.
+back pressure | Pushing overload back to senders, for example by rejecting requests when a queue is full.
+backend for frontend [backends for frontends, BFF, BFFs] | A separate backend built for one kind of client, such as the phone app, and owned by the team that builds that client.
+BASE | A summary of NoSQL behavior: basically available, soft state, eventually consistent.
+base62 [Base 62] | An encoding that uses 62 symbols (0 to 9, a to z, A to Z) to write a number as a short URL-safe string.
+baseline | The normal level of a metric under typical load, used to judge whether a new value is good or bad.
+batch job [batch jobs, batch processing] | Work done on a large set of data on a schedule, such as every hour, rather than one request at a time.
+bidirectional search | Running a graph search from both the start and the target at once and stopping where they meet, which touches far fewer nodes.
+blast radius | How much of a system or how many customers are affected when one thing fails.
+Bloom filter [Bloom filters] | A compact structure that says a value is definitely new or probably seen, with no false negatives.
+breadth-first search [BFS] | A way to explore a graph in rings of distance: start node, then its neighbors, then their neighbors, using a queue. It finds shortest paths when edges are unweighted.
+broker [brokers, message broker] | The server that stores messages and hands them to consumers, such as RabbitMQ or Kafka.
+bulkhead [bulkheads] | Separate resource pools for each dependency, so one failure cannot use up everything.
+burn rate | How fast the error budget is being used, as the observed error rate divided by the error rate the SLO allows.
+Busy Database | An antipattern where the database spends its time running code such as formatting and business rules instead of storing and fetching data.
+Busy Front End | An antipattern where the web tier does heavy work, often on background threads, and starves ordinary user requests.
+cache [caches, caching] | A small, fast store that keeps copies of data so most requests do not reach the slower source.
+cache hit [hit, hits] | A request whose answer was found in the cache.
+cache invalidation [invalidation] | Removing or updating cache entries when the underlying data changes.
+cache key | The value, usually the URL plus chosen headers, that a cache uses to decide whether two requests want the same thing.
+cache miss [miss, misses] | A request whose answer was not in the cache, so the slower source must be used.
+cache stampede [thundering herd, stampede, stampedes] | Many requests missing on the same key at once and all rebuilding it, overloading the source.
+cache-aside [lazy loading] | A pattern where the application checks the cache, loads from the database on a miss, and fills the cache itself.
+cascading failure [cascading failures] | A failure that spreads because each broken part adds load to the others.
+causal consistency [causal] | A guarantee that operations linked by cause and effect are seen in that order everywhere, while unrelated operations may appear in any order.
+CDN [content delivery network, CDNs] | A worldwide set of servers that keep copies of your files close to users.
+Chatty I/O | An antipattern of sending many small requests where a few larger ones would do.
+choreography [choreographed] | A style where each service reacts to events and decides for itself what to do next, with no central controller.
+circuit breaker [circuit breakers] | A wrapper that stops calling a failing dependency for a while so callers fail fast.
+claim check [claim checks] | A small message holding a reference to a large payload that is stored elsewhere, such as in object storage.
+client [clients] | The program that asks for something, such as a browser or a phone app.
+clock skew [skew] | The difference between the times shown by two machines' clocks.
+CNAME | A DNS record that makes one name an alias for another name.
+compensating transaction [compensating transactions, compensation] | A new action that undoes the business effect of an earlier step, such as a refund, instead of erasing it.
+competing consumers [competing consumer] | Several identical workers reading from one queue, where each message goes to exactly one of them.
+composite index [concatenated index, multicolumn index] | An index over several columns, sorted by the first column, then the second inside ties.
+connection pool [connection pools, pooling] | A set of open connections that requests borrow and return, so each request avoids the cost of opening a new one.
+connection server [connection servers] | A server that keeps many open client connections and pushes messages down them.
+consensus | Getting a group of machines to agree on one value or one ordered log even when some machines crash.
+consistent hashing | A way to place keys and servers on a ring so that adding or removing a server moves only a small share of keys.
+consumer [consumers] | A program that reads and processes messages from a queue or topic.
+consumer group [consumer groups] | A set of consumers that share a topic, each partition read by one member.
+correlation id [correlation ids] | An identifier copied onto every message of one business operation so its path can be traced across services.
+covering index [index-only scan] | An index that holds every column a query needs, so the table does not have to be read.
+CQRS | Command Query Responsibility Segregation: using one model for changes (commands) and a separate model for reads (queries).
+crawler trap [crawler traps] | A site structure that generates endless new URLs, such as an infinite calendar.
+cursor pagination [cursor, cursors] | Paging by asking for items after a marker, such as the last id seen, instead of skipping a count.
+data warehouse [warehouse] | A database built for large analytical queries over lots of history, such as AWS Redshift or Google BigQuery.
+database [databases] | A system that stores data so it survives restarts and can be searched.
+dead-letter queue [dead-letter queues, DLQ] | A separate queue for messages that failed all their retries.
+degrees of separation | The number of steps along friendship links between two people.
+denormalization [denormalized, denormalize] | Storing redundant copies of data in several places so reads need fewer joins.
+deployment stamp [stamp, stamps, deployment stamps, cell, cells] | One independent, complete copy of an application and its data that serves a fixed group of tenants.
+design doc [design docs, design document] | A short written proposal of a system, with goals, the design, alternatives and trade-offs, reviewed before building.
+design pattern [design patterns, pattern, patterns] | A named, proven solution to a problem that keeps coming back, written up with its trade-offs so teams do not reinvent it.
+DNS | Domain Name System, the worldwide phonebook that turns names into IP addresses.
+document store [document database] | A database that stores JSON-like documents and can query inside them.
+doubly linked list | A list where each node points to both its next and previous node, so a node can be moved or removed in constant time.
+eager loading | Asking the ORM to fetch related records in the same query instead of one query per record.
+election timeout | How long a Raft follower waits without hearing from a leader before it starts an election.
+envelope encryption | Encrypting data with a data key and then encrypting that data key with a separate key encryption key that is stored elsewhere.
+ephemeral port [ephemeral ports] | A temporary local port number the operating system picks for an outgoing connection.
+event loop [event loops] | A single thread that runs many tasks by switching whenever one is waiting, used by Node and Python asyncio.
+event sourcing | Storing every change to an entity as an immutable event and rebuilding the current state by replaying those events.
+event store | A database designed to append events in order and read them back per entity.
+eventual consistency [eventually consistent, eventual] | The promise that all copies of the data agree after a short delay if no new writes arrive.
+eviction [evict, evicted] | Removing an entry from a full cache to make room for a new one.
+exponential backoff [backoff] | Waiting longer after each failed attempt, often doubling the delay.
+external configuration store [configuration store, config store] | A central place that holds settings for many apps so they can change without a redeploy.
+Extraneous Fetching | An antipattern of retrieving more data than the operation needs, then throwing the rest away.
+failover [fail-over] | Switching work from a failed part to a standby, such as promoting a follower database to leader or sending traffic to a spare server.
+fan-out [fanout] | Sending one event to many receivers.
+fan-out on read [pull model] | Doing the work when someone reads, by fetching and merging recent items from everyone they follow.
+fan-out on write [push model] | Doing the delivery work when something is posted, so reading is a single lookup.
+federation [functional partitioning] | Splitting a database into several databases by function, such as users, products and forums.
+fencing token [fencing tokens] | A number that increases each time a lock is granted, which a storage service uses to reject writes from clients holding an older lock.
+follower [replica, replicas, slave, read replica, read replicas] | A database copy that receives changes from a leader and usually serves reads.
+full table scan [table scan, sequential scan] | Reading every row of a table to find matches.
+functional requirement [functional requirements] | A statement of what a system does, such as letting users upload a photo.
+geode [geodes] | One of several identical regional deployments that can each serve any user, forming an active-active design.
+goodput | The part of the traffic that is answered correctly and fast enough to be useful.
+graph database [graph] | A database that stores nodes and the relationships between them, good for networks like friends of friends.
+GraphQL | An API style where the client sends a query naming exactly the fields it wants.
+hash collision [collision, collisions] | Two different inputs producing the same hash value or key.
+hash table [hash map, lookup table] | A structure that finds a value by key in about constant time by hashing the key to a position.
+head-of-line blocking | When one slow or stuck item at the front of a shared queue delays everything behind it.
+health check [health checks] | A small probe request a balancer or registry sends to a server to see whether it can still do its job.
+health endpoint [health endpoints] | A URL the application exposes so a monitor can ask whether a functional area is working.
+heartbeat [heartbeats] | A small regular message that tells another server "I am still alive".
+hit ratio [hit rate] | The fraction of requests answered from the cache.
+home timeline [timeline, news feed, feed] | The list of recent posts from the accounts a user follows.
+horizontal scaling [scaling out, scale out] | Adding more machines that run the same program and sharing the traffic between them.
+hot key [hot keys] | A key that gets far more traffic than others, which overloads the one server or shard that holds it.
+hot spot [hotspot, hot shard] | A shard or key that gets far more traffic than the others.
+HTTP | Hypertext Transfer Protocol, the request and response language used between browsers and web servers.
+HTTP 429 [429, Retry-After] | The status code for Too Many Requests. A Retry-After header says how long to wait.
+idempotency key [idempotency keys] | A unique id sent with a request so the server can recognize a retry and not repeat the work.
+idempotent [idempotency] | Safe to repeat: running the operation twice has the same effect as running it once.
+identity provider [IdP, IdPs] | A trusted service that signs users in and hands apps a signed token about who they are.
+Improper Instantiation | An antipattern of creating a new shareable client or connection object for every request instead of reusing one.
+index [indexes, indices] | An extra sorted structure that lets a database find rows without scanning the whole table.
+index table [index tables, secondary index, secondary indexes] | A separate table keyed by another field so a store without suitable indexes can search by that field.
+instrumentation | Code added to a system so it reports metrics and trace records about itself.
+isolation level [isolation levels, isolation] | A setting that decides what concurrent transactions can see of each other.
+jitter | A small random amount added to a timing value, such as a TTL, so many items do not act at the same moment.
+join [joins] | A query step that combines rows from two tables using a shared key.
+JWT [JSON Web Token, signed token, signed tokens, JWTs] | A compact signed token that carries claims such as a user id, so servers can check it without a lookup.
+key-value store [key-value] | A database that works like a giant hash table: you save and fetch a value by its key.
+Lamport clock [Lamport clocks, logical clock, logical clocks] | A counter that each process increments and passes along with messages so that causally ordered events get increasing numbers.
+last write wins [LWW] | A conflict rule that keeps the write with the largest timestamp and drops the others.
+layer 4 [L4] | The transport layer of the network, where decisions use IP addresses and ports without reading message contents.
+layer 7 [L7] | The application layer, where a balancer reads the HTTP request such as its path, headers and cookies.
+leader [master, primary] | The database copy that accepts writes and sends changes to followers.
+leader election [election, elections] | The process by which a group of servers picks one of themselves to coordinate, such as the leader that takes client writes.
+lease [leases] | A token a cache gives a reader on a miss, which must be presented when setting the value, so stale writes can be rejected.
+least connections | A balancing rule that sends each new request to the server with the fewest active connections.
+least privilege | Giving each user, service or key only the permissions it needs.
+LFU [least frequently used] | An eviction policy that removes the entry with the fewest reads.
+linearizable [linearizability] | A strong guarantee that each operation appears to happen at one instant, in an order that respects real time, as if there were one copy of the data.
+Little's law | In a steady system, requests in flight equal the arrival rate times the time each request takes.
+liveness probe [liveness check, liveness probes] | A health check that asks whether a process is stuck beyond recovery, and leads to a restart if it fails.
+load balancer [load balancers, LB] | A server that spreads incoming requests across several backend servers and skips unhealthy ones.
+load shedding | Rejecting excess requests early so a server can answer the rest on time.
+locality of reference [locality] | The tendency of programs to read recently used or nearby data again soon.
+log | An append-only, ordered sequence of records that readers scan from a chosen position.
+log replication | Copying the leader's ordered list of commands to followers so every server applies the same commands in the same order.
+long polling | A technique where the server holds a request open until it has data, then the client asks again.
+lost update | An anomaly where two transactions read the same value and the second write overwrites the first.
+LRU [least recently used] | An eviction policy that removes the entry that was used longest ago.
+majority | More than half of the servers in a cluster, which is the number whose agreement makes a decision final in Raft.
+managed database [managed relational database, RDS] | A database run by the cloud provider, which handles backups, failover and upgrades. AWS RDS is an example.
+mapper [mappers] | The map step of MapReduce: code that reads input records and emits key and value pairs.
+MapReduce | A batch method that splits a big counting or grouping job across many machines and combines the results.
+materialized view [materialized views, projection, projections, read model] | A precomputed, read-only copy of data shaped for one query, which can be rebuilt from its source.
+Memcached | A simple in-memory key-value cache used as a shared cache layer.
+message group [message groups, message session, session id, group id] | A set of messages that share a key and must be handled in order by one consumer at a time.
+message queue [message queues, queue, queues] | A holder that receives messages from producers and delivers each to a consumer, so the two never talk directly.
+messaging bridge | A component that connects two different messaging systems and relays messages between them without changing them.
+microservices [microservice] | An application built as many small services that are deployed separately and talk over the network.
+monolith [monolithic] | An application built as one codebase and deployed as one unit.
+Monolithic Persistence | An antipattern of keeping all kinds of data in one data store even though their usage patterns differ.
+monotonic clock [monotonic clocks] | A clock that only moves forward and is meant for measuring how much time has passed on one machine.
+monotonic reads | A guarantee that once a process has seen a value, its later reads never return an older state.
+multiget | One request that fetches many keys at once from a cache or store.
+multitenant [multi-tenant, multitenancy] | One deployment of a service shared by many customers, each called a tenant.
+N+1 query [N+1 queries, N+1 problem, N+1] | One query to fetch a list followed by one extra query for each item in it, so N items cost N+1 round trips.
+negative caching | Caching the fact that something does not exist, so repeated lookups skip the database.
+network partition [network partitions] | A network failure that splits nodes into groups that cannot talk to each other, although each group may still be running.
+nines [three nines, four nines, five nines] | A shorthand for availability: three nines is 99.9 percent, four nines is 99.99 percent.
+No Caching | An antipattern of fetching the same data again and again instead of keeping a copy close by.
+noisy neighbor [noisy neighbors] | A customer whose heavy use of shared resources slows everyone else down.
+non-functional requirement [non-functional requirements] | A statement of how well a system must work, such as speed, uptime or cost.
+non-goal [non-goals] | Something the design could reasonably do but deliberately does not, written down so nobody expects it.
+normalization [normalize, normalized] | Converting equivalent inputs to one standard form, such as lowercasing and trimming a search query, so they share one cache key.
+NoSQL | A loose label for databases that are not relational tables, such as key-value, document, wide-column and graph stores.
+NTP | Network Time Protocol, which adjusts a machine's clock using time servers over the network.
+OAuth | A standard that lets a user grant an app limited access to their account at another service, such as a bank, without giving the app their password.
+object store [object storage, object stores] | A service such as Amazon S3 that stores large files by key, cheaply and at huge scale.
+observability | How well you can understand what a system is doing from the data it produces.
+offset [offsets] | The position number of a record in a partition, which a consumer uses to remember where it stopped.
+openid connect [OIDC] | A modern sign-in standard built on OAuth 2.0 that returns a signed token describing the user.
+optimistic locking | Detecting conflicts at write time with a version number and retrying, instead of locking rows up front.
+orchestration [orchestrator, orchestrators, orchestrated] | A style where one central service tells other services what to do and in what order.
+origin | Your own server, where the original copy of a file lives, behind a CDN or cache.
+ORM [ORMs, object-relational mapper] | A library that maps database rows to objects in code, and sometimes hides the queries it runs.
+outbox pattern [transactional outbox, outbox] | Saving an event in a database table in the same transaction as the change, then a relay publishes it.
+pagination [paginate] | Returning a long list in small pages instead of all at once.
+partition [partitions] | One slice of a larger dataset or log, stored and served on its own. A database shard is a partition, and so is one ordered piece of a Kafka topic.
+percentile [percentiles, p50, p95, p99] | The value that a given share of measurements beat, for example p99 is slower than 99 percent of requests.
+pipes and filters [filter, filters, pipe, pipes] | A design that splits a job into small independent steps (filters) joined by channels (pipes) such as queues.
+poison message [poison messages] | A message that always makes the consumer fail, so it keeps returning to the queue unless a retry limit removes it.
+polling [poll, polls] | Asking again and again, at intervals, whether something has finished, instead of waiting to be told.
+presence | Whether a user is currently online, usually tracked by heartbeats that expire.
+priority queue [priority queues] | A queue where messages carry a priority and more urgent ones are handled before older, less urgent ones.
+producer [producers] | A program that adds messages to a queue or topic.
+pub/sub [publish and subscribe, publish/subscribe] | A pattern where a publisher sends an event to a topic and every subscriber gets its own copy.
+push notification [push notifications] | A message sent through the phone platform to alert a user whose app is not open.
+QPS [queries per second] | Requests handled per second.
+queue-based load leveling [load leveling] | Putting a queue between a bursty sender and a service so the service handles work at its own steady pace.
+quorum [quorums] | A group of replicas large enough to overlap with any other such group, usually a majority, so that reads and writes share at least one copy.
+quota [quotas] | A limit on how much of a shared resource one tenant or client may use.
+Raft | A consensus algorithm designed to be understandable, using elected leaders, numbered terms and a replicated log.
+rate limiting [rate limiter, rate limiters] | Capping how many requests a client may make in a time window.
+read repair | Fixing a stale replica by copying it the newer value when a read notices the replicas disagree.
+read-your-writes [read your writes] | A guarantee that a user always sees the changes they just made.
+readiness probe [readiness check, readiness probes] | A health check that asks whether an instance can serve traffic right now, and removes it from rotation if it fails.
+Redis | An in-memory key-value store often used as a shared cache, with extra data structures and optional persistence.
+reducer [reducers] | The reduce step of MapReduce: code that receives all values for one key and combines them, for example by summing.
+refresh-ahead | A pattern where the cache reloads popular entries before they expire.
+relational database [RDBMS, SQL database, relational databases] | A database that stores data in tables of rows and columns, linked by keys, and queried with SQL.
+replication lag [lag] | The delay between a write on the leader and its arrival on a follower.
+request coalescing | Letting only one request rebuild a missing entry while the others wait for its result.
+resolver [resolvers, DNS resolver] | A helper server that looks up DNS answers on your device's behalf and caches them.
+REST | An API style built around named resources and the standard HTTP methods.
+retention | How long a log keeps events before deleting them.
+retry [retries] | Sending the same request again after a failure, hoping it works this time.
+Retry Storm | An antipattern where many clients retry a failing service so often that it cannot recover.
+reverse index [inverted index] | A map from each word to the pages that contain it, used to answer searches.
+reverse proxy [reverse proxies] | A server in front of your servers that receives client requests, forwards them and returns the responses.
+robots.txt | A file on a website that tells crawlers which paths they may or may not fetch.
+round robin | A balancing rule where servers take turns receiving requests in a fixed order.
+round trip [round trips, RTT, round-trip time, round-trip] | One message out and one reply back, and the time that takes.
+RPC [remote procedure call, gRPC] | An API style where the client calls a function on a remote machine as if it were local.
+saga [sagas] | A business operation split into local transactions across services, with compensating steps to undo earlier ones if a later step fails.
+scheduler agent supervisor | A pattern with three roles: a scheduler runs the steps, agents call remote services, and a supervisor repairs steps that time out.
+semantic lock [semantic locks] | A flag on a record, such as PENDING, that tells other operations the data is in the middle of a saga.
+sentinel node [sentinel, sentinels] | A dummy node at each end of a linked list that removes special cases for empty lists and the ends.
+sequential consistency [sequentially consistent, sequential] | Everyone sees one shared order of operations, and each process's own operations keep their order, but the order need not match real time.
+sequential convoy | A pattern that processes related messages one at a time in order, while different groups of messages run in parallel.
+server [servers] | A program that waits for requests and answers them.
+service discovery | A registry that tracks which instances of each service exist and where, so callers can find them.
+service mesh [mesh] | A set of sidecar proxies beside every service plus a control plane that configures them, giving encryption, retries and metrics without code changes.
+session | A series of requests tied to one logged-in user, usually tracked with a cookie.
+shard key | The column whose value decides which shard holds a row.
+sharding [shard, shards] | Splitting data across several databases so each holds only a subset of the rows.
+shortlink [short link] | The short key a URL shortener gives out, which maps back to the long URL.
+shuffle | The MapReduce stage that moves and sorts emitted pairs so all values for one key arrive at the same reducer.
+shuffle sharding | Giving each customer a small random combination of workers so a problem hits only that combination.
+sidecar [sidecars, sidecar container] | A helper process or container that runs next to an application and shares its life cycle, handling chores like logging or networking.
+SIEM [security information and event management] | A system that gathers security events from servers, firewalls and applications into one place for analysis.
+single point of failure [SPOF, single points of failure] | A part that, if it breaks, takes the whole service down because nothing can replace it.
+SLO [SLOs, SLI, SLIs, error budget, error budgets] | A target for a measured quality, such as 99.9 percent of requests succeeding. The error budget is the failure it allows.
+sloppy quorum [sloppy quorums] | A quorum that accepts stand-in nodes outside the usual replica set when some are unreachable, which keeps writes flowing but weakens guarantees.
+snapshot [snapshots] | A saved copy of an entity's state at some point, so replay can start there instead of at the first event.
+Snowflake id [Snowflake, Snowflake ids] | A unique id built from a timestamp, a machine number and a counter, so ids sort by time.
+span [spans, trace, traces, trace ID] | One timed step in a request. A trace is the set of spans for one request, tied together by a trace ID.
+split brain | A fault where two nodes both believe they are the leader.
+SQL injection | An attack that gets a database to run commands hidden in user input.
+stale data [stale] | A cached copy that no longer matches the source of truth.
+starvation [starve, starved] | A situation where low-priority work never gets a turn because higher-priority work keeps using all the capacity.
+state store | A durable database where a workflow records the state of each step so it can recover after a failure.
+stateless | Keeping no user-specific data in a server between requests, so any copy of the server can answer any request.
+static content hosting | Serving unchanging files such as images and scripts straight from a storage service instead of from application servers.
+status endpoint [status endpoints] | A URL where a client can ask how a long-running job is going and fetch the result when it is done.
+sticky session [sticky sessions, session persistence] | Routing one user to the same server every time so that server can keep their session in memory.
+stored procedure [stored procedures] | Code saved inside a database that runs on the database server when called.
+straggler [stragglers] | A machine that finishes its part of a batch job much later than the others and holds up the whole job.
+strangler fig [strangler fig pattern] | A way to replace an old system gradually by routing one slice of traffic at a time to new code.
+Synchronous I/O | An antipattern where a thread blocks and waits for a network or disk operation instead of doing other work.
+synthetic user [synthetic users, synthetic monitoring] | A script that acts like a real user, following fixed steps on a schedule and recording whether each step worked.
+tail latency [tail] | The slowest few percent of requests.
+task queue [task queues] | A queue whose messages name a job to run, with extras like scheduling, retries and results.
+TCP | Transmission Control Protocol, which delivers bytes reliably and in order by using a handshake and resending lost packets.
+tenant [tenants] | One customer or group of users served by a multitenant system.
+term [terms] | In Raft, a numbered period of time with at most one leader, which increases whenever a new election starts.
+throttling [throttle, throttled] | Limiting how much of a resource a user or app may use so the system stays up under load.
+throughput | How many actions finish per unit of time.
+TIME_WAIT | A TCP state where a closed connection keeps its local port reserved for a while, 60 seconds on Linux.
+timeout [timeouts] | The longest time a caller waits for a reply before giving up.
+TLS | Transport Layer Security, the encryption layer that turns HTTP into HTTPS.
+TLS termination [SSL termination] | Decrypting HTTPS traffic at the proxy or balancer so backend servers do not have to.
+token bucket | A rate limit method where a bucket of tokens refills at a steady rate and each request spends one.
+topic [topics] | A named stream of events that producers write to and consumers read from.
+transaction [transactions] | A group of database changes treated as one unit that either all happen or none do.
+TrueTime | Google Spanner's clock API, which returns a time interval guaranteed to contain the true time.
+TTL [time to live, time-to-live, TTLs] | The number of seconds a cache may keep a record before asking again.
+UDP | User Datagram Protocol, which sends packets with no handshake, ordering or resending, so it is faster but lossy.
+URL frontier [frontier] | The crawler's list of URLs waiting to be fetched, organized by priority and by host.
+valet key [presigned url, presigned urls] | A token giving a client limited access to one resource for a short time, such as an upload link to a storage bucket.
+vector clock [vector clocks] | A list with one counter per process that shows whether one event came before another or the two were concurrent.
+vertical scaling [scaling up, scale up] | Making one machine more powerful by adding CPU, memory or faster disks.
+virtual node [virtual nodes, vnodes, tokens] | One of many positions a physical server takes on a hash ring so load evens out.
+visibility timeout | In SQS, the time a received message stays hidden from other consumers before it reappears if not deleted.
+wall clock [wall clocks] | The clock that reports the date and time of day, set over the network and able to jump forward or backward.
+webhook [webhooks] | A call that one server makes to a URL on another server to announce an event, so the receiver does not need to keep polling.
+WebSocket [WebSockets] | A persistent two-way connection between a client and a server over which either side can send at any time.
+wide-column store [wide-column] | A database that keeps rows under a key with columns grouped into families, built for huge data sets.
+write skew | An anomaly where two transactions read overlapping data and write different rows, together breaking a rule.
+write-behind [write-back] | A pattern where writes go to the cache first and reach the database later, asynchronously.
+write-through | A pattern where each write goes to the cache and is synchronously written to the database before returning.
+keep-alive [persistent connection] | Reusing one open connection for several HTTP requests so the TCP and TLS handshakes are paid once.
+service registry | A list of the running instances of each service and their addresses, kept current by registration and health checks.
+cron | A scheduler built into Unix-like systems that starts commands at set times.
+staleness | How out of date a copy of data is compared with its source.
+refresh job [refresh jobs] | A scheduled or event-driven task that rebuilds or updates a derived copy of data such as a materialized view.
+facade [facades] | A single front layer, such as a proxy, that hides the systems behind it. In a Strangler Fig migration it decides whether each request goes to the old or new system.
+quarantine [quarantine store] | A holding area where outside software is checked before use. Only artifacts that pass the checks are published to a trusted store.
+canary release [canary releases] | Sending a small share of traffic to a new version first, to catch problems before everyone gets it.
+thread pool [thread pools] | A fixed set of worker threads that take requests one at a time. When all threads are busy waiting, new requests queue or fail.
+commit wait | Spanner's pause before a transaction's data becomes visible, so that its commit timestamp is surely in the past.
