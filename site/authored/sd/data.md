@@ -61,6 +61,14 @@ Key-value model: key `cart:42`, value a JSON string, with a 30 day expiry set by
 
 Pick by access pattern. Only ever read a cart by user id? Key-value or document wins. Need reports across carts and orders in the same system? Relational wins.
 
+The cart example on the same points.
+
+| | Relational | Document | Key-value |
+| --- | --- | --- | --- |
+| Show the cart | Join cart_items with products | One lookup by user id | One lookup of cart:42 |
+| Strength | ACID keeps stock and cart in step, and reports across carts and orders work | No join, one read | Cheapest and fastest, 30 day expiry comes free |
+| Cost | Every read does a join and several index lookups | Copied prices go stale until updated | Cannot ask which carts hold product 9 without scanning everything |
+
 ## What goes wrong: a join-heavy report on a store with no joins
 ```mermaid The report loops over every order and asks the other collection once per row
 sequenceDiagram
@@ -141,6 +149,15 @@ An index on several columns is called composite or concatenated. It sorts by the
 
 The PostgreSQL manual says a multicolumn B-tree is most efficient with constraints on the leading columns. Put equality columns first, then the range column. PostgreSQL 18 added an optimization called skip scan that can sometimes help, but the planner generally picks it only when the first column has few distinct values. Do not count on it.
 
+Which queries an index on (country, created_at) can use.
+
+| Query | Uses the sorted order? |
+| --- | --- |
+| WHERE country = 'IN' | Yes, the leading column is fixed |
+| WHERE country = 'IN' AND created_at > '2026-01-01' | Yes, the best case: equality first, then a range |
+| WHERE created_at > '2026-01-01' | No, the leading column is missing, so usually a full scan |
+| ORDER BY created_at with no filter | No, the index is sorted by country first |
+
 ## Covering indexes
 A normal index lookup also fetches the row from the table, often a random read far from the index entries. If the index holds every column the query needs, the database can answer from the index alone. PostgreSQL calls this an index-only scan, and B-tree indexes support it. A query that selects a column not in the index cannot use it. In PostgreSQL there is a second condition: the table pages must be marked as fully visible in a visibility map, so rarely changed tables benefit most.
 
@@ -155,6 +172,13 @@ Without an index: the database scans the table. On average a unique match is fou
 With a B-tree index on `order_id`: depth is $\lceil \log_{100}(10{,}000{,}000) \rceil$. Since $100^3 = 1{,}000{,}000$ is too small and $100^4 = 100{,}000{,}000$ is enough, the depth is 4. That is 4 index page reads plus 1 table read, so 5 reads instead of up to 10 million. Real systems keep the top levels in memory, so often only the last one or two reads touch disk.
 
 Growth: at 100 million rows the tree is still about 4 levels deep, but the scan is 10 times longer. That is why a query that is fast in development can be slow in production.
+
+```mermaid Every 100 times more rows adds one level to the tree (100 keys per node, as in the example)
+xychart-beta
+  x-axis [100 rows, 10 thousand, 1 million, 100 million, 10 billion]
+  y-axis "index levels read" 0 --> 6
+  bar [1, 2, 3, 4, 5]
+```
 
 ## What goes wrong: the index that is never used
 ```mermaid An index that starts with country cannot narrow a query on created_at, so the scan reads every row
@@ -217,6 +241,15 @@ Benefits: read traffic spreads over many followers, and you have warm copies if 
 In multi-leader replication (master-master), several nodes accept writes and coordinate with each other. If one fails, the others keep serving reads and writes. This suits setups with a data center in each region.
 
 The Primer lists the downsides. You need a load balancer or application logic to choose where to write. Most multi-leader systems are loosely consistent, which violates ACID, or have extra write latency from synchronization. Conflict resolution becomes harder as write nodes and latency grow. Two users editing the same row on two leaders at once is a conflict somebody must resolve, by last write wins, merge rules, or asking a human.
+
+The two topologies compared.
+
+| | Leader-follower | Multi-leader |
+| --- | --- | --- |
+| Who takes writes | One leader | Several nodes |
+| If a write node fails | Read-only until a follower is promoted | The others keep reading and writing |
+| Main cost | Promotion logic and follower lag | Conflicts when two nodes edit the same row, and write routing |
+| Fits | Read-heavy workloads | A data center in each region |
 
 ## Synchronous or asynchronous
 Replication can be synchronous, where the leader waits for the follower to confirm before telling the client the write succeeded. It can be asynchronous, where the leader confirms right away and ships the change later.
@@ -351,6 +384,13 @@ Invented numbers. A users and posts dataset is 3 TB today and grows 50 percent p
 
 The logical layer is the trick. Later, to add hosts, you move whole logical shards between machines, and the shard function never changes. Notion's post describes 480 logical shards evenly spread across 32 physical databases, 15 per database, which uses the same idea.
 
+```mermaid Shards needed to keep each at 350 GB while data grows 50 percent a year from 3 TB (invented numbers from the example, which rounds the year 3 figure of 29 up to 30)
+xychart-beta
+  x-axis [Today 3 TB, Year 1 4.5 TB, Year 2 6.75 TB, Year 3 10.1 TB]
+  y-axis "shards of 350 GB" 0 --> 32
+  bar [9, 13, 20, 29]
+```
+
 ## What goes wrong: a hot shard that range sharding created
 ```mermaid Range sharding by month sends every new write to the current month's shard
 flowchart LR
@@ -438,6 +478,14 @@ Only h = 0, 1, 2 and 3 match. Work out h = 10 to 19 the same way and you will fi
 With a ring and one new server of five equal servers, the new server takes about one fifth of the ring from its neighbors. About 20 percent of keys move, 200,000 of 1 million, and all of them go to the new server. The expected share is $1/N$ for the new count N.
 
 Since a key moves only to the new server, the other four servers keep their caches fully warm.
+
+```mermaid Share of keys that move when one server is added: hash mod N moves most, a ring with balanced arcs moves 1 in N+1
+xychart-beta
+  x-axis [From 2 to 3, From 4 to 5, From 9 to 10, From 19 to 20]
+  y-axis "percent of keys moved" 0 --> 100
+  line "hash mod N" [67, 80, 90, 95]
+  line "Ring" [33, 20, 10, 5]
+```
 
 ## What goes wrong: uneven arcs and a cascade
 ```mermaid Cascade: the failed server's keys land on the next server, which then fails too
@@ -553,6 +601,15 @@ The SQL standard defines four levels, from weakest to strongest: read uncommitte
 Many databases also offer snapshot isolation. Each transaction sees a consistent snapshot of the data from when it started, kept using multiple versions of each row. It stops dirty reads, non-repeatable reads and phantoms, but not write skew.
 
 The PostgreSQL manual says it implements three distinct levels. Read uncommitted behaves like read committed, and its repeatable read is snapshot isolation. Its table says read committed allows non-repeatable reads, phantoms and serialization anomalies. Repeatable read still allows serialization anomalies. Only serializable prevents all of them.
+
+What each PostgreSQL level allows, from the manual's table as quoted above.
+
+| Level you ask for | Dirty read | Non-repeatable read | Phantom read | Write skew |
+| --- | --- | --- | --- | --- |
+| Read uncommitted (acts as read committed) | No | Yes | Yes | Yes |
+| Read committed (the default) | No | Yes | Yes | Yes |
+| Repeatable read | No | No | No | Yes |
+| Serializable | No | No | No | No |
 
 What does your database default to? PostgreSQL: read committed. MySQL with InnoDB: repeatable read, according to the MySQL manual. Hermitage is a test suite by Martin Kleppmann that documents what several databases really do under their isolation level names. It shows the same name can mean different behavior. For example, Hermitage finds PostgreSQL's repeatable read prevents lost updates, while MySQL InnoDB's repeatable read does not. In Hermitage, Postgres "repeatable read" does not prevent write skew, and "serializable" does, by aborting one transaction with a serialization error.
 

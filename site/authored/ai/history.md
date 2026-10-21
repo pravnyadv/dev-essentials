@@ -11,6 +11,19 @@ Promises ran far ahead of results. Machine translation and general problem solvi
 
 IBM's Deep Blue beat world chess champion Garry Kasparov in 1997, but it won by searching millions of positions per second with hand-tuned evaluation. It did not learn.
 
+```mermaid Early AI went through two booms, each ended by a winter, and the 1997 chess win came from search, not learning
+flowchart TD
+  A[1950 Turing asks if machines think] --> B[1956 Dartmouth names AI]
+  B --> C[1958 Perceptron learns its weights]
+  C --> D[1969 One perceptron shown to be limited]
+  D --> E[1970s First AI winter]
+  E --> F[1980s Expert system boom]
+  F --> G[1987 Second AI winter]
+  G --> H[1997 Deep Blue wins by search]
+  class E bad
+  class G bad
+```
+
 ## Why it matters
 The pattern repeats: a method works on a narrow task, expectations balloon, then reality corrects. The shift that finally broke the cycle was not a smarter rule. It was letting models learn from large amounts of data with a lot of compute, which is the next chapter of the story.
 
@@ -23,10 +36,34 @@ Suppose you write rules to spot spam: "if the email contains FREE and MONEY, it 
 ## Tracing a perceptron
 A perceptron multiplies each input by a weight, adds the results, and outputs 1 if the total passes a threshold. Learning means nudging weights after each mistake. Invented numbers for illustration: teach it OR (output 1 if either input is 1) with a threshold of 0.5 and both weights starting at 0.
 
+```mermaid A perceptron adds up weighted inputs, compares with a threshold, and nudges its weights after each mistake
+flowchart TD
+  X1[Input 1] -->|weight 1| S[Add up and compare to threshold]
+  X2[Input 2] -->|weight 2| S
+  S --> O[Output 1 or 0]
+  O --> C{Wrong?}
+  C -->|yes| U[Nudge the weights]
+  U -.-> S
+  class U focus
+```
+
 1. Input (0,0), correct answer 0. The total is 0, so the output is 0. Correct, no change.
 2. Input (0,1), correct answer 1. The total is 0, so the output is 0. Wrong, so add the input to the weights. They become (0,1).
 3. Input (1,0), correct answer 1. The total is 0, so the output is 0. Wrong, so the weights become (1,1).
 4. Check all four inputs again. The totals are 0, 1, 1 and 2, so every answer is right.
+
+The table replays the OR lesson (threshold 0.5) over every input, twice, so you can see that the weights change only on a mistake and that the second pass is all correct.
+
+| Pass | Input | Wanted | Total | Output | Weights after |
+|---|---|---|---|---|---|
+| 1 | (0,0) | 0 | 0 | 0 | (0,0), no change |
+| 1 | (0,1) | 1 | 0 | 0 | (0,1) |
+| 1 | (1,0) | 1 | 0 | 0 | (1,1) |
+| 1 | (1,1) | 1 | 2 | 1 | (1,1), no change |
+| 2 | (0,0) | 0 | 0 | 0 | (1,1), no change |
+| 2 | (0,1) | 1 | 1 | 1 | (1,1), no change |
+| 2 | (1,0) | 1 | 1 | 1 | (1,1), no change |
+| 2 | (1,1) | 1 | 2 | 1 | (1,1), no change |
 
 Now try XOR, which means "exactly one input is 1". It needs 1 for (0,1) and (1,0) but 0 for (1,1). Each weight alone must beat the threshold, while the two together must not. With a threshold of zero or more, no weights do both. That is the limit Minsky and Papert proved.
 
@@ -68,6 +105,15 @@ Machine learning means fitting a function to examples instead of writing the rul
 ## Three ways to learn
 Supervised learning has inputs with the right answers attached: emails labeled spam or not spam, houses with sale prices. The model learns the mapping. Unsupervised learning has no answers: the model finds structure, such as grouping similar customers. Reinforcement learning learns from rewards after actions, as in game playing. Language models use a clever variant of supervised learning: the "answer" for each position is simply the next token in the text, so no human labeling is needed.
 
+The table sets the four styles side by side, using the examples from this lesson.
+
+| Style | What the data has | Example | What the model learns |
+|---|---|---|---|
+| Supervised | Inputs with the right answers attached | Emails labeled spam or not spam, houses with prices | The mapping from input to answer |
+| Unsupervised | Inputs only | Grouping similar customers | Structure in the data |
+| Reinforcement | Rewards that arrive after actions | Game playing | Which actions earn the most reward |
+| Language model training | Text, where the next token is the answer | Predicting the next word | Next-token prediction, with no human labeling |
+
 ## Two kinds of prediction
 Classification picks a category (spam or not). Regression predicts a number (a price). Both work the same way: compute a prediction, compare with the truth using a loss, adjust parameters to reduce it.
 
@@ -83,8 +129,29 @@ Say you have five houses. Area in square meters and price in thousands: (50, 150
 ## Why we split the data
 Imagine studying for an exam by memorizing the exact practice questions. You would score 100 percent on the practice and fail the exam. A model can do the same. So we hide some data (the test set) and only look at it at the end. If the score on hidden data is far lower than on practice data, the model memorized instead of learned.
 
+```mermaid Hidden data is the only honest check: the test set is touched once, at the end
+flowchart TD
+  A[All the data] --> T[Training set, the model learns from it]
+  A --> V[Validation set, used to tune choices]
+  A --> X[Test set, hidden until the end]
+  T --> M[Model]
+  V -.->|tunes choices| M
+  M --> F[Score on the test set, once]
+  X --> F
+  class X focus
+```
+
 ## How training works, step by step
 Training is a loop of guess, measure and adjust. Take the house example with one weight, so price = weight × area. Start with weight 1 and look at the 50 square meter house, which truly sells for 150.
+
+```mermaid Training is a loop: guess, measure the loss, adjust, repeat
+flowchart TD
+  A[Example input] --> G[Model guesses]
+  G --> L[Loss against the true answer]
+  L --> J[Adjust the weight]
+  J -.-> G
+  class L focus
+```
 
 1. Guess: weight 1 predicts 50. The error is 100, and squared error (the error times itself, so big misses count more) is 10,000.
 2. Adjust: the price is too low, so raise the weight to 2. The prediction is 100, the error 50, the squared error 2,500.
@@ -139,6 +206,17 @@ ImageNet was a dataset of over a million labeled images, started by Fei-Fei Li i
 ## What came after
 Word2vec in 2013 showed that words could be turned into vectors where directions carry meaning. Sequence-to-sequence networks with attention improved translation in 2014 and 2015. ResNets made networks hundreds of layers deep trainable in 2015. In 2016 DeepMind's AlphaGo beat Lee Sedol at Go, a game thought to be a decade away. Each success used the same recipe: a flexible model, lots of data, lots of compute.
 
+```mermaid Milestones from backpropagation to AlphaGo, with the ingredients arriving one by one
+flowchart TD
+  A[1986 Backpropagation popularized] --> B[1990s Convolutional networks read digits]
+  B --> C[2009 ImageNet dataset started]
+  C --> D[2012 AlexNet on GPUs wins ImageNet]
+  D --> E[2013 Word2vec turns words into vectors]
+  E --> F[2015 ResNets reach hundreds of layers]
+  F --> G[2016 AlphaGo beats Lee Sedol]
+  class D focus
+```
+
 ## What "deep" means
 A neural network is layers of simple units. "Deep" just means many layers. In an image model, the first layer learns to spot tiny edges, the next combines edges into corners and curves, the next combines those into eyes and wheels, and the last layer says "cat". Nobody programs those steps. The layers fit themselves to the data by training.
 
@@ -148,7 +226,28 @@ A network's main job is multiplying big grids of numbers. A normal processor doe
 ## How a network learns its layers
 Backpropagation answers one question for every weight: if I nudge this weight up a little, how much does the output change? Take a toy chain, ignoring activation functions to keep it simple. Input x = 1 goes through weight w1 = 2 and then weight w2 = 3, so the output is 1 × 2 × 3 = 6. The target is 8.
 
+```mermaid The forward pass makes the output, then the error flows backward to tell each weight how to move
+flowchart TD
+  X[Input 1] --> A[Times w1, which is 2]
+  A --> B[Times w2, which is 3]
+  B --> O[Output 6]
+  O --> E[Compare with target 8]
+  E -.->|error flows back| B
+  B -.-> A
+  class E focus
+```
+
 Raise w2 by 0.1 and the output becomes 2 × 3.1 = 6.2, a change of 0.2. Raise w1 by 0.1 and the output becomes 2.1 × 3 = 6.3, a change of 0.3. So w1 deserves the bigger nudge here. Backpropagation computes these sensitivities for every weight in one backward pass, starting from the output error. Then each weight moves a small step, set by the learning rate, toward lower error.
+
+The table runs five training steps on the toy chain, using squared error as the loss and an invented learning rate of 0.01. Watch the output creep toward the target of 8 as the loss shrinks, and notice that w1 moves more than w2 because its gradient is larger.
+
+| Step | w1 | w2 | Output | Squared error |
+|---|---|---|---|---|
+| 0 | 2.00 | 3.00 | 6.00 | 4.00 |
+| 1 | 2.12 | 3.08 | 6.53 | 2.16 |
+| 2 | 2.21 | 3.14 | 6.95 | 1.11 |
+| 3 | 2.28 | 3.19 | 7.26 | 0.55 |
+| 4 | 2.32 | 3.22 | 7.49 | 0.26 |
 
 ## What goes wrong in training
 Symptoms show up in the loss, the number that measures error.
@@ -199,14 +298,42 @@ In 2020 researchers at OpenAI showed that test loss falls as a smooth power law 
 ## Two ways to learn language
 BERT learns by hiding a word in the middle of a sentence and guessing it: "The cat sat on the ___ and purred." Because it sees words on both sides, it is good at understanding. GPT learns by hiding the future: given "The cat sat on the", guess the next word. That is exactly the job of writing text, so GPT-style models became the chatbots.
 
+```mermaid BERT hides a word and sees both sides, while GPT hides the future and predicts the next word
+flowchart TD
+  subgraph BERT
+    B1[The cat sat on the ___ and purred] --> B2[Guess the hidden word from both sides]
+  end
+  subgraph GPT
+    G1[The cat sat on the] --> G2[Guess the next word]
+  end
+```
+
 ## A worked example: growth in a few years
 GPT-1 (2018) had about 117 million parameters. GPT-2 (2019) had 1.5 billion, roughly 13 times more. GPT-3 (2020) had 175 billion, another 117 times. Each jump needed more data and compute, and each brought new abilities nobody had explicitly trained for, like translating a sentence after seeing two examples in the prompt.
 
 ## Why parallel training changed the size limit
 An older recurrent model had to read a 1,000 token text in order, one token after another, because each step needed the one before it. A transformer processes all 1,000 positions in one pass. GPUs are built for exactly this kind of simultaneous work, so the same hardware time covers far more training text.
 
+```mermaid A recurrent model reads one token after another, while a transformer handles every position in one pass
+flowchart LR
+  subgraph Recurrent
+    R1[Token 1] --> R2[Token 2] --> R3[Token 3]
+  end
+  subgraph Transformer
+    T1[Token 1] & T2[Token 2] & T3[Token 3] --> AT[Attention, all at once]
+  end
+  class AT good
+```
+
 ## Trade-offs: what attention costs
 Parallel is not free. Every token is compared with every earlier token. For 1,000 tokens that is about 500,000 comparisons (1,000 × 999 ÷ 2). Double the length to 2,000 and it is about 2 million, four times more. At 10,000 tokens it is roughly 50 million.
+
+```mermaid Comparisons between tokens grow with the square of the length: 50 million at 10,000 tokens
+xychart-beta
+  x-axis "tokens in the input" [1000, 2000, 5000, 10000]
+  y-axis "comparisons, in millions" 0 --> 55
+  bar [0.5, 2, 12.5, 50]
+```
 
 The saved keys and values (the KV cache) also take memory that grows with length. That is why long contexts cost more and why labs keep working on cheaper attention. The design choice has a price: fast training and strong results, paid for with expensive long inputs.
 
@@ -253,6 +380,13 @@ Chinchilla refined this: for a compute budget C, the best split gives parameters
 ## Example
 Suppose a 1B model has loss 3.0. With α = 0.07, a 10B model has loss 3.0 × 10^(-0.07) = 3.0 × 0.851 = 2.55. Another 10x gives 2.17. Each 10x in model size, with data growing alongside, costs about 100 times more compute for a smaller absolute gain, which is why labs also look for gains elsewhere: better data, reasoning at inference time and tools.
 
+```mermaid Each 10 times in model size cuts loss by about 15 percent, so the curve flattens (the loss of 3.0 at 1 billion parameters is invented)
+xychart-beta
+  x-axis "parameters, in billions" [1, 10, 100, 1000]
+  y-axis "loss" 1.5 --> 3.5
+  line "loss" [3.0, 2.55, 2.17, 1.85]
+```
+
 ## What to take from it
 Scaling is a trend, not a guarantee of every skill. It tells you that bigger runs reliably improve average loss, not when a particular ability will appear. It also explains why training tokens are as important as parameters.
 
@@ -268,6 +402,26 @@ Invented budget for illustration: you want a model with 10 billion parameters. T
 Now double the model to 20 billion parameters. The data should double too, to 400 billion tokens. Training compute is roughly proportional to parameters times tokens, so it rises by 2 × 2 = 4 times. Growing both together makes costs climb faster than either number alone.
 
 Labs often train smaller models on more tokens than this rule suggests. The reasoning is that a model is trained once but answered from millions of times, so a smaller model is cheaper to serve. The rule is a guide for the cheapest route to a given loss, not a law about what to build.
+
+```mermaid Parameters and training tokens are grown together, so doubling both quadruples compute
+flowchart TD
+  B[Compute budget] --> P[Parameters]
+  B --> D[Training tokens]
+  P --> R[About 20 tokens per parameter]
+  D --> R
+  R --> X[10 billion parameters, 200 billion tokens]
+  X --> Y[Double both, compute rises 4 times]
+  class R focus
+```
+
+The table applies the 20 tokens per parameter rule to four model sizes. Compute is taken as proportional to parameters times tokens and shown relative to the 1 billion row, so each 10 times in size costs 100 times the compute.
+
+| Parameters | Training tokens | Compute relative to 1 billion |
+|---|---|---|
+| 1 billion | 20 billion | 1 |
+| 10 billion | 200 billion | 100 |
+| 20 billion | 400 billion | 400 |
+| 70 billion | 1.4 trillion | 4,900 |
 
 ## When scaling stops paying
 The formula keeps falling, but real limits exist. Text is partly unpredictable, so loss cannot reach zero. Good text is finite, and repeating the same data gives less benefit than fresh data. Each 10x step costs about 100 times more compute (more parameters and more data) for a smaller gain, as the example above showed. This is why scaling is one lever among several.
@@ -323,6 +477,16 @@ Think of a car company. Each year it improves the engine (bigger training runs),
 ## How preference tuning works
 Preference tuning turns human opinions into a training signal. In plain steps:
 
+```mermaid Human choices become a reward model, which then steers the chat model
+flowchart TD
+  A[Model writes two answers] --> B[Person marks the better one]
+  B --> C[Thousands of choices train a reward model]
+  C --> D[Chat model nudged toward high scores]
+  E[Held close to its earlier self] -.-> D
+  D -.-> A
+  class C focus
+```
+
 1. The model writes two answers to the same prompt.
 2. A person marks which one is better.
 3. Thousands of these choices train a reward model, a separate network that predicts which answer a person would pick.
@@ -339,6 +503,14 @@ A simple test: ask a factual question, then reply "No, that is wrong" with a fal
 Task: label 10,000 short reviews as positive or negative. You test three models on 100 labeled reviews. Invented results: small 94 correct, medium 96, large 97. Invented price units per review: small 1, medium 4, large 20.
 
 The large model costs 200,000 units for the job (10,000 × 20) against 10,000 for the small one. Three more correct answers per 100 may not justify 20 times the cost. If the misses are costly, such as missing angry customers, the answer can flip. Your own examples and your own costs decide.
+
+The table works out the invented example. The large model costs 20 times the small one for 3 more correct answers per 100.
+
+| Model | Correct per 100 | Price units per review | Cost for 10,000 reviews | Extra cost over the next cheaper model |
+|---|---|---|---|---|
+| Small | 94 | 1 | 10,000 | none |
+| Medium | 96 | 4 | 40,000 | 30,000 for 2 more correct |
+| Large | 97 | 20 | 200,000 | 160,000 for 1 more correct |
 
 ## Common mistake
 Assuming the newest model is always best for your task. Different models trade off quality, speed and price. Test on your own examples.
@@ -371,6 +543,7 @@ An AI researcher invents new methods and trains frontier models. A machine learn
 ## What the work looks like
 Choose a model. Design prompts and context. Add retrieval and tools. Build evals to know whether it works. Trace and monitor it in production. Control cost and latency. Keep it safe. The roadmap in this site follows that order.
 
+
 ## AI is narrow, AGI is a goal
 All current systems are narrow in the sense that they have uneven abilities: superhuman on some tasks and brittle on others. AGI, artificial general intelligence, has no agreed definition. Do not design around it. Design around what the model measurably does on your task today.
 
@@ -386,6 +559,17 @@ Basic programming, comfort reading error messages, curiosity about why something
 ## A worked example: finding which stage failed
 A support assistant tells a customer the refund window is 60 days. The policy says 30. The work is locating the stage that failed.
 
+```mermaid Walk the trace to find which stage failed before changing anything
+flowchart TD
+  A[Wrong answer] --> B[Open the trace]
+  B --> C{Policy retrieved?}
+  C -->|no| D[Fix splitting or search]
+  C -->|yes| E[Fix prompt or try another model]
+  D --> F[Add case to test set, rerun all]
+  E --> F
+  class C focus
+```
+
 1. Open the trace, the logged record of the conversation and every step inside it.
 2. Check whether the retrieved documents included the 30 day policy.
 3. If not, the retrieval step is the problem. Fix how documents are split or searched.
@@ -394,6 +578,14 @@ A support assistant tells a customer the refund window is 60 days. The policy sa
 
 ## Trade-offs: call an API, run open weights, or train
 Calling a hosted model through an API is the fastest start. You pay per use, your data leaves your systems, and the provider can change or retire the model. Running open weights gives you control and privacy, but you now operate the servers. Training your own model makes sense only when you have enough data and nothing existing meets the need. Most products should start with the first option and move only when a measured problem pushes them.
+
+The table compares the three routes on speed, control and when each fits.
+
+| Option | Start-up | Data and control | Fits when |
+|---|---|---|---|
+| Hosted API | Fastest | Data leaves your systems, the provider can change or retire the model, you pay per use | Almost every product at the start |
+| Open weights | Slower, you run servers | Control and privacy | A measured problem pushes you off the API |
+| Train your own | Slowest | Full control | You have enough data and nothing existing meets the need |
 
 ## What goes wrong in the role
 Three symptoms come up again and again.

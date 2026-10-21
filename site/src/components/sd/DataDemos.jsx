@@ -1,8 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Chip from '../shared/Chip.jsx'
-import { CellRow, Hint, Line, Slider } from '../shared/explainerKit.jsx'
-import { Box, Stat, fmt } from './Demos.jsx'
+import { Box, CellRow, fmt, Hint, Line, Slider, Stat } from '../shared/explainerKit.jsx'
 
 const choose = (n, k) => (k < 0 || k > n ? 0 : Array.from({ length: k }, (_, i) => (n - i) / (i + 1)).reduce((a, b) => a * b, 1))
 const NAMES = 'ABCDE'

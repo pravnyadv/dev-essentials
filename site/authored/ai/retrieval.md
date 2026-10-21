@@ -9,6 +9,16 @@ Imagine a 2-number embedding where the first number means "about animals" and th
 
 Plot the three as points on a graph, with "animals" along one axis and "vehicles" along the other. Cat and dog land in the same corner. An arrow from the middle of the graph to each point is the vector's direction, so "pointing the same way" just means "landing in the same corner".
 
+The table scores each pair from the tiny example, so you can see that cat and dog have a cosine near 1 and cat and truck have a cosine of 0.
+
+| Pair | Dot product | Cosine similarity | Straight-line distance |
+|---|---|---|---|
+| cat, dog | 0.72 | 0.992 | 0.141 |
+| cat, truck | 0 | 0 | 1.273 |
+| dog, truck | 0.09 | 0.124 | 1.131 |
+
+A cosine near 1 and a small distance both say "close". The cat and dog pair wins on both.
+
 ## Where embeddings are used
 Semantic search (find documents by meaning), retrieval for RAG, clustering similar items, recommendations, duplicate detection and classification with few labels.
 
@@ -71,8 +81,25 @@ Dimensions: the vector length. More dimensions can carry more detail and cost mo
 ## A worked example: a 20-minute bake-off
 Collect 30 real questions and note which document answers each. Embed all documents with three candidate models. For each question, check whether the right document is in the top five. Example results (invented for illustration): model X 24 out of 30, model Y 27, model Z 21. Pick Y unless X is much cheaper or faster. Repeat when your documents change character.
 
+```mermaid The bake-off: every candidate model embeds the same documents, and the same questions decide the winner
+flowchart TD
+  Q[30 real questions] --> E[Embed documents with each model]
+  E --> S[Search each question]
+  S --> C[Is the right document in the top five?]
+  C --> T[Count hits per model]
+  T --> P[Pick the best, weigh cost and speed]
+  class T focus
+```
+
 ## What you pay for each choice
 Dimensions cost storage. With invented numbers: 1,000,000 vectors of 1,024 numbers at 4 bytes each is 4,096,000,000 bytes, about 4.1 GB. The same vectors at 256 numbers (for a model that supports shorter outputs) take about 1 GB. Search also gets faster, but each vector holds less detail.
+
+```mermaid Storage for 1,000,000 vectors grows in a straight line with the number of dimensions, at 4 bytes per number
+xychart-beta
+  x-axis "dimensions per vector" [256, 512, 768, 1024, 1536, 3072]
+  y-axis "gigabytes" 0 --> 14
+  bar [1.02, 2.05, 3.07, 4.1, 6.14, 12.29]
+```
 
 A hosted API means no servers to run, but your text leaves your machine and the provider may retire a model, which forces a re-embed. An open model you host keeps data in-house and the model fixed, but you run the hardware.
 
@@ -123,7 +150,7 @@ Dot product multiplies matching entries and adds them. It grows with both direct
 $$d(a,b) = \sqrt{\sum_i (a_i - b_i)^2}$$
 
 ## Example
-a = [3, 4], b = [6, 8], c = [4, -3]. Dot a·b = 18 + 32 = 50. Cosine a,b = 50 / (5 × 10) = 1: same direction. Euclidean a,b = √(9 + 16) = 5: they differ in length. Dot a·c = 12 - 12 = 0, cosine 0: unrelated.
+a = [3, 4], b = [6, 8], c = [4, -3]. Dot $a \cdot b$ = 18 + 32 = 50. Cosine a,b = 50 / (5 × 10) = 1: same direction. Euclidean a,b = √(9 + 16) = 5: they differ in length. Dot $a \cdot c$ = 12 - 12 = 0, cosine 0: unrelated.
 
 ## Which to use
 Most text embedding models are trained for cosine similarity or produce vectors of length 1, in which case dot product and cosine give the same ranking. Use the metric the model's documentation recommends. If you normalize vectors to length 1, all three metrics give the same ordering.
@@ -131,8 +158,15 @@ Most text embedding models are trained for cosine similarity or produce vectors 
 ## A worked example: why cosine ignores length
 a = [1, 2] and b = [10, 20]. They point the same way, b is just ten times longer. Dot product: 1×10 + 2×20 = 50, large. Cosine: 50 / (√5 × √500) = 50 / 50 = 1, a perfect match. Euclidean distance: √(81 + 324) = 20.1, far apart. For comparing meaning you usually want cosine, so a long document is not penalized or favored for its length.
 
+The table scores b and c against a = [1, 2]. Dot product and cosine put b first, while distance puts c first.
+
+| Compared with a = [1, 2] | Dot product | Cosine | Euclidean distance |
+|---|---|---|---|
+| b = [10, 20] | 50 | 1.0 | 20.12 |
+| c = [2, 1] | 4 | 0.8 | 1.41 |
+
 ## A third example: when length is a feature
-Some recommender systems learn vectors where a longer vector means a more popular item. Take a user u = [1, 1] and two items p = [2, 2] and q = [1, 1]. Dot product: u·p = 2 + 2 = 4 and u·q = 1 + 1 = 2, so p ranks first. Cosine is 1 for both, a tie. Here the dot product is what you want, because the model deliberately stored popularity in the length. The metric must match how the vectors were trained.
+Some recommender systems learn vectors where a longer vector means a more popular item. Take a user u = [1, 1] and two items p = [2, 2] and q = [1, 1]. Dot product: $u \cdot p$ = 2 + 2 = 4 and $u \cdot q$ = 1 + 1 = 2, so p ranks first. Cosine is 1 for both, a tie. Here the dot product is what you want, because the model deliberately stored popularity in the length. The metric must match how the vectors were trained.
 
 ## What goes wrong
 Suppose your vectors are not normalized and you rank with the dot product. Use query [1, 1], item x = [10, 0] and item y = [1, 1.2]. Dot product: x scores 10 and y scores 2.2, so x wins. Cosine: x is 10 / (10 × 1.414) = 0.71 and y is 2.2 / (1.414 × 1.562) = 0.996. Item y points almost exactly where the query points, yet x wins on length alone.
@@ -143,7 +177,7 @@ The symptom is results that feel off-topic but oddly confident, often the same i
 A cosine score has no universal meaning. 0.8 can be a strong match with one model and a weak one with another. Do not copy a cutoff such as "keep results above 0.75" from a blog post. Look at the scores for 20 of your own queries, mark which results were right, and pick a cutoff from that.
 
 ## Try it yourself
-In a spreadsheet, enter the vectors a = [1, 2], b = [10, 20] and c = [2, 1]. Compute dot product, cosine and Euclidean distance for a against b and a against c. You should find that cosine says b is a perfect match for a (1.0) and c is 0.8, while Euclidean distance says c is closer. Check: a·c = 2 + 2 = 4, and 4 / (√5 × √5) = 0.8. Seeing the two metrics disagree on the same data explains why the choice matters.
+In a spreadsheet, enter the vectors a = [1, 2], b = [10, 20] and c = [2, 1]. Compute dot product, cosine and Euclidean distance for a against b and a against c. You should find that cosine says b is a perfect match for a (1.0) and c is 0.8, while Euclidean distance says c is closer. Check: $a \cdot c$ = 2 + 2 = 4, and 4 / ($\sqrt{5} \times \sqrt{5}$) = 0.8. Seeing the two metrics disagree on the same data explains why the choice matters.
 
 ## Common mistake
 Mixing metrics between indexing and querying.
@@ -175,6 +209,18 @@ A parser tries to recover the structure: headings, paragraphs, tables and the re
 ## A worked example
 A report page has two columns and a small table. Plain extraction reads across the page, so the first column's sentence "Net revenue rose 4 percent" is interleaved with the second column's text about shipping. The chunk makes no sense, and its embedding is a blur of both topics. A layout-aware parser returns column one in full, then column two, and turns the table into rows such as "| Year | Revenue |". Now a question about revenue finds the table row.
 
+```mermaid A parser has two paths: pages with real text get layout recovery, and scans need OCR first
+flowchart TD
+  P[PDF page] --> D{Text layer?}
+  D -->|Yes| L[Parser recovers layout]
+  D -->|No| O[OCR or vision model]
+  O --> X[Raw text]
+  L --> S[Clean structured text]
+  X --> S
+  S --> K[Chunk and index]
+  class O warn
+```
+
 ## How to check it
 Before you index thousands of pages, parse ten and put them beside the originals. Look for tables that fell apart, text in the wrong order, footers repeated on every page and pages that came back empty. Strip repeated headers and footers. Keep the page number and the section title with each chunk, so answers can cite where they came from.
 
@@ -188,11 +234,31 @@ A PDF with a text layer stores each character with an x and y position on the pa
 
 Simple libraries do the first steps. Layout-aware tools add a model that looks at the page shape and labels each region as heading, paragraph, table or figure.
 
+```mermaid The five parsing steps turn characters with positions into clean, ordered text
+flowchart TD
+  A[Characters with x and y] --> B[Group into words and lines]
+  B --> C[Group lines into blocks]
+  C --> D[Decide reading order]
+  D --> E[Detect tables, write rows]
+  E --> F[Drop repeated headers and footers]
+  F --> G[Clean text]
+  class D focus
+```
+
 ## A second example: a scanned page
 A scanned contract has no characters at all, only pixels. OCR finds regions that look like text, then guesses each character. It makes typical mistakes: a zero read as the letter O, or "rn" read as "m". A clause number or an amount can change without any warning. Some vision models read the page image directly, but they can also misread digits or tidy up wording, so check amounts against the original.
 
 ## Trade-offs
 Simple libraries are fast and free but ignore layout. Layout-aware tools are slower and need more computing power. Vision models handle messy pages best and cost the most per page. Choose by document type: clean exported PDFs rarely need more than a simple library, while scans and multi-column reports do.
+
+The table lines up the four ways to read a document, from cheapest to most costly per page.
+
+| Choice | Layout | Speed and cost | Best for |
+|---|---|---|---|
+| Simple library (PyMuPDF, pdfplumber) | Ignored | Fast and free | Clean exported PDFs |
+| Layout-aware tool (Docling, Unstructured) | Columns, tables and headings recovered | Slower, needs more computing power | Multi-column reports and tables |
+| OCR | None, it only reads characters from pixels | Extra step before parsing | Scans, with digits checked |
+| Vision model | Handles messy pages best | Most per page | Pages the others garble, with amounts checked |
 
 ## What goes wrong
 The failures are quiet. A table becomes one long line, so no chunk holds a clean row. Page numbers appear in the middle of sentences. A page returns almost nothing because it was an image.
@@ -228,6 +294,16 @@ An embedding of a whole book blurs everything into one point. A chunk that cover
 ## Common strategies
 Fixed size: every 500 tokens with a 50-token overlap so ideas cut at a boundary appear in two chunks. Structural: split on headings, paragraphs or code functions so chunks follow the author's own units. Semantic: split where the topic changes, detected by embedding sentences and cutting at large jumps. Hierarchical: index small chunks for matching but return the larger parent section for reading. Contextual: prepend a one-sentence note to each chunk saying where it came from.
 
+The table compares the five strategies on where each one cuts and what to watch for.
+
+| Strategy | Cuts where | Good at | Watch for |
+|---|---|---|---|
+| Fixed size | Every N tokens, with overlap | Simple and predictable | Splits mid-sentence |
+| Structural | Headings, paragraphs, functions | Follows the author's own units | Sections of very uneven length, so tune the size on your evals |
+| Semantic | Where the topic changes | Keeps topics apart | Every sentence must be embedded first |
+| Hierarchical | Small chunks to match, parent to return | Sharp match and full context | Two levels to store |
+| Contextual | Any, plus a one-sentence note on each chunk | Chunks that say where they came from | One note to write per chunk |
+
 ## Practical tips
 Start with structural splitting at 200 to 500 tokens and tune on your evals. Keep metadata with every chunk: source, title, section, date and permissions. Inspect actual chunks, since bad splits are easy to see and common.
 
@@ -240,7 +316,17 @@ Take a document of 1,000 tokens, a chunk size of 400 and an overlap of 50. Each 
 2. Tokens 351 to 750.
 3. Tokens 701 to 1,000, which is shorter because the document ends.
 
-The overlap means the index stores about 14 percent more text than the document holds (400 divided by 350). That is the price of keeping boundary sentences whole.
+Here the index stores 400 + 400 + 300 = 1,100 tokens for a 1,000-token document, 10 percent more. On a long document the extra approaches 400 divided by 350, about 14 percent, because the short last chunk stops mattering. That is the price of keeping boundary sentences whole.
+
+```mermaid Each chunk starts 350 tokens after the previous one, so neighbors share 50 tokens
+flowchart TD
+  D[Document, 1,000 tokens] --> C1[Chunk 1, tokens 1-400]
+  D --> C2[Chunk 2, tokens 351-750]
+  D --> C3[Chunk 3, tokens 701-1,000]
+  C1 -.->|50 shared| C2
+  C2 -.->|50 shared| C3
+  class C2 focus
+```
 
 ## Trade-offs in size
 Bigger chunks keep more context but match less precisely, and each one uses more of the prompt. Five chunks of 500 tokens put 2,500 tokens in the prompt. Five chunks of 200 tokens put 1,000. Smaller chunks are cheaper to send and sharper to match, but they lose the surrounding facts. Hierarchical chunking tries to get both.
@@ -289,6 +375,15 @@ Exact nearest-neighbor search compares the query with every vector. With a milli
 ## Index types
 HNSW builds layers of graphs: start at a sparse top layer, jump toward the query, then refine in denser layers. It is fast and accurate and the common default, but uses memory. IVF clusters the vectors and searches only the few closest clusters. Product quantization compresses vectors into short codes to save memory at some accuracy cost. Flat indexes do exact search and are fine up to roughly 100 thousand vectors.
 
+The table sets the four index types side by side.
+
+| Index | How it searches | Strength | Cost |
+|---|---|---|---|
+| Flat | Compares the query with every vector | Exact | Slow at scale, fine up to about 100 thousand vectors |
+| HNSW | Hops through layers of a neighbor graph | Fast and accurate, the common default | Uses memory |
+| IVF | Searches only the few closest clusters | Skips most of the vectors | Approximate |
+| Product quantization | Compares compressed short codes | Saves memory | Some accuracy |
+
 ## Choosing one
 Under a million vectors, almost anything works, so choose by what you already run. pgvector adds vector columns to Postgres. Chroma and LanceDB are simple embedded options. Qdrant, Weaviate and Milvus are dedicated open-source servers. Pinecone is a managed service. Supabase (Postgres with pgvector) and MongoDB Atlas add vector search to databases many teams already use. Jina and Cohere sell embedding and reranking models. Look for metadata filtering, hybrid search and how deletes and updates behave.
 
@@ -303,6 +398,18 @@ An HNSW index links each vector to a few nearby vectors, and keeps sparser copie
 4. At the bottom layer, keep a short list of the best candidates and return the closest ones.
 
 It is like finding a street by first picking the right city, then the district, then the block. Implementations usually have a setting for how wide that final candidate list is. A wider list is slower and more likely to find the true nearest vector.
+
+```mermaid The search hops toward the query on a sparse layer, then repeats on each denser layer
+flowchart TD
+  E[Entry point, top layer] --> H[Hop to closest linked vector]
+  H --> D{Closer neighbor?}
+  D -->|Yes| H
+  D -->|No| L{Bottom layer?}
+  L -->|No| N[Drop to denser layer]
+  N --> H
+  L -->|Yes| R[Return closest candidates]
+  class R good
+```
 
 ## A second example: when you do not need one
 Say you have 5,000 chunks of 1,536 numbers. Comparing a query with all of them is 5,000 × 1,536 = 7,680,000 multiplications, which a laptop does in a blink. A plain array and a loop are enough, with no database to install. An index starts to pay off when scanning everything becomes the slow part, so measure before you add one.
@@ -352,10 +459,34 @@ Keyword search with BM25 scores a document higher when it contains the query's r
 ## Combining them
 Run both, then merge the ranked lists. Reciprocal rank fusion gives each document a score of 1 / (k + rank) in each list, with k often 60, and adds them up. Add a reranker over the merged top 50 for further gains.
 
+```mermaid Hybrid search: two searches run on the same question, and fusion merges their rankings
+flowchart TD
+  Q[Question] --> K[Keyword search, BM25]
+  Q --> E[Embed the question]
+  E --> V[Nearest vectors]
+  K --> L1[Ranked list 1]
+  V --> L2[Ranked list 2]
+  L1 --> F[Reciprocal rank fusion]
+  L2 --> F
+  F --> R[Reranker on the top 50]
+  R --> A[Final results]
+  class F focus
+```
+
 $$\mathrm{score}(d) = \sum_{\text{lists}} \frac{1}{k + \mathrm{rank}(d)}$$
 
 ## A worked example: merging two lists
 Keyword results: page A (1st), B (2nd), C (3rd). Semantic results: D (1st), A (2nd), E (3rd). With reciprocal rank fusion (k = 60): A scores 1/61 + 1/62 = 0.0325, D scores 1/61 = 0.0164, B scores 1/62 = 0.0161. A rises to the top because both methods liked it. A reranker can then reorder the top 50.
+
+The table works the merge out for every page. A is the only page both lists like, so it wins.
+
+| Page | Keyword rank | Semantic rank | Score from keyword | Score from semantic | Total | Place |
+|---|---|---|---|---|---|---|
+| A | 1 | 2 | 0.0164 | 0.0161 | 0.0325 | 1 |
+| D | none | 1 | 0 | 0.0164 | 0.0164 | 2 |
+| B | 2 | none | 0.0161 | 0 | 0.0161 | 3 |
+| C | 3 | none | 0.0159 | 0 | 0.0159 | 4, tied |
+| E | none | 3 | 0 | 0.0159 | 0.0159 | 4, tied |
 
 ## When to use which
 Product codes, names, error messages, legal citations: keyword helps most. Vague questions in natural language: semantic helps most. Do both and let fusion decide.
@@ -402,8 +533,26 @@ A first search finds candidates quickly. A reranker reads each one next to the q
 ## What it is
 Retrieval is usually two stages. Stage one embeds the question and each passage separately and compares the vectors. It is very fast, so it can scan millions of passages, but a single vector cannot hold every detail. Negations, numbers and conditions often get lost. Stage two takes the top 50 or so candidates and scores each one with a cross-encoder, a model that reads the question and the passage together. It is slower and much sharper. You keep the best 5 and pass those to the model.
 
+```mermaid Stage one is cheap and broad, and stage two reads each candidate next to the question
+flowchart TD
+  Q[Question] --> S1[Stage one: vector search]
+  S1 --> C[About 50 candidates]
+  C --> S2[Stage two: cross-encoder]
+  S2 --> B[Best 5]
+  B --> M[Model answers]
+  class S2 focus
+```
+
 ## A worked example
 Question: "Can I return a gift card?" Stage one finds three passages with embedding similarity scores: B "Returns are accepted within 30 days" (0.78), C "Gift card balances never expire" (0.74) and A "Gift cards cannot be refunded" (0.71). Embeddings put B first because it matches "return". The reranker reads each with the question and scores A 0.93, B 0.41 and C 0.20. The right passage is now first. The model answers "No, gift cards cannot be refunded", which stage one alone would likely have missed.
+
+The table shows stage one and the reranker disagreeing, and the reranker moving the right passage from third to first.
+
+| Passage | Stage one score | Stage one place | Reranker score | Reranker place |
+|---|---|---|---|---|
+| A "Gift cards cannot be refunded" | 0.71 | 3 | 0.93 | 1 |
+| B "Returns are accepted within 30 days" | 0.78 | 1 | 0.41 | 2 |
+| C "Gift card balances never expire" | 0.74 | 2 | 0.20 | 3 |
 
 ## Using one
 Fetch 30 to 100 candidates, rerank them, keep 3 to 10. The reranker adds time, often tens to a few hundred milliseconds depending on the model and the number of passages, and some cost. Measure it: run your test questions and compare recall at 5 before and after, as in the evaluating RAG lesson. Keep the reranker only if the gain is worth the delay.
@@ -412,6 +561,13 @@ Fetch 30 to 100 candidates, rerank them, keep 3 to 10. The reranker adds time, o
 In stage one, every passage was turned into a vector in advance. At query time you embed only the question and compare. A cross-encoder cannot do this, because its score depends on the question and the passage together. It must run once per pair, at query time.
 
 Invented numbers: if one run takes 4 ms, reranking 50 candidates costs 50 × 4 = 200 ms. Reranking a million passages would take 4,000,000 ms, over an hour. So stage one narrows the field and the reranker only sees the shortlist.
+
+```mermaid Reranking time grows with every candidate, at an invented 4 ms per question and passage pair
+xychart-beta
+  x-axis "candidates reranked" [10, 50, 100, 500]
+  y-axis "milliseconds" 0 --> 2200
+  bar [40, 200, 400, 2000]
+```
 
 ## What goes wrong
 A reranker can only reorder what it is given. If the right passage is not among the 50 candidates, no reranker can find it. The symptom is a top result that looks plausible but is wrong. To confirm, check whether the correct passage was in the candidate list at all. If it was missing, fix stage one (chunking, hybrid search, query rewriting), not the reranker.
@@ -461,6 +617,35 @@ Index time: the handbook is split into 400 chunks, each embedded and stored with
 
 ## What the model actually receives
 The model never sees your database. It sees one long prompt that your code assembled. In order, it holds the rules (answer only from the excerpts, cite them, admit gaps), then each retrieved chunk with a label such as its title and section, then the user's question. The model reads it like any other text. Because of this, a RAG answer can only be as good as what your code pasted in.
+
+```mermaid The model never touches the database: your app searches, builds the prompt and sends it
+sequenceDiagram
+  participant U as User
+  participant A as Your app
+  participant D as Vector database
+  participant M as Model
+  U->>A: Question
+  A->>D: Embed question, fetch nearest chunks
+  D-->>A: Top chunks
+  A->>M: Prompt with rules, chunks, question
+  M-->>A: Answer with citations
+  A-->>U: Answer
+```
+
+Here is a prompt the app might build for the vacation question in the story below. The first excerpt is quoted from the story and the second is invented. The model reads all of it as one block of text.
+
+```text
+RULES
+Answer only from the excerpts below. Cite the excerpt title.
+If the excerpts do not contain the answer, say so.
+
+EXCERPTS
+[1] Time Off policy, section 3: Employees receive 25 days after 12 months.
+[2] Time Off policy, section 4: Up to 5 unused days carry over to the next year.
+
+QUESTION
+How many vacation days do I get after one year?
+```
 
 ## A second example: when RAG is the wrong tool
 "Summarize this 3-page contract" needs no retrieval, because the whole text fits in the prompt. Retrieval would only risk leaving out a clause. A question like "How many of our policies mention data retention?" is also a poor fit. Retrieval returns the five best-matching chunks, not every match, so the count would be wrong. Questions that need the whole collection need a different tool, such as a database query (a precise lookup written in a language like SQL).
@@ -514,6 +699,27 @@ Multi-query: write three different phrasings, search each, and merge the results
 Decomposition: split a two-part question into two searches.
 Step-back: ask the broader question behind the specific one.
 HyDE: have the model write a short hypothetical answer, then search with that text, because an answer looks more like a document than a question does.
+
+The table shows what each technique turns a raw message into. All five rows are invented examples.
+
+| Technique | What the user typed | What gets searched |
+|---|---|---|
+| Standalone rewrite | "What about the pro plan?" after a pricing question | "What is the price of the pro plan?" |
+| Multi-query | "I cannot get into my profile" | "sign in problems", "profile locked", "account access", results merged |
+| Decomposition | "What is the refund window and who pays for return shipping?" | One search for the window, one for the shipping cost |
+| Step-back | "Does the X200 support 5 GHz Wi-Fi?" | "What wireless standards do our routers support?" |
+| HyDE | "How long do refunds take?" | A short invented answer such as "Refunds arrive within 5 to 7 days", which may be wrong |
+
+```mermaid The rewrite step sees the chat history and the new message, and the original question stays as a fallback
+flowchart TD
+  H[Chat history] --> W[Rewrite step, small model]
+  N[New message] --> W
+  W --> S[Standalone question]
+  S --> R[Search]
+  N -.->|fallback| R
+  R --> C[Chunks]
+  class W focus
+```
 
 ## A worked example
 Chat: "What is the refund window?" The bot says 30 days. The user asks: "And for gift cards?" Searching that text returns random gift card pages. The rewrite step, given the history, produces: "What is the refund policy for gift cards?" and now the right chunk is found. For "How do I recover my account?", a multi-query rewrite searches "reset password", "locked out of account" and "forgot username", then merges the three lists with reciprocal rank fusion.
@@ -573,6 +779,16 @@ Permissions belong in metadata filters applied by your code, not in the prompt. 
 ## A worked example: extracting filters
 Question: "What was the warranty on the 2023 Model X in Spain?" The system asks a model to return a small JSON: {query: "warranty terms", year: 2023, product: "Model X", country: "ES"}. Your code checks the values against allowed lists, applies them as filters, and then runs the semantic search on the query text.
 
+```mermaid The model proposes filters as structured output, and your code checks them before any search runs
+flowchart TD
+  Q[Question] --> X[Model returns JSON]
+  X --> V[Your code checks allowed lists]
+  V --> F[Filter chunks by metadata]
+  F --> S[Semantic search on matches]
+  S --> T[Top chunks]
+  class V focus
+```
+
 ## How a filtered search runs
 A filtered query has two parts: the meaning ("warranty terms") and the conditions (year = 2023, country = ES). The database can apply the conditions before the vector search, so only matching chunks compete. It can also apply them after, trimming the nearest results. Filtering first is safer because the shortlist cannot be emptied by the filter. Check how your database does it.
 
@@ -581,6 +797,15 @@ A user asks "What is the warranty on Model X?" and says nothing about a year. If
 
 ## What goes wrong
 Messy metadata causes silent misses. One document is tagged "US", another "USA", a third "United States". A filter for "US" skips the other two. A document with no date tag fails every date filter. The symptom is "I cannot find that" for a document you know exists. Confirm by repeating the search without the filter. If it appears, the tags are the problem.
+
+The table shows which chunks the filter country = US keeps when the tags are messy.
+
+| Chunk tag | Kept by country = US? | Fix |
+|---|---|---|
+| US | Yes | None |
+| USA | No | Rewrite the tag as US |
+| United States | No | Rewrite the tag as US |
+| No country tag | No | Add the tag at indexing |
 
 Also watch for filters that are too strict. Three filters at once may leave no chunk to match.
 
@@ -615,10 +840,32 @@ RAG puts the right facts in the prompt at question time. The model is unchanged.
 ## A decision guide
 Does the model need facts that change or are private? Use RAG. Does it need a consistent tone, a fixed output format or to follow a complicated procedure reliably? Try prompts and examples, then consider fine-tuning. Do you need a small cheap model to match a big one on a narrow task? Fine-tune it, using the big model's outputs as training data. Many production systems use both: a fine-tuned model for style and format, and RAG for facts.
 
+```mermaid Match the need to the tool: facts go to RAG, behavior goes to prompts first and then fine-tuning
+flowchart TD
+  N[What does the model need?] --> F[Changing or private facts]
+  N --> B[Tone, format, procedure]
+  N --> S[Small model matching a big one]
+  F --> R[RAG]
+  B --> P[Prompts and examples first]
+  P --> T[Then fine-tuning]
+  S -->|train on big model outputs| T
+  class R good
+```
+
 ## What each one costs you
 RAG adds work on every call: a search, extra prompt text and sometimes a reranker. Its setup is light, and updating knowledge means re-indexing a document. Fine-tuning has the opposite shape. It needs a set of good example inputs and outputs that you write or collect, a training run and a test that the model did not get worse elsewhere. Once trained, calls are not slower, and the prompt can be shorter.
 
 Changing a fact is the clearest difference. With RAG you edit the document. With fine-tuning you must prepare new examples and train again, and you cannot easily point to where a fact lives in the weights.
+
+The table compares the three tools on what each one costs and changes.
+
+| | Prompt and examples | RAG | Fine-tuning |
+|---|---|---|---|
+| Best for | Fixed format or tone | Changing or private facts | Style, a narrow skill, a small model matching a big one |
+| Changing a fact | Edit the prompt | Edit the document and re-index | Prepare new examples and train again |
+| Work on every call | Examples add prompt text | A search and extra prompt text | None, and the prompt can be shorter |
+| Setup | Write the instruction and examples | Light | Examples, a training run and a regression test |
+| Try it | First | When facts matter | Last |
 
 ## A second example: neither is needed
 A team wants replies in a fixed three-line format. They try a clear instruction plus three example replies in the prompt, and the format comes out right in 19 of 20 tests (invented numbers). That costs nothing to maintain. Fine-tuning would add training and testing for a gain they do not need. Always try the prompt first.
@@ -664,8 +911,32 @@ Faithfulness: is every claim in the answer supported by the retrieved chunks? An
 ## The loop
 Change one thing, such as chunk size, embedding model or reranker, and rerun both sets of metrics. Keep the change only if it helps enough to justify the added cost or latency.
 
+```mermaid The evaluation loop: score retrieval and generation, change one thing, rerun, and keep it only if it helps
+flowchart TD
+  Q[Test questions with known chunks] --> R[Retrieval metrics]
+  Q --> G[Generation metrics]
+  R --> C[Change one thing]
+  G --> C
+  C --> RE[Rerun both sets]
+  RE --> K{Better enough?}
+  K -->|Yes| Y[Keep the change]
+  K -->|No| N[Drop the change]
+  class Y good
+```
+
 ## A worked example: scoring retrieval
 Five test questions. The right chunk is ranked 1st, 3rd, not found in the top five, 1st and 2nd. Recall at 5 is 4 out of 5 = 0.8. Reciprocal ranks: 1, 0.33, 0, 1, 0.5, so MRR = 2.83 / 5 = 0.57. Change the chunk size and rerun. If recall rises to 0.9, keep it.
+
+The table scores each of the five questions. Recall at 5 counts the hits, and MRR averages the last column.
+
+| Question | Rank of the right chunk | In the top 5? | Reciprocal rank |
+|---|---|---|---|
+| 1 | 1 | Yes | 1 |
+| 2 | 3 | Yes | 0.33 |
+| 3 | Not found | No | 0 |
+| 4 | 1 | Yes | 1 |
+| 5 | 2 | Yes | 0.5 |
+| Total | | 4 of 5, recall 0.8 | 2.83 divided by 5, MRR 0.57 |
 
 ## Building the test set
 Start with 30 to 50 questions. Take them from real user logs if you have them, and write the rest by hand. For each, record the chunk or page that answers it. Include some questions the documents cannot answer, with the expected result "I do not know". Cover the types your users ask: exact lookups, vague questions and follow-ups.

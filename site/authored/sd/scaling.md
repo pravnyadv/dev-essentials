@@ -52,6 +52,14 @@ Your peak traffic is 500 requests per second. Scaling up: a 16-core machine reac
 
 If a 32-core machine costs, say, 10 times what a 4-core one does (price curves vary by vendor, so treat this as an example), the vertical option costs 10 units against 6 for the horizontal one, and it dies all at once. The vertical option wins only while its price is low and your traffic is small, which is why it is the right start.
 
+```mermaid Safe capacity of each option against the 500 requests per second peak (invented numbers from the example)
+xychart-beta
+  x-axis [One 4-core, One 16-core, One 32-core, Five 4-core, Six 4-core]
+  y-axis "safe requests per second" 0 --> 1000
+  bar "Safe capacity" [120, 480, 960, 600, 720]
+  line "Peak load" [500, 500, 500, 500, 500]
+```
+
 ## What goes wrong: the shared bottleneck
 A team adds a second and third web server. Page loads get slower, not faster. The symptom is that web server CPU stays low while database CPU sits at 100 percent and the connection limit is hit. Each new server brought its own pool of database connections, so the database is now overloaded. You confirm it by comparing CPU on each tier and checking active database connections against the configured maximum. The fix is at the database tier: caching, read replicas, or smaller connection pools.
 
@@ -140,6 +148,22 @@ Round robin deals requests out alternately, so server A receives every heavy req
 
 Least connections looks at the live count. After A takes a heavy request, its count is 1 while B's is 0, so the next request goes to B. A server stuck on heavy work keeps a high count and is skipped. Over time the split ends up much closer to even. The lesson: round robin is fine when requests cost about the same, and falls apart when they do not.
 
+Both policies on the same ten requests. The active count column shows servers A and B (A / B) in the least connections run, and a request that ends at the moment of an arrival counts as finished. Ties go to A.
+
+| Arrival | Request | Round robin sends to | Active A / B (least connections run) | Least connections sends to |
+| --- | --- | --- | --- | --- |
+| 0 ms | heavy | A | 0 / 0 | A |
+| 100 ms | light | B | 1 / 0 | B |
+| 200 ms | heavy | A | 1 / 0 | B |
+| 300 ms | light | B | 1 / 1 | A |
+| 400 ms | heavy | A | 1 / 1 | A |
+| 500 ms | light | B | 2 / 1 | B |
+| 600 ms | heavy | A | 2 / 1 | B |
+| 700 ms | light | B | 2 / 2 | A |
+| 800 ms | heavy | A | 2 / 2 | A |
+| 900 ms | light | B | 3 / 2 | B |
+| Work given to A and B | | 5,000 ms and 500 ms | | 3,200 ms and 2,300 ms |
+
 ## What goes wrong: the check that lies
 A server runs out of memory and returns 500 errors on every request, but its port still accepts connections. The balancer's TCP check passes. The symptom is that one in N user requests fails, steadily, while the dashboard shows all servers healthy. Confirm it by comparing error rates per backend in the balancer logs. The fix is an HTTP health check that exercises the app, plus the balancer retrying a failed request on another server.
 
@@ -207,6 +231,15 @@ flowchart LR
 
 ## Load balancer or reverse proxy
 The two overlap, and tools such as NGINX and HAProxy do both. The usual distinction is the situation. A [load balancer](/sd/docs/scaling/load-balancing) is most useful when you have several servers doing the same job. A reverse proxy is useful even with one web server, because the benefits above still apply. Think of load balancing as one job a reverse proxy can do.
+
+The three roles side by side.
+
+| | Reverse proxy | Load balancer | API gateway |
+| --- | --- | --- | --- |
+| Main job | Answers for the servers behind it | Spreads requests over many servers | A reverse proxy for API traffic |
+| Useful with one server | Yes | No | Rarely |
+| Typical extras | TLS, compression, caching, static files | Health checks, round robin | Token checks, rate limits, routing |
+| Main risk | Single point of failure | Single point of failure | Bottleneck, business logic creep |
 
 ## What an API gateway adds
 An API gateway is a reverse proxy aimed at API traffic, often for many backend services. Typical duties:
@@ -288,6 +321,16 @@ Sticky sessions. The balancer pins each user to one server, using a cookie or ha
 A shared session store. The cookie holds only a random session id. Servers look the id up in Redis or a database. Any server can serve any user, and you can revoke a session by deleting the entry. The cost is an extra network call per request, and the store becomes a critical dependency you must keep available.
 
 Signed tokens. The server gives the client a token containing claims such as the user id, plus a signature. A JSON Web Token (JWT) is one standard format: a compact, URL-safe way to carry claims that can be digitally signed. Servers verify the signature and need no lookup. The catch is revocation: a valid token stays valid until it expires, unless you add a deny list, which brings back a shared lookup. Tokens also grow larger than an id, and the payload is readable unless you encrypt it.
+
+The three designs on the same questions.
+
+| | Sticky sessions | Shared session store | Signed token |
+| --- | --- | --- | --- |
+| Where the state lives | One server's memory | Redis or a database | In the token, on the client |
+| Lookup per request | None | One network call | None, the server checks the signature |
+| If a server crashes | Its users lose their sessions | Nothing is lost | Nothing is lost |
+| Cancelling one session | Delete it on that server | Delete the entry, works at once | Hard before expiry, needs a deny list |
+| Extra cost | Uneven load | The store becomes a critical dependency | Bigger payload, readable unless encrypted |
 
 ```mermaid The cookie holds only an id, and any server can look the session up in the shared store
 sequenceDiagram
@@ -515,6 +558,13 @@ sequenceDiagram
 Invented numbers. A request calls 5 services in sequence. Each is available 99.9 percent of the time, which allows about 43 minutes of downtime per 30-day month.
 
 If failures are independent, the request succeeds with probability $0.999^5$, about 0.995. That is 99.5 percent, roughly 216 minutes of failed requests per month, five times worse than any single service. With 10 services in the chain it falls to about 99.0 percent, or about 430 minutes. Latency compounds too: if each hop adds 5 ms, 10 hops add 50 ms before any real work. Retries, caching and fewer hops all help, but the arithmetic shows why each extra service has a cost.
+
+```mermaid Each service in the chain adds its own downtime, so a chain of 10 fails about 10 times as many minutes as one service (each service 99.9 percent available)
+xychart-beta
+  x-axis "services in the chain" [1, 2, 5, 10, 20]
+  y-axis "failed minutes per 30-day month" 0 --> 900
+  bar [43, 86, 216, 430, 856]
+```
 
 ## What goes wrong: the pipeline that drowned its team
 Engineers at Twilio Segment described this in "Goodbye Microservices". Their pipeline sent customer events on to many third-party destination APIs, over 140 by the end. A single shared queue caused head-of-line blocking: when one destination slowed, retries flooded the queue and delayed everyone. They split into a service and queue per destination, which fixed that. Then came new costs. Each destination got its own repository. Shared libraries drifted apart, because updating them meant deploying dozens of services. Each service had a different load pattern, so auto-scaling was hard to tune. Their operational overhead rose with every destination added, and by the end they say 3 full-time engineers were spending most of their time keeping the system alive. They consolidated over 140 services into one service and one repository.

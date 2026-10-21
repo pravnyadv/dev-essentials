@@ -25,6 +25,20 @@ Ask "What was our revenue last quarter?" with no document attached. No wording c
 ## Change one thing at a time
 To see whether a rewrite helps, keep the test inputs fixed and change only one part of the prompt. Use ten inputs and mark each answer pass or fail against three yes or no rules you wrote first, such as "under 50 words", "mentions cost" and "no jargon". Invented example: version one passes 4 of 10 and version two passes 7 of 10. Run each version twice, because the model picks words with some randomness, so the same prompt can give different answers on different runs. With only ten inputs a gap of a few passes can be luck. If two changes happen together, you cannot tell which one helped.
 
+```mermaid Testing a prompt is a loop: fixed inputs, one change, pass or fail counts, then compare.
+flowchart TD
+  I[Fixed test inputs] --> R1[Run version one]
+  R1 --> M1[Mark each answer pass or fail]
+  M1 --> C[Change one part of the prompt]
+  C --> R2[Run version two on the same inputs]
+  R2 --> M2[Mark each answer pass or fail]
+  M2 --> Cmp{More passes?}
+  Cmp -->|Yes| Keep[Keep the change]
+  Cmp -->|No| Undo[Undo the change]
+  class Keep good
+  class Undo warn
+```
+
 ## Common mistakes
 Writing very short prompts and expecting mind-reading. Stacking many unrelated tasks in one prompt. Testing on only one input.
 
@@ -66,14 +80,43 @@ Anything in a system prompt can leak or be overridden by a determined user or by
 ## A worked example: a small system prompt
 "You are the support assistant for Acme Bikes. Answer in a friendly, concise way, in at most four sentences. Only use the information in the provided documents. If the answer is not there, say you are not sure and offer to connect a person. Never promise refunds or delivery dates." Each sentence does a job: role and tone, length, sources, fallback, and limits.
 
+The table maps each sentence of the small prompt to its job.
+
+| Sentence | Job |
+|---|---|
+| "You are the support assistant for Acme Bikes." | Role |
+| "Answer in a friendly, concise way, in at most four sentences." | Tone and length |
+| "Only use the information in the provided documents." | Sources |
+| "If the answer is not there, say you are not sure and offer to connect a person." | Fallback |
+| "Never promise refunds or delivery dates." | Limits |
+
 ## Testing it
 Try to break it: ask about a competitor, ask for a refund promise, paste a message telling the assistant to ignore its rules. Anything that slips through becomes a new line in the prompt or, better, a rule enforced in code.
 
 ## How the model treats it
 The system prompt is text placed at the start of the context, and the model reads it together with everything else. There is no lock around it. Models are trained to follow it more closely than ordinary user text, but that is a learned habit, not a guarantee. This is why a long chat or a pasted message can still pull the model away from it.
 
+```mermaid The system prompt is only text at the start of the context, read together with everything else, so nothing locks it.
+flowchart TD
+  S[System prompt] --> X[One context]
+  H[Chat history] --> X
+  U[Newest user message] --> X
+  X --> M[Model reads all of it]
+  M --> A[Reply]
+  class S focus
+```
+
 ## A second example: when it is the wrong place
 Some jobs do not belong in a system prompt. A rule such as "never refund more than $10" belongs in code, because code cannot be talked around. A fact that changes daily, such as stock levels, belongs in the user message or a lookup. A whole product catalog does not belong there either, because every call pays for it. Invented numbers: a 1,500 token prompt on 10,000 calls a day is 15 million tokens a day before any user has said a word.
+
+```mermaid Where a rule should live depends on whether it must never break and how often it changes.
+flowchart TD
+  R{Must never break?} -->|Yes| Code[Enforce it in code]
+  R -->|No| C{Changes often?}
+  C -->|Yes| U[User message or a lookup]
+  C -->|No| S[System prompt]
+  class Code good
+```
 
 ## What goes wrong
 The symptoms are specific. A rule is ignored late in a long chat, because it sits far from the latest message. The tone becomes stiff, because the prompt has too many "always" lines. Behavior flips between runs, because two rules contradict each other. To find the cause, write one test case per rule and run each five times. The rule that fails sometimes is the weak one. Then search the prompt for another line that argues against it.
@@ -112,6 +155,17 @@ You show a few input and output pairs before the real input. The model infers th
 ## Chain-of-thought
 You ask the model to reason step by step before answering, or you show worked reasoning in the examples. It helps on arithmetic, logic and multi-step questions. For reasoning models that think internally, skip it. For simple lookups it only adds tokens.
 
+```mermaid Start with the cheapest technique and move up only when your tests fail.
+flowchart TD
+  Z[Zero-shot] --> T1{Tests pass?}
+  T1 -->|Yes| Done[Stop here]
+  T1 -->|No| F[Few-shot examples]
+  F --> T2{Tests pass?}
+  T2 -->|Yes| Done
+  T2 -->|No| C[Chain-of-thought]
+  class Done good
+```
+
 ## Related techniques
 Self-consistency samples several reasoning paths and takes the majority answer. Prompt chaining splits a task into prompts whose outputs feed the next. ReAct interleaves reasoning with tool calls. Tree of thoughts explores several branches. Each has its own page in the reference chapter later in this path, with worked examples.
 
@@ -126,6 +180,14 @@ Few-shot works because the examples become part of the text the model continues.
 
 ## The cost of each
 Each technique spends tokens. Invented numbers: three examples of 40 tokens each add 3 × 40 = 120 tokens to every call, which is 1,200,000 extra tokens over 10,000 calls. Chain-of-thought changes the output side: a reply of 5 tokens may become 120. Choose the cheapest technique that passes your tests, and move up only when a test fails.
+
+The table puts the three techniques side by side, with the invented costs from above.
+
+| Technique | What you add | Use it when | Invented cost |
+|---|---|---|---|
+| Zero-shot | Only the task description | First try, since modern models do well | No extra tokens |
+| Few-shot | Three to five input and output pairs | The format or edge cases go wrong | 3 examples of 40 tokens add 120 tokens a call, 1,200,000 over 10,000 calls |
+| Chain-of-thought | A request for steps | Arithmetic, logic, multi-step questions | A reply of 5 tokens may become 120 |
 
 ## What goes wrong
 With few-shot, the model may copy surface details. If your last example is "negative", it may lean toward "negative". To check, shuffle the examples. If results change a lot, the prompt is fragile. With chain-of-thought, fluent steps can still be wrong, and the written steps are not a reliable record of how the model really got its answer. Check the final answer independently rather than trusting a convincing explanation.
@@ -159,6 +221,18 @@ When code consumes the answer, ask for a schema and validate it. Do not parse pr
 ## What it is
 Structured output means the model returns JSON that matches a schema you define. Providers offer this through schema-constrained generation or through tool calls whose arguments are the schema. Libraries add a validation step and retry the call with the error message when validation fails.
 
+```mermaid The code validates the JSON, and a failure goes back to the model together with the error message.
+flowchart TD
+  P[Prompt plus schema] --> M[Model]
+  M --> J[JSON answer]
+  J --> V{Matches the schema?}
+  V -->|Yes| Use[Your code uses the data]
+  V -->|No| E[Retry with the error message]
+  E --> M
+  class Use good
+  class E warn
+```
+
 ## Why it matters
 Free text breaks parsers in small ways: a trailing explanation, a missing field, a changed key name. A schema makes the contract explicit. Validation turns silent bad data into a loud error you can count and fix. Keep schemas small, give fields descriptions (the model reads them), and use enums instead of free strings when the set of values is known.
 
@@ -171,8 +245,26 @@ Use enums for fixed choices. Make fields optional when the information may be mi
 ## How the constraint works
 With schema-constrained generation, the system filters the model's choices at every token. The model scores all possible next tokens, and the system removes those that would break the schema. After `{"years":` only digits are allowed. After `"seniority":` only the start of junior, mid or senior is allowed. The model picks among what remains. The result always has a valid shape. It is not guaranteed to hold the right value.
 
+```mermaid At every token the system removes choices that would break the schema, and the model picks among the rest.
+flowchart TD
+  S[Model scores all next tokens] --> F[Remove tokens that break the schema]
+  F --> P[Model picks from the rest]
+  P -->|Next token| S
+  class F focus
+```
+
 ## Valid is not correct
 Suppose the resume says 15 years and the model returns 5. The JSON is valid, validation passes and the data is wrong. Another case: a resume with no seniority stated, and the model picks "mid" because the schema forced a choice. The symptom is no errors but bad data. To confirm, sample 20 outputs, compare each field with the source by hand, and compute accuracy per field.
+
+The table checks five outputs against the resume schema. Valid means the shape matches, and correct means the values match the resume.
+
+| Output | Valid? | Correct? | What happens |
+|---|---|---|---|
+| years_experience 5, resume says 5 | Yes | Yes | Code uses it |
+| years_experience 5, resume says 15 | Yes | No | Silent bad data, found only by sampling |
+| seniority "intermediate" | No, not in the list | Not checked | Retry with the error message |
+| years_experience "five" | No, a string, not a number | Not checked | Retry with the error message |
+| seniority "mid", resume states none | Yes | No, a forced choice | Add an "unknown" option |
 
 ## Trade-offs in schema design
 A schema that is too strict forces an invented answer. Add an "unknown" option to enums and make uncertain fields optional. Deeply nested schemas fail more often, so flatten them when you can. If you ask for only a final answer, you may lose the benefit of thinking first. A common fix is a "reasoning" field placed before the "answer" field, so the model writes its working before it commits.
@@ -214,6 +306,14 @@ A bug takes three files to understand. A fast model guesses a fix and often miss
 ## How the thinking works
 Before the final answer, the model writes hidden reasoning tokens. Some providers show a summary of them. Those tokens are usually billed as output. The effort setting limits how many it may use. Invented numbers: 2,000 thinking tokens plus a 100 token answer is 2,100 tokens, which is 21 times the answer alone. Because you pay for the thinking, the question is whether it buys a better answer.
 
+```mermaid Thinking tokens sit between the question and the answer, and you pay for them as output.
+flowchart TD
+  Q[Question] --> T[Hidden thinking tokens]
+  T --> A[Final answer]
+  E[Effort setting] -.->|Limits| T
+  class T warn
+```
+
 ## A second example: when thinking does not help
 Take "Rewrite this sentence more politely". There are no steps to plan, so extra thinking adds delay and cost with no gain. Take a question about a private fact the model never saw. More thinking cannot create missing knowledge. It can only produce a longer, more polished wrong answer. Thinking helps most when the task has several steps and the model knows the facts.
 
@@ -248,6 +348,18 @@ The quality of an agent's output depends more on what is in its context than on 
 ## What it is
 Context is everything the model sees on a call. Six kinds cover most of it: instructions (role, goals, boundaries), knowledge (retrieved documents, schemas), memory (what happened this session, and what persists across sessions), examples (few-shot demonstrations), tools (their names, descriptions and results), and guardrails (hard rules and format constraints).
 
+```mermaid Six kinds of content are combined into the one context the model reads on each call.
+flowchart LR
+  I[Instructions] --> C[Context for this call]
+  K[Knowledge] --> C
+  Me[Memory] --> C
+  Ex[Examples] --> C
+  T[Tools] --> C
+  G[Guardrails] --> C
+  C --> M[Model]
+  class C focus
+```
+
 ## The working rules
 Treat the window as a budget. Load only what the next step needs. Prefer a short pointer the agent can follow, such as a file path, over pasting the content. Trim old tool output. When a long task fills the window, compact it into a summary or restart with a clean context and a written handoff. Order matters: stable instructions first, so cached prefixes stay reusable.
 
@@ -260,8 +372,38 @@ Customer support agent. Instructions: tone, limits. Knowledge: the refund policy
 ## How the model uses the window
 The model keeps no memory between calls. Each step, the whole context is sent again, and the model reads all of it. An agent's memory is only what you choose to resend. Invented numbers: the first step has 2,000 tokens, and each step adds 1,500 tokens of tool output. Step 10 holds 2,000 + 9 × 1,500 = 15,500 tokens. Over 10 steps the model reads 87,500 tokens in total, because each step re-reads everything before it.
 
+```mermaid The context grows by 1,500 tokens a step, while the total the model has read grows much faster (invented numbers from this example)
+xychart-beta
+  x-axis "step" [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  y-axis "tokens" 0 --> 90000
+  line "context at this step" [2000, 3500, 5000, 6500, 8000, 9500, 11000, 12500, 14000, 15500]
+  line "total read so far" [2000, 5500, 10500, 17000, 25000, 34500, 45500, 58000, 72000, 87500]
+```
+
+```mermaid Each step resends the whole context, so every tool result stays in it and makes the next call bigger.
+sequenceDiagram
+  participant A as Agent app
+  participant M as Model
+  participant T as Tool
+  A->>M: Whole context, step 1
+  M-->>A: Ask to use a tool
+  A->>T: Run the tool
+  T-->>A: Result
+  Note over A,M: The result is added to the context
+  A->>M: Whole context, now bigger
+```
+
 ## A second example: a coding agent
 An agent fixing one bug does not need the whole repository. Instructions: the repo's rules file. Knowledge: only the failing file. Memory: the output of the last test run, not all earlier runs. Tools: read a file, edit a file, run the tests. Compare this with the support agent above. The same six kinds apply, but the content is picked for the task. A one-off question to a chat assistant needs none of this. A good single prompt is enough.
+
+The table sets the two agents side by side on four of the six kinds.
+
+| Kind | Support agent | Coding agent |
+|---|---|---|
+| Instructions | Tone and limits | The repo's rules file |
+| Knowledge | The refund policy for this question | Only the failing file |
+| Memory | The customer bought the red model | Output of the last test run only |
+| Tools | Look up an order, refund up to $10 | Read a file, edit a file, run the tests |
 
 ## What goes wrong
 The symptom is an agent that ignores a rule you gave early, repeats a step, or picks the wrong tool. The most useful check is to print the exact context at the failing step and read it as the model would. Often the needed item is missing, or it is buried under pages of old output. Fix what you find there before changing the wording of any instruction.
@@ -296,6 +438,16 @@ Poisoning: a wrong fact or hallucination enters the context and later steps trea
 ## What to do about each
 Poisoning: validate facts before saving to memory and let the agent start fresh when a run goes wrong. Distraction: summarize or drop old turns. Confusion: expose only the tools needed for the step. Clash: keep one source of truth and remove stale versions. Rot: retrieve only what the step needs instead of pasting everything.
 
+The table puts each failure next to its symptom and its fix.
+
+| Failure | Symptom | Fix |
+|---|---|---|
+| Poisoning | A wrong fact is treated as true by later steps | Validate before saving to memory, start fresh after a bad run |
+| Distraction | The model repeats past actions instead of reasoning anew | Summarize or drop old turns |
+| Confusion | The wrong tool or document gets picked | Expose only the tools the step needs |
+| Clash | Contradictory information, such as an old and a new spec | Keep one source of truth |
+| Rot | Accuracy drops as inputs get longer | Retrieve only what the step needs |
+
 ## Measure it
 Test with your real prompts at different lengths: add unrelated pages of text (about 5,000 tokens each) and watch the accuracy. If answers get worse as you add context, you have found the limit for that task. Place the key instructions at the start and the end, where models pay the most attention.
 
@@ -309,6 +461,20 @@ Work through a short test to find which failure you have.
 3. If the context holds two versions of the same thing, that is clash.
 4. If it still fails with a clean context, the problem is the task or the model, not the context.
 Clutter calls for trimming. Poisoning and clash call for removing the bad item. Diagnose before you trim anything.
+
+```mermaid Rerun with a clean context first, then trace where a wrong fact came from, and each outcome has its own fix.
+flowchart TD
+  F[Failing step] --> R[Rerun with a clean context]
+  R --> S{Now succeeds?}
+  S -->|Yes| Cl[Clutter: distraction, confusion or rot]
+  S -->|No| W{Fact from an earlier step?}
+  W -->|Yes| Po[Poisoning]
+  W -->|No| T{Two versions?}
+  T -->|Yes| Cs[Clash]
+  T -->|No| O[Problem is the task or the model]
+  class Po bad
+  class Cs bad
+```
 
 ## A second example: confusion from too many tools
 An agent has 40 tools. A user asks for last month's sales total, and the agent calls "get_customer" because its description mentions sales. Many descriptions overlap, so the model cannot tell them apart. The fix is to expose only the five tools the step needs and rewrite each description so it says clearly what it does and when not to use it. Symptom to watch for: the right tool exists, but the wrong one gets called.
@@ -341,11 +507,39 @@ When a task outgrows the window you have three tools: shrink what is there, spli
 ## Compaction
 Summarize the older part of the conversation into a short note and continue from there. Keep decisions, open questions, file paths and failures. Drop raw tool output. The risk is losing a detail you later need, so write important facts to a file as well. A reset, which starts a fresh context with a written handoff, avoids carrying accumulated confusion.
 
+```mermaid Compaction swaps a long history for a short note, and the next context starts from that note alone.
+flowchart TD
+  L[Long conversation] --> N[Short note: goal, done, tried, next]
+  N --> F[Note also saved to a file]
+  N --> C[Fresh context starts with the note]
+  class N focus
+```
+
 ## Isolation
 Give each subtask its own context. A subagent that reads fifty files returns a three-line summary, keeping the main context small. Sharing context across several agents is harder: pass explicit summaries and file references rather than full transcripts.
 
+```mermaid The subagent reads many files in its own context and hands back only a short summary.
+sequenceDiagram
+  participant M as Main agent
+  participant S as Subagent
+  participant F as Files
+  M->>S: Find every place the config is read
+  S->>F: Read fifty files
+  F-->>S: File contents
+  S-->>M: Ten lines of file names
+  Note over M,S: Only the summary enters the main context
+```
+
 ## Long context
 Windows of hundreds of thousands of tokens exist, but longer inputs cost more, slow responses and can degrade accuracy. Use them for tasks that truly need many documents at once. Prompt caching cuts the cost of a repeated long prefix. Retrieval is usually better than pasting everything.
+
+The table compares the three tools.
+
+| Tool | What it does | Main risk | Good fit |
+|---|---|---|---|
+| Compaction | Swaps the older conversation for a short note | Losing a detail you later need | One long task that keeps running |
+| Isolation | Gives each subtask its own context | Two subagents making conflicting choices | Reading many files, then reporting briefly |
+| Long context | Puts many documents in a big window | Higher cost, slower replies, lower accuracy | Finding contradictions between any two clauses |
 
 ## A worked example: a handoff note
 After two hours the agent writes: "Goal: fix login bug. Done: found cause in auth.js line 42 (token expiry). Tried: extending expiry (broke tests). Next: add refresh logic. Files: auth.js, auth.test.js. Do not touch: billing." The next context starts with only this note. It is about 60 tokens instead of 80,000.
@@ -355,6 +549,19 @@ Ask a subagent to "find every place the config is read and report file names". I
 
 ## Writing a good compaction, step by step
 Compaction works best as a routine, not an emergency.
+
+```mermaid Compaction is a routine with a check at the end: if the new context disagrees with your plan, the note is missing something.
+flowchart TD
+  A[Stop at a clean point] --> B[Write the note]
+  B --> C[Save it to a file]
+  C --> D[Start a new context with only the note]
+  D --> E[Ask what it will do next]
+  E --> F{Matches your plan?}
+  F -->|Yes| G[Carry on]
+  F -->|No| B
+  class G good
+  class F warn
+```
 1. Stop at a clean point, such as after a test run, not in the middle of an edit.
 2. Write down the goal, what is done, what was tried and failed, what is next, and the key files.
 3. Save the note to a file as well as the context.

@@ -21,6 +21,29 @@ Count the hours first. Frequency times minutes per case gives the yearly or mont
 
 If step 4 is impossible, you cannot tell whether a model works, so stop there.
 
+The table scores the two example tasks side by side.
+
+| | Tagging support tickets | Reviewing contracts |
+|---|---|---|
+| Cases per month | 300 | 40 |
+| Minutes per case | 2 | 90 |
+| Hours per month | 10 | 60 |
+| Cost of a wrong output | Low | High, and a lawyer must check |
+
+```mermaid Two gates can stop a project early: no past cases to measure with, or a model that does not beat the baseline rule
+flowchart TD
+  T[Task as input and output] --> H[Hours: frequency times time]
+  H --> C[Cost of a wrong output]
+  C --> D{50 past cases with answers?}
+  D -->|No| S[Stop: cannot measure]
+  D -->|Yes| B[Write a baseline rule]
+  B --> M{Model beats baseline?}
+  M -->|No| K[Keep the rule]
+  M -->|Yes| G[Use the model]
+  class S bad
+  class G good
+```
+
 ## A second example: when a rule is enough
 A store wants to flag refunds over $500 for a manager. That is a threshold, not a prediction. One line of code does it, never tires and can be explained to an auditor. A model adds cost and uncertainty with nothing to gain. Use learned models when the pattern is too fuzzy to write down, such as spotting a likely cancellation from dozens of weak signals.
 
@@ -58,17 +81,54 @@ Modern systems learn an embedding (a list of numbers) for each user and each ite
 ## A worked example
 A user is the vector [0.9, 0.1]: loves action, barely cares about romance. Movie A is [0.8, 0.2], mostly action. Movie B is [0.1, 0.9], mostly romance. Dot product with A: 0.9 × 0.8 + 0.1 × 0.2 = 0.74. With B: 0.9 × 0.1 + 0.1 × 0.9 = 0.18. A ranks first. In real systems the vectors have hundreds of numbers and the model learns them from clicks and watch time.
 
+```mermaid Each movie is scored by a dot product with the user vector, and the highest score is shown first
+flowchart TD
+  U[User vector 0.9 and 0.1] --> DA[Dot product with A]
+  U --> DB[Dot product with B]
+  MA[Movie A 0.8 and 0.2] --> DA
+  MB[Movie B 0.1 and 0.9] --> DB
+  DA --> SA[Score 0.74]
+  DB --> SB[Score 0.18]
+  SA & SB --> R[A ranks first]
+  class R good
+```
+
 ## What goes wrong
 The cold start problem: a new user or a new item has no history, so there is nothing to match. Systems fall back to popular items or ask a few questions. A feedback loop: if you only show what people already click, you never learn what else they would like. The target matters too: optimizing clicks can promote sensational items, while optimizing "watched to the end" rewards something different.
 
 ## How collaborative filtering finds a match
 Three users and four movies. Ana liked movies 1 and 2. Ben liked 1, 2 and 3. Cy liked only 4. Ben shares both of Ana's likes, Cy shares none. So Ben is Ana's nearest neighbor, and the system suggests movie 3 to Ana, which Ben liked and she has not seen. Embeddings do the same job with numbers and scale to millions of users.
 
+The table shows who liked what. Ben matches both of Ana's likes, so his movie 3 goes to Ana.
+
+| User | Movie 1 | Movie 2 | Movie 3 | Movie 4 |
+|---|---|---|---|---|
+| Ana | liked | liked | no record | no record |
+| Ben | liked | liked | liked | no record |
+| Cy | no record | no record | no record | liked |
+
 ## Why two stages
 Invented numbers: a careful model takes 2 milliseconds per item. Scoring 5,000,000 items takes 10,000 seconds, nearly three hours, for one page view. The cheap first stage cuts that to 500 candidates, and the careful model then scores them in 1 second. The cost is that anything the first stage drops can never be recommended, so a weak first stage caps quality.
 
+```mermaid A fast stage trims millions of items so a slower, careful model only scores a few hundred
+flowchart TD
+  A[5,000,000 items] --> F[Fast stage]
+  F --> C[500 candidates]
+  C --> R[Careful model ranks]
+  R --> P[Page of results]
+  F -.->|Dropped items are gone| X[Never recommended]
+  class X bad
+```
+
 ## What goes wrong: counts are not rates
 Two videos are equally liked: half of the viewers click either one. The system shows video X to 900 users and video Y to 100. X gets 450 clicks, Y gets 50. Ranked by click count, X looks nine times better, and gets shown even more tomorrow. Compare clicks per view instead, and both are 50 percent. To confirm, check whether the top items are simply the ones shown most. Showing a small share of random items keeps feeding the system fresh evidence.
+
+The table ranks the two videos by count and by rate.
+
+| Video | Shown to | Clicks | Rank by clicks | Clicks per view |
+|---|---|---|---|---|
+| X | 900 | 450 | First | 50 percent |
+| Y | 100 | 50 | Second | 50 percent |
 
 ## How to tell a new ranking is better
 Split 20,000 users in two equal groups. Version A gets a click rate of 4.0 percent and version B 4.3 percent. The random wobble in the difference between two groups of 10,000 is about 0.28 percentage points. The measured gap is 0.3, barely more than one wobble, so it could be luck. You would need more users or a longer test before shipping B.
@@ -106,14 +166,48 @@ Actual sales over three days: 100, 120, 110. Forecast: 105, 115, 120. Errors: 5,
 ## A worked example: rare events
 Out of 100,000 card payments, 100 are fraud. A model that always says "not fraud" is 99.9 percent accurate and catches nothing. This is class imbalance. Use precision (of the cases flagged, how many were right) and recall (of the real cases, how many were found). Say a model flags 200 payments and 80 are truly fraud. Precision is 80 / 200 = 40 percent. Recall is 80 / 100 = 80 percent. Which matters more depends on what a miss costs against what a false alarm costs. Try it in the demo above: slide the threshold and watch the false alarms rise as you catch every fraud.
 
+The table lays out the four outcomes for the 100,000 payments.
+
+| | Actually fraud | Actually fine |
+|---|---|---|
+| Flagged | 80 caught | 120 false alarms |
+| Not flagged | 20 missed | 99,780 correct passes |
+
 ## A second example: a better naive forecast
 Shop sales last week, Monday to Sunday, were 80, 90, 85, 95, 140, 200, 120. This week they were 84, 92, 88, 100, 150, 210, 126. Forecast Tuesday to Sunday two ways. "Same as yesterday" is off by 8, 4, 12, 50, 60 and 84, an average of 36.3. "Same day last week" is off by 2, 3, 5, 10, 10 and 6, an average of 6.0. The weekly pattern is the signal, so repeat the season, not the last value. Any model must beat 6.0.
+
+```mermaid Two weeks of shop sales: the weekly shape repeats, so the same day last week is a strong guess
+xychart-beta
+  x-axis [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+  y-axis "sales" 0 --> 250
+  line "last week" [80, 90, 85, 95, 140, 200, 120]
+  line "this week" [84, 92, 88, 100, 150, 210, 126]
+```
+
+| Day | Actual | Same as yesterday | Error | Same day last week | Error |
+|---|---|---|---|---|---|
+| Tue | 92 | 84 | 8 | 90 | 2 |
+| Wed | 88 | 92 | 4 | 85 | 3 |
+| Thu | 100 | 88 | 12 | 95 | 5 |
+| Fri | 150 | 100 | 50 | 140 | 10 |
+| Sat | 210 | 150 | 60 | 200 | 10 |
+| Sun | 126 | 210 | 84 | 120 | 6 |
+| Average error | | | 36.3 | | 6.0 |
 
 ## How an anomaly score works
 A customer's daily spending over five days was 30, 45, 38, 52 and 35 dollars. The mean is 40 and the standard deviation, a measure of typical spread, is about 7.7. A payment of 130 sits (130 - 40) / 7.7 = 11.7 spreads above the mean, a clear outlier. A payment of 55 sits 1.9 spreads away and is normal. The threshold is a choice. Flag everything beyond 3 spreads and, if spending were bell-shaped, about 0.3 percent of ordinary payments still trip it. On 100,000 payments that is roughly 270 false alarms.
 
 ## What goes wrong: information from the future
 A model reports 99 percent recall on test data, then collapses live. One cause is leakage: a feature that is only known after the answer. For fraud, a field like "chargeback filed" is filled in after fraud is found, so the model just reads it. Symptom: one feature dominates and the score is too good. To confirm, drop that feature and watch the score fall. Ask of each column, "would I know this at the moment I must decide?"
+
+```mermaid Leakage is a column that is filled in only after the answer is known, so the model reads the answer
+flowchart TD
+  P[Payment arrives] --> D[Decision moment]
+  D --> F[Fraud is found later]
+  F --> C[Chargeback filed field set]
+  C -.->|In training data only| D
+  class C bad
+```
 
 ## Common mistake
 Using accuracy on rare events, or testing on data from before the model's training period. Test on later data than you trained on, since the model will always be used on the future.
@@ -146,14 +240,42 @@ Factories check parts for defects on a conveyor belt. Farms spot diseased plants
 ## A worked example: a screening test
 A hospital screens 1,000 scans. Ten show disease. The model finds 9 of the 10 (recall 90 percent) and raises 50 false alarms. It flagged 59 scans, of which 9 are real, so precision is 9 / 59, about 15 percent. That can still be a good screening tool, because a doctor reviews 59 scans instead of 1,000 and only 1 case was missed. The numbers decide whether it helps, not the headline accuracy.
 
+The table sorts the 1,000 scans into the four outcomes.
+
+| | Has disease | No disease |
+|---|---|---|
+| Flagged | 9 found | 50 false alarms |
+| Not flagged | 1 missed | 940 correct passes |
+
 ## What goes wrong
 Models learn shortcuts. A classifier trained on photos from one hospital may be reading the scanner's label, not the disease. A model trained in good light fails at night. Always test on images from a different place and time than the training set, and keep checking after launch because cameras and conditions change.
 
 ## How a detection gets scored
 A detector draws a box. To grade it, compare with the true box using intersection over union, or IoU: the overlap area divided by the combined area. Say the true box covers x from 0 to 10 and y from 0 to 10, and the prediction covers x from 5 to 15 and y from 0 to 10. The overlap is 5 × 10 = 50. The union is 100 + 100 - 50 = 150. IoU is 50 / 150 = 0.33. Teams choose a cutoff, often 0.5, and count a box as correct only above it. This is why a box that "looks about right" can still count as a miss.
 
+The table works out the overlap and union for the two boxes.
+
+| Box | x range | y range | Area |
+|---|---|---|---|
+| True box | 0 to 10 | 0 to 10 | 100 |
+| Predicted box | 5 to 15 | 0 to 10 | 100 |
+| Overlap | 5 to 10 | 0 to 10 | 50 |
+| Union | | | 150 |
+| IoU | | | 50 / 150 = 0.33 |
+
 ## Routing by confidence
 A model gives each image a score between 0 and 1. Invented example with 1,000 images: 800 score above 0.9 and pass automatically, of which 4 are wrong (0.5 percent). The other 200 go to a person, and 30 of them are wrong, which the person fixes. People handle 20 percent of the load, and, if the reviewer catches every error, the final error rate is 0.4 percent. The catch is calibration: whether a score of 0.9 really means 90 percent right. To check, group past predictions by score and compare each group's true accuracy with its score. Models are often too sure of themselves.
+
+```mermaid A confidence cutoff sends most images through and the unsure ones to a person
+flowchart TD
+  I[1,000 images] --> S{Score above 0.9?}
+  S -->|Yes, 800| A[Pass automatically]
+  S -->|No, 200| P[Person reviews]
+  A --> E1[4 wrong, kept]
+  P --> E2[30 wrong, fixed]
+  class E1 warn
+  class E2 good
+```
 
 ## When a simple sensor wins
 A packing line needs to know whether a box has a bottle in it. A weight sensor or a light beam answers in a fraction of a millisecond, costs little and does not care about lighting. Use vision when the question depends on appearance, such as a scratch or a label. If a cheaper signal answers the question, use that.
@@ -186,8 +308,28 @@ Speech recognition (ASR, or speech-to-text) converts audio to words. Text-to-spe
 
 Open models such as Whisper made good transcription cheap for many languages. Accuracy is measured with word error rate (WER): the number of substitutions, deletions and insertions divided by the number of words in the true transcript.
 
+```mermaid A voice assistant chains recognition, a language model and speech, and each step adds delay
+flowchart TD
+  U[User speaks] --> A[Speech recognition]
+  A --> L[Language model]
+  L --> T[Text-to-speech]
+  T --> H[User hears reply]
+```
+
 ## A worked example: word error rate
 The speaker says "turn the lights off in the kitchen" (7 words). The system writes "turn the light off in kitchen". One word is changed (lights to light), one is missing (the). That is 1 substitution + 1 deletion = 2 errors over 7 words, a WER of 2 / 7, about 29 percent.
+
+Lined up word by word, the two errors are easy to see.
+
+| Position | Spoken | System wrote | Result |
+|---|---|---|---|
+| 1 | turn | turn | correct |
+| 2 | the | the | correct |
+| 3 | lights | light | substitution |
+| 4 | off | off | correct |
+| 5 | in | in | correct |
+| 6 | the | nothing | deletion |
+| 7 | kitchen | kitchen | correct |
 
 ## A worked example: the delay budget
 Transcribing takes 0.3 seconds, the model 0.6 and speech 0.3. Total 1.2 seconds before the user hears anything. People notice gaps in talk quickly, so teams stream everything: start speaking the first sentence while the model writes the second, and stop the voice at once if the user interrupts.
@@ -203,6 +345,23 @@ Invented numbers: 80 speakers have a WER of 6 percent and 20 speakers with a reg
 
 ## The wait before the delay budget
 The 1.2 second budget starts after the user stops talking, but the system must first decide they have stopped. It waits for a pause, typically a fraction of a second (say 0.7 seconds). Add that and the total becomes 1.9 seconds. A shorter wait makes the assistant talk over people who pause to think. A longer wait feels slow. Streaming helps the other end: if speech starts when the model has written its first sentence, say 0.2 seconds into its 0.6, the first sound arrives 0.3 + 0.2 + 0.1 = 0.6 seconds after the pause ends, or 1.3 seconds after the user stopped talking. The 0.1 second speaking start-up is invented.
+
+```mermaid The wait for a pause comes before the delay budget starts, which raises the total from 1.2 to 1.9 seconds
+flowchart TD
+  S[User stops talking] --> W[Wait for pause, 0.7 s]
+  W --> A[Transcribe, 0.3 s]
+  A --> M[Model, 0.6 s]
+  M --> T[Speak, 0.3 s]
+  T --> H[Total 1.9 s]
+  class W warn
+```
+
+```mermaid Seconds from the user stopping to the first sound, when waiting for every step and when streaming (the 0.1 second start-up is invented)
+xychart-beta
+  x-axis [No streaming, Streaming]
+  y-axis "seconds" 0 --> 2
+  bar [1.9, 1.3]
+```
 
 ## Common mistake
 Testing with clean studio audio. Real users talk in cars and kitchens, and the error rate there can be several times higher.
@@ -231,6 +390,13 @@ A robot works in a loop: sense (cameras, touch), decide, act (move motors), and 
 
 Process automation is software doing office work: reading an invoice, filling a form, routing a ticket. Language models made it flexible, since they can read messy inputs that rules could not handle.
 
+```mermaid A robot repeats sense, decide and act many times a second
+flowchart LR
+  S[Sense: cameras, touch] --> D[Decide]
+  D --> A[Act: move motors]
+  A -.-> S
+```
+
 ## Why physical AI is hard
 Every step can fail, and errors add up. Training in simulation is cheap and safe, but a model trained there can fail on a real robot because friction, lighting and wear differ. This is the sim-to-real gap. Real-world data is slow and costly to collect, since a robot can only do so many attempts per hour.
 
@@ -242,6 +408,26 @@ Warehouse picking, vacuum robots, surgical assistance under a surgeon's control,
 
 ## Retries change the multiplication
 The worked example assumes one failed step ruins the task. If the robot can notice a failed grasp and try once more, a 95 percent step succeeds with probability 1 - 0.05 × 0.05 = 0.9975. Over ten steps that gives 0.9975 to the power 10, about 0.975, instead of 0.60. This holds only if failures are independent and detectable. A robot that does not know it dropped the part cannot retry, so sensors that check each step are worth as much as better arms.
+
+```mermaid A robot that can notice a failed step and retry once fails far less often
+flowchart TD
+  A[Attempt the step] --> C{Step worked?}
+  C -->|Yes| N[Next step]
+  C -->|No| R[Retry once]
+  R --> C2{Step worked?}
+  C2 -->|Yes| N
+  C2 -->|No| F[Task fails]
+  class F bad
+```
+
+```mermaid Chance that every step of a task succeeds: 95 percent per step decays fast, 99 percent holds up, and one retry rescues 95 percent
+xychart-beta
+  x-axis "steps in the task" [0, 2, 4, 6, 8, 10]
+  y-axis "chance all steps succeed" 0 --> 1
+  line "95 percent per step" [1, 0.9025, 0.8145, 0.7351, 0.6634, 0.5987]
+  line "99 percent per step" [1, 0.9801, 0.9606, 0.9415, 0.9227, 0.9044]
+  line "95 percent with one retry" [1, 0.995, 0.99, 0.9851, 0.9802, 0.9753]
+```
 
 ## The loop has a delay
 Invented numbers: a belt carries parts at 0.5 meters per second, and the camera-decide-move loop takes 0.3 seconds. The part moves 0.5 × 0.3 = 0.15 meters, 15 centimeters, before the arm acts. The arm must aim where the part will be, not where it was seen. Slower loops or noisy timing show up as grasps that miss by a steady distance in the direction of travel.
@@ -279,17 +465,44 @@ Healthcare: reading scans, writing visit notes, finding patients at risk. Regula
 ## A worked example: choosing the control
 Rate each task on two lines: cost of a mistake, and how easily a person can check it. Summarizing a meeting: low cost, easy to check, so automate and sample. Drafting a contract clause: medium cost, checkable by a lawyer, so AI drafts and a lawyer approves. Approving a loan: high cost, affects a person's life, so a model may assist but rules, explanations and a human appeal must exist. The more a mistake costs, the more control stays with a person.
 
+```mermaid The more a mistake costs, the more control stays with a person
+flowchart TD
+  T[Task] --> Q{Cost of a mistake?}
+  Q -->|Low, easy to check| A[Automate and sample]
+  Q -->|Medium, checkable| B[AI drafts, expert approves]
+  Q -->|High| C[Model assists, human can appeal]
+  class C warn
+```
+
 ## What goes wrong
 Bias in data becomes bias in decisions. In 2018 Reuters reported that Amazon dropped a hiring tool trained on past resumes, because it had learned to mark down resumes that mentioned women's groups. In 2023 two New York lawyers and their firm were fined $5,000 after submitting a brief with court cases a chatbot had invented. Neither failure was about intelligence. Amazon's team tested the tool, found it was biased and shut the project down. The lawyers did not check their citations.
 
 ## How a bias check works
 Take 1,000 loan applicants in each of two groups. The model approves 600 in group A (60 percent) and 420 in group B (42 percent). The ratio is 42 / 60 = 0.70. A gap this size does not prove unfairness, since the groups may differ in income or debts. It is a prompt to look closer. Compare applicants with similar finances: if group B is still approved less often at the same income and debt, the model is treating them differently and the data needs inspection. Ask which inputs act as stand-ins for the group, such as a postcode.
 
+The table compares the two groups from the 1,000 applicants each.
+
+| Group | Applicants | Approved | Approval rate |
+|---|---|---|---|
+| A | 1,000 | 600 | 60 percent |
+| B | 1,000 | 420 | 42 percent |
+| Ratio of B to A | | | 0.70 |
+
 ## Explaining one decision
 In many countries, including the US, a person denied credit is owed reasons. With a simple scoring model each input adds or subtracts points, so the biggest negatives become the explanation. Invented example: debt ratio -40, two late payments -25, short history -5. The reply says the main factors were debt and late payments. Models that cannot produce reasons like this are hard to use in lending.
 
 ## Why human review fails
 Putting a person after the AI does not guarantee checking. People skim when the tool is usually right. Say an assistant drafts 1,000 summaries and 50 are wrong. A reviewer who catches 60 percent lets 50 × 0.4 = 20 errors through. To test, secretly seed the queue with 20 known errors and count how many get caught. If the catch rate is low, change the process: show sources next to the draft, ask the reviewer to confirm specific facts, and rotate the work.
+
+```mermaid Of 50 wrong summaries, a reviewer who catches 60 percent still lets 20 through
+flowchart TD
+  D[1,000 summaries] --> W[50 are wrong]
+  W --> R[Reviewer catches 60 percent]
+  R --> C[30 caught]
+  R --> L[20 reach users]
+  class L bad
+  class C good
+```
 
 ## Common mistake
 Copying a success from another industry without its safeguards. A tool that is fine for retail support is not automatically fine for medicine.
@@ -318,8 +531,25 @@ ROI (return on investment) compares what a project gains with what it costs. For
 
 A rollout goes in stages: test on past cases, run beside the people doing the job (shadow mode), release to a small group, then widen. At each stage you compare against the baseline.
 
+```mermaid A rollout widens in stages, and each stage is compared with the baseline
+flowchart TD
+  A[Test on past cases] --> B[Shadow mode]
+  B --> C[Small group]
+  C --> D[Widen]
+  A & B & C & D -.-> E[Compare with baseline]
+  class E focus
+```
+
 ## A worked example (invented numbers)
 A support team gets 10,000 tickets a month. Each takes 4 minutes at a cost of $30 an hour, so $2 a ticket, or $20,000 a month. An assistant drafts replies. It handles 30 percent of tickets with no edits, which saves $6,000. Model calls cost $0.05 a ticket, so $500 for all 10,000. A person spot-checks 5 percent of all drafts, which is 500 tickets, and a check takes as long as handling the ticket did, so that is 500 × $2 = $1,000. Net saving: 6,000 − 500 − 1,000 = $4,500 a month. If building cost $30,000, payback is about seven months. If it handled only 10 percent, the saving would be $2,000 − 500 − 1,000 = $500 and payback would take five years.
+
+```mermaid The monthly saving is what handling saves minus model calls and spot-checks
+flowchart TD
+  S[Saved handling, $6,000] --> N[Net saving, $4,500]
+  C[Model calls, $500] --> N
+  K[Spot-checks, $1,000] --> N
+  class N good
+```
 
 ## After launch
 Watch quality, cost and usage. Data drift means real inputs slowly change from what the system was tested on, so scores slide without any code change. Keep a test set, rerun it monthly, and keep an easy way for users to report a bad answer. A company answers for what its tools say: in 2024 a Canadian tribunal ordered Air Canada to pay a customer who relied on wrong refund advice from its website chatbot.
@@ -327,8 +557,26 @@ Watch quality, cost and usage. Data drift means real inputs slowly change from w
 ## Find the break-even before you build
 Using the invented numbers above, fixed costs are $500 for calls plus $1,000 for checking, $1,500 a month. Each percent of tickets handled saves $200 (1 percent of $20,000). Break-even is 1,500 / 200 = 7.5 percent. Below that, the assistant loses money every month. The estimate is only as good as the 30 percent figure, so measure it before launch.
 
+The table sweeps the share of tickets handled, with $1,500 a month of fixed costs.
+
+| Share of tickets handled | Saving | Fixed costs | Net per month |
+|---|---|---|---|
+| 5 percent | $1,000 | $1,500 | -$500 |
+| 7.5 percent | $1,500 | $1,500 | $0 |
+| 10 percent | $2,000 | $1,500 | $500 |
+| 20 percent | $4,000 | $1,500 | $2,500 |
+| 30 percent | $6,000 | $1,500 | $4,500 |
+
 ## Putting error bars on the shadow-mode result
 Run the assistant in shadow mode on 200 past tickets and see 60 drafts need no edits, which is 30 percent. With only 200 tickets the result has a margin of about 6 points either way (roughly 2 × sqrt(0.3 × 0.7 / 200), the sampling-error formula from the benchmarks lesson). The true rate could be 24 or 36 percent. At 24 percent the net saving is $3,300 a month and payback takes 9.1 months. At 36 percent it is $5,700 and payback takes 5.3 months. The monthly result is above break-even across the whole range. Whether a 5 to 9 month payback is acceptable is a separate decision. A range that crosses 7.5 percent would mean testing more tickets.
+
+The table turns the shadow-mode range into payback, for the $30,000 build cost.
+
+| Share handled | Net per month | Payback |
+|---|---|---|
+| 24 percent | $3,300 | 9.1 months |
+| 30 percent | $4,500 | 6.7 months |
+| 36 percent | $5,700 | 5.3 months |
 
 ## What goes wrong: costs the estimate misses
 The example counts the 30 percent of tickets drafted well. The other drafts cost time too. Suppose 20 percent of all drafts are wrong, and each takes an extra minute to read and discard. That is 10,000 × 0.2 × 1 minute = 2,000 minutes, about $1,000 a month, which cuts the net saving to $3,500. The symptom is that drafts get accepted but tickets handled per hour barely moves. Confirm by measuring total handling time per ticket before and after, not how many drafts were accepted.

@@ -1,8 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Chip from '../shared/Chip.jsx'
-import { ActionButton, CellRow, Hint, Line, Slider } from '../shared/explainerKit.jsx'
-import { Box, Stat, fmt } from './Demos.jsx'
+import { ActionButton, Box, CellRow, fmt, Hint, Line, Slider, Stat } from '../shared/explainerKit.jsx'
 
 // Each default below is the worked example of the lesson the demo sits on, so the text and the demo agree.
 

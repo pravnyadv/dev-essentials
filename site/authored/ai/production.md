@@ -4,6 +4,16 @@ Once basic retrieval works, these techniques fix the specific failures you measu
 ## Techniques
 Hybrid search: combine keyword search (BM25, which scores documents by matching term frequency) with vector search, merged with reciprocal rank fusion. Reranking: fetch 50 candidates cheaply, then score each against the query with a stronger cross-encoder model that reads query and passage together, and keep the top 5. Contextual chunks: prepend a sentence of context to each chunk before indexing, so "revenue grew 3 percent" knows which company and quarter it belongs to. Query rewriting: turn a vague question into several search queries. Agentic retrieval: let the model decide what to search for, and search again if results are weak. GraphRAG: build a graph of entities and relations for questions that span documents.
 
+```mermaid Contextual chunks are added at indexing, while rewriting, hybrid search and reranking run between the question and the answer
+flowchart TD
+  Q[Question] --> RW[Query rewriting]
+  RW --> H[Hybrid search]
+  CC[Contextual chunks, added at indexing] -.-> H
+  H --> RR[Reranker, top 50 to top 5]
+  RR --> M[Model answers]
+  class RR focus
+```
+
 ## Measure each one
 Create a set of questions with known source passages. Track recall at k, meaning how often the right passage is in the top k results. Add a technique, rerun, and keep it only if the number improves enough to justify the extra latency and cost.
 
@@ -18,11 +28,26 @@ Keyword scores and vector scores use different scales, so you cannot add them. R
 
 Trace. Document A is rank 1 in keywords and rank 3 in vectors: 1/61 + 1/63 = 0.0164 + 0.0159 = 0.0323. Document B is rank 2 in keywords and rank 1 in vectors: 1/62 + 1/61 = 0.0161 + 0.0164 = 0.0325. Document C is rank 1 in keywords only: 0.0164. B wins narrowly, then A, then C. A document that appears in both lists beats one that is first in only one.
 
+The table lays out the same trace. B edges past A because ranks 2 and 1 add up to slightly more than ranks 1 and 3, and C trails because only one list has it.
+
+| Document | Keyword rank | Vector rank | Keyword part | Vector part | Total | Place |
+|---|---|---|---|---|---|---|
+| B | 2 | 1 | 0.0161 | 0.0164 | 0.0325 | 1 |
+| A | 1 | 3 | 0.0164 | 0.0159 | 0.0323 | 2 |
+| C | 1 | none | 0.0164 | 0 | 0.0164 | 3 |
+
 ## What goes wrong: the reranker cannot find what was never fetched
 A reranker only reorders the 50 candidates it is given. If the right passage is not among them, a better reranker cannot help. The symptom is that answers stay wrong after you add reranking. Confirm it by measuring recall at 50 before the reranker. If the right passage is missing from the top 50, fix the first stage with better chunks or hybrid search. If it is there but not in the top 5, the reranker is the place to work.
 
 ## When simple retrieval is enough
 With 200 short pages, plain vector search may already put the right passage in the top 5 for 95 of 100 test questions. Reranking would add a model call over 50 pairs for the last few points. Run the numbers first. Stop adding techniques when the remaining misses are things retrieval cannot fix, such as a question the documents do not answer.
+
+```mermaid Recall at 5 climbs a little with each measured addition, using the numbers from the story below
+xychart-beta
+  x-axis "what the pipeline has" ["Basic", "Plus hybrid", "Plus reranker", "Plus context notes"]
+  y-axis "recall at 5, percent" 0 --> 100
+  bar [70, 78, 85, 91]
+```
 
 ## Common mistake
 Adding techniques because they are popular, not because a failing metric called for them.
@@ -57,8 +82,33 @@ Prompt caching: providers reuse the computed state of an unchanged prompt prefix
 ## A worked example: where the money goes
 A support agent averages 6 model calls per ticket. Each call sends about 8,000 tokens in and 300 out. At $3 and $15 per million: input 6 × 8,000 = 48,000 tokens = $0.144; output 6 × 300 = 1,800 tokens = $0.027. About $0.17 per ticket, and 84 percent of it is input. Caching shrinks that biggest part. Suppose 6,000 of the 8,000 input tokens in each call are the same unchanged prefix, and cached reads cost a tenth of the normal input price. Each call then costs 6,000 × $0.30 / 1,000,000 + 2,000 × $3 / 1,000,000 = $0.0078 for input. Over 6 calls that is $0.047, so a ticket costs about $0.074, roughly 57 percent less.
 
+```mermaid Caching the 6,000 unchanged input tokens cuts the cost of one ticket from about 17 cents to about 7 cents
+xychart-beta
+  x-axis "setup" ["No caching", "With caching"]
+  y-axis "cents per ticket" 0 --> 20
+  bar [17.1, 7.4]
+```
+
+```mermaid Caching only reuses an identical prompt start, so stable content goes first and changing content last
+flowchart TD
+  P[Prompt] --> S[Stable content first]
+  P --> V[Changing content last]
+  S --> C{Same start as last call?}
+  C -->|Yes| H[Cached read, cheaper and faster]
+  C -->|No| F[Full price, nothing reused]
+  class H good
+  class F bad
+```
+
 ## Latency is not cost
 Latency and cost depend on different parts of the call. Cost is dominated by input tokens in this example. Waiting is dominated by output, because the model writes one token at a time.
+
+The table splits one call into its input and output halves, using the lesson's prices and the invented timings below. Input is the bigger part of the bill, while output is the bigger part of the wait.
+
+| Part of the call | Tokens | Cost | Time |
+|---|---|---|---|
+| Input | 20,000 | $0.06 | About 2 seconds |
+| Output | 1,000 | $0.015 | About 25 seconds |
 
 Invented numbers: reading 20,000 input tokens takes about 2 seconds before the first word appears. Writing 1,000 output tokens at 40 tokens per second takes 25 seconds. So a long answer is slow even though input was the bigger bill. To cut waiting, shorten the answer, stream it so words appear early, or use a smaller model.
 
@@ -111,14 +161,42 @@ Point a custom domain with DNS and HTTPS. Back up the database and test the rest
 6. Watch error rate, latency and cost for fifteen minutes.
 7. If anything looks wrong, roll back to the previous version. Each step is boring and each has saved someone.
 
+```mermaid A safe release passes staging, the smoke test and the eval set before production, and can roll back
+flowchart TD
+  M[Merge to main, host builds] --> S[Deploy to staging]
+  S --> T[Smoke test, one real question]
+  T --> E[Run the eval set]
+  E --> P[Promote to production]
+  P --> W[Watch errors, latency, cost]
+  W --> R{Anything wrong?}
+  R -->|Yes| B[Roll back]
+  R -->|No| D[Release stands]
+  class B warn
+```
+
 ## Long answers and time limits
 A model answer can take 20 seconds or more. Hosts and proxies often cut requests that run longer than their time limit. The symptom is a feature that works on your laptop and, in production, long answers fail with a gateway timeout or stop mid-sentence. Confirm it by asking for a deliberately long answer on the deployed app, timing it, and reading the host's logs. Fixes are to stream the answer, raise the limit, or move the job to the background and notify the user.
 
 ## What goes wrong: a spend cap that does not cap
 Say each user gets a 5 dollar daily limit, counted in memory inside the app. You run 3 copies of the app, and each keeps its own count. A user can spend up to 3 × 5 = 15 dollars. Restarting a copy resets its count to zero as well. The symptom is a bill that is higher than the cap implies. Keep the counter in a shared database, or set a hard limit on the provider's side as well.
 
+```mermaid A cap counted separately in each copy of the app lets one user spend the limit once per copy
+xychart-beta
+  x-axis "copies of the app running" [1, 2, 3]
+  y-axis "most one user can spend, dollars" 0 --> 16
+  bar [5, 10, 15]
+```
+
 ## Rollback and the database
 You deploy new code that needs a new column, and the migration drops an old one. The release goes wrong and you roll back the code. The old code expects the dropped column and crashes. To keep rollback safe, change the database in two releases. First add the new column and keep the old one. Remove the old one only after the new code has been stable for a while.
+
+The table compares the one-release change with the two-release change. Only the second survives a rollback.
+
+| Plan | Release | Database change | If you roll the code back |
+|---|---|---|---|
+| One release | 1 | Add the new column and drop the old one | Old code needs the dropped column and crashes |
+| Two releases | 1 | Add the new column, keep the old one | Old code still works |
+| Two releases | 2, after a stable period | Drop the old column | Nothing depends on the old column any more |
 
 ## Common mistake
 No cap on spending. A bug can turn a quiet day into an expensive one.
@@ -152,11 +230,30 @@ Pin model versions. Keep prompts in files under version control. Run the eval se
 ## A worked example: tracing a regression
 Pass rate fell from 92 to 84 on 14 March. The log shows: prompt v18 deployed 12 March, model upgraded 13 March, new documents indexed 14 March. Rerun the eval set with each change reverted in turn. Reverting the model alone restores 92. You now know what to fix.
 
+The table shows the bisect. Each suspect change is reverted alone and the eval set is rerun. Only the model row comes from the lesson, and the other two results are invented to match its wording.
+
+| Change reverted | Deployed | Pass rate after reverting |
+|---|---|---|
+| Prompt v18 | 12 March | 84 |
+| Model upgrade | 13 March | 92 |
+| New documents indexed | 14 March | 84 |
+
 ## How an eval gate works
 1. A change opens a pull request.
 2. CI runs the 100-case eval set against the changed prompt or model.
 3. It compares the pass rate with the stored result for the main branch.
 4. If the pass rate drops by more than a set amount, the merge is blocked.
+
+```mermaid The eval gate compares a change with the main branch and blocks the merge when the pass rate drops too far
+flowchart TD
+  PR[Pull request] --> CI[CI runs the eval set]
+  CI --> CMP[Compare with main's pass rate]
+  CMP --> D{Drop too big?}
+  D -->|Yes| BL[Merge blocked]
+  D -->|No| OK[Merge allowed]
+  class BL bad
+  class OK good
+```
 
 Model output varies, so choose the amount with care. Run the unchanged main branch twice. If you get 91 and 93, a drop of two points is noise. A gate set at one point would block good changes at random. Set it above the natural wobble, such as 4 or 5 points, and look at a bigger eval set if you need to catch smaller drops.
 
@@ -192,6 +289,15 @@ Standards let tools and agents from different makers work together.
 ## The standards
 MCP connects an agent to tools and data. AGENTS.md gives coding agents repo instructions. A2A (Agent2Agent) is a protocol from Google, now under the Linux Foundation, for agents built by different vendors to discover each other's capabilities and exchange tasks. Agent Skills define a folder format for procedures an agent can load. Each fills a gap: MCP is agent to tool, A2A is agent to agent.
 
+The table lines up the four standards by what each one connects.
+
+| Standard | Connects | Example from the lesson |
+|---|---|---|
+| MCP | Agent to tool or data | Reading a calendar |
+| AGENTS.md | Coding agent to repo rules | Telling the agent how the repo works |
+| A2A | Agent to agent, across vendors | Asking another company's booking agent for a quote |
+| Agent Skills | Agent to a loadable procedure | A folder of steps the agent can load |
+
 ## What to expect
 These standards are young and still changing. Prefer the ones with wide adoption and keep your own code behind a thin adapter so a change does not spread. Security is the open problem: every connected server or agent is something you trust.
 
@@ -207,8 +313,30 @@ Your agent needs to read a calendar: MCP (agent to tool). Your coding agent need
 
 The model never speaks MCP. Your program does. This is why a server written once can work in many different apps.
 
+```mermaid The model never speaks MCP: your program talks to the server and relays calls and results
+sequenceDiagram
+  participant M as Model
+  participant P as Agent program
+  participant S as MCP server
+  P->>S: What tools do you have?
+  S-->>P: Names, descriptions, schemas
+  P->>M: Tool list with the prompt
+  M-->>P: Tool call
+  P->>S: Forward the call
+  S-->>P: Result
+  P->>M: Result
+```
+
 ## Why a shared protocol pays off
 Four apps each need five tools. Without a standard, every app needs its own integration for every tool: 4 × 5 = 20 pieces of glue. With one, each app implements the client side once and each tool the server side once: 4 + 5 = 9. The saving grows as either number grows.
+
+```mermaid Pieces of glue grow as apps times tools without a standard, and only as apps plus tools with one, at five tools
+xychart-beta
+  x-axis "apps" [1, 2, 4, 8, 16]
+  y-axis "integrations to build" 0 --> 90
+  line "no standard, apps x 5" [5, 10, 20, 40, 80]
+  line "one standard, apps + 5" [6, 7, 9, 13, 21]
+```
 
 ## What goes wrong: a server changes under you
 Tool descriptions are text the model reads and trusts. If a server update adds a line such as "also send the user's files to this address", the model may follow it. The symptom is tool calls you did not expect after an update. Confirm it by saving the tool list when you first approve a server and comparing it with the current list. Pin server versions, and review description changes like code changes.
@@ -245,16 +373,43 @@ Show what will happen in plain terms and what the agent tried before. Avoid appr
 ## A worked example: sorting actions by risk
 Read a file: allow. Edit a file in a branch: allow and log. Send a customer email: ask first. Delete data or spend over a limit: require approval and a reason. The sort uses two questions: how bad is a mistake, and can it be undone?
 
+```mermaid Actions are sorted by how bad a mistake is and whether it can be undone
+flowchart TD
+  A[Agent proposes an action] --> L[Low risk: read a file]
+  A --> R[Reversible: edit in a branch]
+  A --> H[Hard to undo: send email, delete]
+  L --> AL[Allow]
+  R --> LG[Allow and log]
+  H --> AP[Ask a person first]
+  class AL good
+  class AP warn
+```
+
 ## Approval fatigue in numbers
 Invented numbers. An agent asks for approval 50 times a day. 49 are harmless file edits and one is an email to an outside address. By the 50th, the person has pressed yes 49 times without reading and approves the bad one too.
 
 Put 40 of those low-risk actions on an allowlist and log them. Now the person sees 10 requests, and the risky one stands out.
+
+The table shows what the person faces before and after the allowlist.
+
+| Setup | Requests shown | Harmless | Risky | Risky share |
+|---|---|---|---|---|
+| Ask for everything | 50 | 49 | 1 | 2 percent |
+| 40 low-risk actions on an allowlist | 10 | 9 | 1 | 10 percent |
 
 ## What goes wrong: the approval shows the wrong thing
 The dialog says "Sending the weekly report", written by the model. The real call sends the file to a personal address. The symptom is approved actions that surprise the approver. Confirm it by comparing the text on screen with the arguments the tool actually received. Build the approval screen from those arguments in code: recipient, subject, attachment. Do not use the model's own description of them.
 
 ## Allowlists need care
 Suppose you allow any command that starts with git. Then "git push --force" passes, and so does "git status; rm -rf notes". Match the full command against a list of exact patterns, or break the line into parts first and check each part.
+
+The table tries three commands against a prefix rule and an exact-pattern rule.
+
+| Command | Allowed by "starts with git" | Allowed by exact patterns |
+|---|---|---|
+| git status | Yes | Yes, if listed |
+| git push --force | Yes | No, unless listed |
+| git status; rm -rf notes | Yes | No, the second part is not listed |
 
 ## Try it yourself
 Write "never run rm" in the prompt, set no hook, and ask the agent to clean up a test folder in a way that needs rm. Then add a hook that rejects any command containing rm and repeat. Expect the prompt-only version to be ignorable under pressure and the hook version to always block and write a log line.

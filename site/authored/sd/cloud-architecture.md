@@ -115,8 +115,22 @@ Invented numbers. A phone is 100 ms round trip from the data center. The home sc
 
 Without a gateway the phone makes five calls in sequence: 5 x (100 + 20) = 600 ms. With aggregation the phone makes one call. The gateway spends 2 + 20 on the profile, then 2 + 20 on the four lists in parallel, so 44 ms inside. Total: 100 + 44 = 144 ms. That is about four times faster, and the phone made one request instead of five.
 
+```mermaid Time until the home screen is ready, in milliseconds, with five calls from the phone against one aggregated call (invented numbers)
+xychart-beta
+  x-axis [Five calls from the phone, One call to the gateway]
+  y-axis "milliseconds" 0 --> 600
+  bar [600, 144]
+```
+
 ## What goes wrong: the slowest upstream sets your speed
 An aggregating gateway is only as fast as its slowest call. Suppose each of four services answers within 100 ms for 99 percent of calls. The chance that all four are fast is about $0.99^4 = 0.96$, so about 4 percent of home screens are slow, though no single service looks broken. Worse, if the gateway waits forever for one stuck service, threads pile up and the whole gateway stalls (see [circuit breakers](/sd/docs/reliability/circuit-breakers)).
+
+```mermaid Share of screens that wait on at least one slow call, when each service is slow 1 percent of the time
+xychart-beta
+  x-axis "services called in parallel" [1, 2, 4, 8]
+  y-axis "percent of screens that are slow" 0 --> 8
+  bar [1.0, 2.0, 3.9, 7.7]
+```
 
 The symptom is a p99 at the gateway that is higher than every service's p99. Confirm it with a trace that shows one span per upstream call. The fix is a short timeout per upstream call and a partial answer: return the screen without recommendations rather than no screen.
 
@@ -204,10 +218,26 @@ Its first cost is extra latency from one more hop. The second is risk: an ambass
 ## Service mesh in one paragraph
 A service mesh is the sidecar idea applied to every service at once. A small proxy sits next to each service instance, and all traffic in and out goes through it. A central control plane pushes rules to those proxies: who may call whom, how to retry, how to split traffic. Istio's architecture page describes exactly this split: a data plane of Envoy proxies deployed as sidecars, and a control plane that configures them. Istio also offers an ambient mode that does not put a proxy in every pod, so a mesh does not always mean sidecars. The mesh gives you encryption between services, retries and traffic metrics without changing code. It also gives you one more system to run, upgrade and debug.
 
+```mermaid A mesh: a proxy beside every service carries the traffic, and a control plane pushes rules to the proxies
+flowchart TD
+  CP[Control plane] -.->|rules| PA[Proxy beside A]
+  CP -.->|rules| PB[Proxy beside B]
+  SA[Service A] --> PA
+  PA -->|encrypted call| PB
+  PB --> SB[Service B]
+```
+
 ## A worked example: 40 services, 3 languages
 Invented numbers. A company has 40 services in Java, Go and Python. Each needs mutual TLS, retries and request metrics. With client libraries, that is 3 libraries to build and 40 services to redeploy for every fix. Say the retry bug fix takes 2 hours of work per service: 40 x 2 = 80 hours.
 
 With sidecars, there is one proxy image. The fix is one image rollout. The cost is memory: if each proxy uses 50 MB and there are 400 running instances, that is 400 x 50 MB = 20 GB of RAM across the fleet, plus a small added delay on each call. The sidecar wins when many services and languages share the chore. For three services in one language, a library costs less.
+
+| | Client libraries | One sidecar proxy |
+| --- | --- | --- |
+| Things to build | 3 libraries, one per language | 1 proxy image |
+| Work to ship a retry fix | 40 services, about 80 hours | 1 image rollout |
+| Fleet memory cost | Inside each app, no extra process | 400 instances times 50 MB, about 20 GB |
+| Extra delay per call | None | A local hop to the proxy |
 
 ## What goes wrong: the sidecar that starves its app
 The sidecar shares the host's CPU and memory. A log shipper that buffers too much, or a proxy under a traffic spike, can take the resources the app needs. The symptom is an app that slows or gets killed for memory while its own code looks fine. Confirm it by comparing resource use per container, not per pod, and by checking restart reasons. Set explicit CPU and memory limits for the sidecar. Also watch startup order: if the app starts before its proxy is ready, its first calls fail. Recent Kubernetes versions have native sidecar containers that start before the main container and stop after it, which removes this race.
@@ -327,6 +357,14 @@ Mind the in-flight messages. Messages already waiting on the old system, includi
 Invented numbers. A billing monolith has 10 features. The team estimates 2 months to move each. A full rewrite would show nothing for 20 months and then switch over in one night. With a strangler approach, slice 1 (invoice PDFs) goes live in month 2 for 5 percent of traffic, then 100 percent.
 
 Say a bug appears in slice 4, found when 10 percent of its traffic is on the new code. One rule change sends it back to the old system within minutes, and only 10 percent of one feature saw the bug. In the rewrite plan, the same bug would hit 100 percent of all features on the night of the switch. The strangler plan takes the same 20 months in total, but each month ships value and carries a small slice of the risk.
+
+```mermaid Share of the billing features running on the new system by month, for a strangler plan against a rewrite (invented numbers)
+xychart-beta
+  x-axis "month" [0, 4, 8, 12, 16, 20]
+  y-axis "percent of features on the new system" 0 --> 100
+  line "strangler, 2 months per slice" [0, 20, 40, 60, 80, 100]
+  line "rewrite, one switch at the end" [0, 0, 0, 0, 0, 100]
+```
 
 ## What goes wrong: the migration that never ends
 The common failure is stopping at 70 percent. The easy slices move, the hard, tangled ones wait, and the team now runs two systems plus a facade forever. Costs rise because everything must be maintained twice. The symptom is that the legacy traffic share stops falling for several months. Confirm it by graphing the share of requests handled by each system. Set a date for switching the old system off, and tackle one hard slice early so risk is known.
@@ -454,7 +492,19 @@ The Kubernetes documentation says a failing readiness probe removes the pod from
 ## A worked example: pools and probes
 Invented numbers. A service has 100 worker threads. Search takes 70 threads at peak, and checkout needs 10 at most. Without bulkheads, a slow search backend can take all 100. With a pool of 80 for search and 20 for checkout, search can fail, and checkout still has 20 threads for its 10 needed.
 
+| Situation | Search can use | Checkout can use | Checkout needs | Result |
+| --- | --- | --- | --- | --- |
+| One shared pool of 100, search backend hangs | all 100 | 0 | 10 | Checkout fails too |
+| Bulkheads of 80 and 20, search backend hangs | 80 | 20 | 10 | Checkout keeps working |
+
 Now health. Readiness is checked every 5 seconds, and an instance is removed after 3 failures in a row, so 15 seconds. After an instance breaks, up to 15 seconds of traffic still reaches it. If your 10 instances receive 1,000 requests per second, one broken instance gets about 100 per second, or 1,500 requests in that window. Shorter intervals reduce that and raise probe load. That tradeoff is yours to set.
+
+```mermaid Requests that still reach one broken instance receiving 100 per second, by probe interval (three failures in a row remove it)
+xychart-beta
+  x-axis "probe interval in seconds" [1, 2, 5, 10]
+  y-axis "requests sent to the broken instance" 0 --> 3000
+  bar [300, 600, 1500, 3000]
+```
 
 ## What goes wrong: the probe that kills the fleet
 A team makes the liveness check call the database. The database slows for a minute. Every liveness probe times out, the platform restarts all instances together, and the restart load (cold caches, new connections) keeps the database down longer. The symptom is a restart count that jumps across all instances at the same moment. Confirm it from orchestrator events and by checking what the probe code touches. The fix is a shallow liveness check and a readiness check that reports not ready, without a restart.
@@ -522,6 +572,24 @@ A stamp should not call into another stamp's data. The shared global piece stays
 ## Blast radius and shuffle sharding
 With $N$ equal stamps and one failure confined to a stamp, about $1/N$ of customers are affected. Amazon's Builders' Library describes the same logic for ordinary sharding: splitting a fleet into four shards of workers limits the impact of a bad customer to one quarter. It then describes shuffle sharding, where each customer gets a small virtual shard, such as two of eight workers. A problem affecting one customer hits only that pair of workers. With 8 workers there are 28 possible pairs, and most other customers share at most one worker with the affected pair, so they still have a healthy worker. This is useful when you cannot afford one stamp per customer.
 
+```mermaid Share of customers hit by a bad release caught in one stamp, by the number of equal stamps
+xychart-beta
+  x-axis "number of stamps" [1, 2, 5, 10, 20]
+  y-axis "percent of customers affected" 0 --> 100
+  bar [100, 50, 20, 10, 5]
+```
+
+```mermaid Shuffle sharding: each customer gets its own pair of workers, so a bad customer A shares at most one worker with B or C (example assignment)
+flowchart LR
+  A[Customer A, bad] --> W1[Worker 1]
+  A --> W5[Worker 5]
+  B[Customer B] --> W1
+  B --> W3[Worker 3]
+  C[Customer C] --> W2[Worker 2]
+  C --> W6[Worker 6]
+  class A bad
+```
+
 ## Geodes
 ```card Geode
 Problem | Users are spread across the world, distance adds latency, and one region can be overwhelmed or fail.
@@ -564,6 +632,13 @@ Invented numbers. A SaaS product has 10,000 customers in 20 stamps of 500. A rel
 With one big deployment, all 10,000 customers get the bug at once. With stamps, the team deploys to stamp 1 (500 customers, 5 percent). Alerts fire in 20 minutes. They halt the rollout: 500 customers affected, 9,500 untouched. The blast radius is 1/20, or 5 percent.
 
 For geodes, take 3 geodes with 100 ms of latency from far-away users reduced to about 20 ms by routing to a near one. If one geode fails, the other two must carry 50 percent more load each (3 units of load over 2 geodes, 1.5x), so each must have enough spare capacity to take on half again its normal load. Running 3 geodes at 60 percent utilization is a safe design for one failure, since 60 x 1.5 = 90 percent. At 80 percent, losing one geode would ask the others for 120 percent of their capacity, and the overload could take them down too.
+
+```mermaid Load on each of the two remaining geodes after one of three fails, by how busy each was before
+xychart-beta
+  x-axis "utilization before the failure in percent" [40, 60, 80]
+  y-axis "utilization after, in percent" 0 --> 130
+  bar [60, 90, 120]
+```
 
 ## What goes wrong: the shared piece that was not shared-nothing
 A team deploys 6 stamps but keeps one global configuration database and one shared message queue. A bad config push, or a queue outage, takes all six stamps down together. The symptom is simultaneous failures across stamps that were meant to be independent. Confirm it by listing every dependency that crosses a stamp boundary and checking which have a single instance. Anything shared must be tiny, well tested and highly available, or must be copied per stamp.
@@ -661,6 +736,12 @@ Use it when units sit mostly idle, when tasks talk to each other a lot, or when 
 Invented numbers. Five background tasks each run on their own small instance at $40 per month, which is $200 per month. Each uses about 10 percent CPU on average. They peak at different hours, so the combined peak is about 60 percent of one small instance. Moving all five to two medium instances at $70 each costs $140 per month and also gives failover. The saving is $60 per month, 30 percent. The price is lost isolation and some coordination in releases.
 
 For configuration, say 50 instances read one feature flag. Polling the store every 30 seconds is 50 / 30, about 1.7 reads per second. That is trivial. Change events or a longer interval would be wasted effort, but at 5,000 instances the same polling is about 167 per second, and a cache layer or push model starts to make sense.
+
+| Instances, each polling every 30 seconds | Reads per second on the store |
+| --- | --- |
+| 50 | about 1.7 |
+| 500 | about 17 |
+| 5,000 | about 167 |
 
 ## What goes wrong: a config change that hits everyone at once
 An operator edits `max_connections` from 50 to 5 in the shared store, meaning to test it on one service. All 200 instances of 12 apps pick up the value within 30 seconds and start to fail. The symptom is errors that begin on every app at the same moment, right after a config write. Confirm it by comparing the store's audit log with the error graph. Prevent it by scoping values per environment and per app, rolling changes out to a few instances first, keeping version history, and allowing a fast revert.
@@ -775,6 +856,14 @@ sequenceDiagram
 
 The common form is a presigned URL. Amazon's S3 docs describe it: it carries an HTTP method (GET to download, PUT to upload), the object, and an expiry time, and it is signed with the credentials of whoever created it. Anyone holding the URL can use it until it expires, so keep the time short. It also cannot outlive the credentials that signed it: with temporary credentials such as a role session, the URL stops working when they expire. The maximum expiry is 7 days with SDKs or the CLI and an IAM user, or 12 hours from the S3 console. S3 checks expiry when the request starts, so a download already running is not cut off.
 
+How long a presigned URL may live, by what signed it:
+
+| Signed with | Longest life |
+| --- | --- |
+| IAM user, through an SDK or the CLI | 7 days |
+| S3 console | 12 hours |
+| Temporary credentials such as a role session | Until those credentials expire, if sooner |
+
 ## Quarantine
 ```card Quarantine
 Problem | Software you did not write, such as open-source packages and public container images, may be untrusted, vulnerable or unsuitable, and it flows straight into your build.
@@ -808,6 +897,13 @@ Keep the trusted and untrusted stores apart with identity and network controls, 
 Invented numbers. Users upload 50 MB videos, 200 per minute. Through the app that is $200 \times 50 = 10{,}000$ MB per minute, about 167 MB per second, passing through your servers twice if you also forward it on. If one server handles 20 MB per second of uploads, you need 167 / 20, about 9 servers just to move bytes.
 
 With a valet key, the app handles 200 small requests per minute to issue URLs. The 10,000 MB per minute goes straight to storage, which is built for that. You need one or two app servers. The new risks are that anyone with a URL can upload within its life, and that you do not control content until it arrives. Check what your store lets you restrict: a plain signed PUT URL generally does not cap the upload size, while some stores offer signed upload policies with size conditions. Scan the file after upload.
+
+```mermaid App servers needed just to move 200 uploads of 50 MB a minute, at 20 MB per second each
+xychart-beta
+  x-axis [Bytes through the app, Valet key]
+  y-axis "app servers" 0 --> 10
+  bar [9, 2]
+```
 
 ## What goes wrong: the URL that lived too long
 A team issues presigned download URLs valid for 7 days (the SDK maximum) and puts them in emails. A user forwards the email, and the link ends up on a public forum. For a week, anyone can download the private file, and logs show valid signatures, so nothing looks wrong. The symptom is traffic from unknown addresses on files that should be private. Confirm it from storage access logs, grouped by IP and object. Issue URLs for minutes, not days, tie each to one object, and generate a fresh one on each click instead of storing it.

@@ -18,10 +18,40 @@ The sentence "I love learning about AI!" is about 7 tokens. A 1,000-word email i
 ## How text becomes tokens
 A tokenizer holds a fixed list of pieces, built by repeatedly merging character pairs that appear often in training text (this method is called BPE). To encode text it starts from single characters and joins pairs using those learned merges, in the order it learned them. For example, "t" and "h" join into "th", then "th" and "e" into "the". Then it replaces each resulting piece with an ID number. The model only ever sees those numbers.
 
+```mermaid Text is split into pieces, each piece becomes an ID number, and the model only sees the IDs
+flowchart LR
+  T[Text] --> S[Split into pieces]
+  S --> I[Piece IDs]
+  I --> M[Model]
+  class I focus
+```
+
 Common words are usually one piece. Rare words split into several. An invented split: "unbelievable" becomes "un", "believ", "able". This also explains why models struggle to count letters. The letters were never given to the model, only piece IDs.
 
 ## Why long chats get expensive
 Every turn resends the whole conversation as input. Invented numbers: each turn adds 500 tokens. Turn 1 sends about 500. Turn 2 sends turns 1 and 2 together, about 1,000. Turn 3 sends all three, about 1,500, and so on. Over 10 turns the total sent is 500 × (1 + 2 + ... + 10) = 500 × 55 = 27,500 tokens, although the conversation holds only 5,000 tokens of text. Cost grows faster than the number of turns. Providers can discount text that repeats at the start of every call, but the window still fills.
+
+```mermaid Each call carries the whole conversation so far, so the input grows every turn
+sequenceDiagram
+  participant A as App
+  participant M as Model
+  A->>M: Turn 1, about 500 tokens
+  M-->>A: Reply 1
+  A->>M: Turns 1 and 2, about 1,000 tokens
+  M-->>A: Reply 2
+  A->>M: Turns 1 to 3, about 1,500 tokens
+  M-->>A: Reply 3
+```
+
+Plotted for the invented 500-token turns, the total sent pulls away from the size of the conversation itself.
+
+```mermaid Tokens sent in total against tokens in the conversation, at 500 new tokens per turn (invented numbers)
+xychart-beta
+  x-axis "turns so far" [2, 4, 6, 8, 10]
+  y-axis "tokens" 0 --> 30000
+  line "total sent so far" [1500, 5000, 10500, 18000, 27500]
+  line "conversation size" [1000, 2000, 3000, 4000, 5000]
+```
 
 ## What goes wrong when the window fills
 Symptoms are easy to spot:
@@ -58,6 +88,18 @@ An LLM is a function that scores every possible next token. Sampling settings de
 ## What it is
 Given the tokens so far, the model outputs a probability for every token in its vocabulary (its full list of known pieces). A sampler picks one, appends it, and the model runs again. An answer is just this loop repeated until the model outputs a special end-of-answer marker called a stop token.
 
+```mermaid One step is score, pick, append, and the loop repeats until a stop token
+flowchart TD
+  A[Tokens so far] --> B[Model scores every token]
+  B --> C[Softmax makes probabilities]
+  C --> D[Sampler picks one token]
+  D --> E[Append it to the text]
+  E --> F{Stop token?}
+  F -->|No| A
+  F -->|Yes| G[Answer is done]
+  class D focus
+```
+
 Temperature reshapes the probabilities before sampling (it divides the scores first, shown below). Near 0 the top token wins almost every time, so output is stable. Higher values flatten the odds, so unlikely tokens get picked more often. Top-p keeps only the smallest set of tokens whose probabilities add up to p, then samples inside it. For example, with probabilities 0.66, 0.24 and 0.10 and p = 0.8, the first two add up to 0.90, so the third token is dropped and the other two are rescaled to 0.73 and 0.27.
 
 ## Try it
@@ -73,6 +115,17 @@ The model never plans the whole answer. That is why it can start a sentence conf
 The model first produces a raw score for each token, called a logit. Softmax turns scores into probabilities that sum to 1. Invented scores for three tokens: 2, 1 and 0. Softmax raises e (about 2.718) to each score, which gives 7.389, 2.718 and 1, then divides each by their total of 11.107. The probabilities are about 0.665, 0.245 and 0.090.
 
 Temperature divides the scores first. At temperature 0.5 the scores become 4, 2 and 0, and the probabilities sharpen to about 0.867, 0.117 and 0.016. At temperature 2 they become 1, 0.5 and 0, and flatten to about 0.506, 0.307 and 0.186. Same model, same prompt, different odds.
+
+The three temperatures side by side, for the scores 2, 1 and 0 used above.
+
+```mermaid The same three scores at three temperatures: low temperature sharpens the odds, high temperature flattens them
+xychart-beta
+  x-axis [Token 1, Token 2, Token 3]
+  y-axis "probability" 0 --> 1
+  bar "temperature 0.5" [0.867, 0.117, 0.016]
+  bar "temperature 1" [0.665, 0.245, 0.09]
+  bar "temperature 2" [0.506, 0.307, 0.186]
+```
 
 ## What goes wrong: loops
 At low temperature a model can repeat itself. After a phrase has appeared twice, the most likely next token is often the start of the same phrase again, and the loop feeds itself. The symptom is the same sentence repeated until the length limit.
@@ -113,7 +166,19 @@ Your phone's keyboard suggests the next word as you type. A language model is th
 A handful of settings control how the next token is chosen and when the answer stops. Knowing them lets you tune behavior without changing the prompt.
 
 ## The settings
-Temperature rescales probabilities: near 0 is repeatable, higher is more varied. Top-k keeps only the k most likely tokens, for example 40, and samples among them. Top-p (nucleus sampling) keeps the smallest set of tokens whose probabilities add up to p, for example 0.9, so the set grows when the model is unsure and shrinks when it is confident. Repetition or frequency penalties lower the score of tokens that already appeared, reducing loops. Max tokens caps the answer length. Stop sequences end generation when a given string appears. A seed makes sampling repeatable on providers that support it.
+Temperature rescales probabilities: near 0 is repeatable, higher is more varied. Top-k keeps only the k most likely tokens, for example 40, and samples among them. Top-p (nucleus sampling) keeps the smallest set of tokens whose probabilities add up to p, for example 0.9, so the set grows when the model is unsure and shrinks when it is confident. Repetition or frequency penalties lower the score of tokens that already appeared, reducing loops. Max tokens caps the answer length. Stop sequences end generation when a given string appears. A seed makes sampling repeatable on providers that support it. The order in the diagram below is the Hugging Face default; llama.cpp applies temperature last, so check your runtime.
+
+```mermaid One common order: penalties, temperature, then top-k and top-p, with a stop check after each sampled token
+flowchart TD
+  A[Model scores every token] --> B[Penalties lower repeated tokens]
+  B --> C[Temperature rescales]
+  C --> D[Top-k and top-p keep a set]
+  D --> E[Sample and append one token]
+  E --> F{Stop?}
+  F -->|No| A
+  F -->|Yes| G[Answer ends]
+  class D focus
+```
 
 ## Example
 Probabilities for the next token: A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Top-k 2 keeps A and B and rescales them to 0.67 and 0.33. Top-p 0.9 keeps A, B and C (0.50 + 0.25 + 0.15 = 0.90) and drops D and E.
@@ -128,6 +193,16 @@ Prompt: "Name a fruit." Temperature 0: "Apple" every time. Temperature 0.7: appl
 Settings act in sequence, and earlier ones change what later ones see. Reuse the probabilities A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Dividing the scores by a temperature of 0.5 is the same as squaring each probability and rescaling so they sum to 1. The squares are 0.25, 0.0625, 0.0225, 0.0049 and 0.0009, which total 0.3408. The new probabilities are about 0.734, 0.183, 0.066, 0.014 and 0.003.
 
 Now apply top-p 0.9. A and B together reach 0.917, so only A and B survive. Earlier, top-p 0.9 alone kept three tokens. Lowering temperature shrank the candidate set as well. The order can differ between libraries and services, so test rather than assume.
+
+The table follows one set of probabilities through each setting. A zero means the token was dropped.
+
+| Setting applied | A | B | C | D | E |
+|---|---|---|---|---|---|
+| None | 0.50 | 0.25 | 0.15 | 0.07 | 0.03 |
+| Top-k 2 | 0.67 | 0.33 | 0 | 0 | 0 |
+| Top-p 0.9 | 0.56 | 0.28 | 0.17 | 0 | 0 |
+| Temperature 0.5 | 0.73 | 0.18 | 0.07 | 0.01 | 0.003 |
+| Temperature 0.5, then top-p 0.9 | 0.80 | 0.20 | 0 | 0 | 0 |
 
 ## Trade-offs and when not to use them
 Low temperature gives repeatable output but can loop and sound flat. High temperature gives variety but more errors. Top-k uses the same cutoff whether the model is sure or unsure, which top-p handles better. A seed helps you debug, but it is not a guarantee of identical output across providers or versions.
@@ -177,10 +252,43 @@ The transformer is the design behind modern language models. Its key idea is tha
 
 Here is the path a piece of text takes. First it is split into tokens. Each token becomes a vector, which is a list of numbers called an embedding. Then the vectors pass through a stack of identical blocks. Each block does two jobs. Attention lets a token pull in information from other tokens. A feed-forward step then thinks about each token on its own. At the very end, the last vector is turned into a score for every possible next token.
 
+```mermaid Text becomes vectors, passes through a stack of identical blocks, and ends as a score for every next token
+flowchart TD
+  A[Text] --> B[Tokens]
+  B --> C[Embedding vectors]
+  subgraph Block[One block, repeated many times]
+    D[Attention] --> E[Feed-forward]
+  end
+  C --> D
+  E --> F[Score for every next token]
+  class D focus
+```
+
 In attention, each token makes three vectors. The query says what it is looking for. The key says what it contains. The value says what it offers. A token compares its query with every earlier key, and the best matches contribute their values. This is how the word "it" can pull in the meaning of the noun it refers to.
+
+```mermaid Queries are compared with keys to get weights, and the weights mix the values
+flowchart TD
+  Q[Query of this token] --> S[Scores]
+  K[Keys of earlier tokens] --> S
+  S --> W[Softmax weights]
+  W --> O[Weighted sum]
+  V[Values of earlier tokens] --> O
+  class W focus
+```
 
 ## Why it matters
 You do not need the math to use models, but this picture explains real limits. Attention compares every token with every earlier token, so the work grows quickly with length. That is why long inputs cost more. It also explains why position in a prompt matters, and why models can copy a pattern from examples you give them. Earlier keys and values are saved in a KV cache, so repeated prefixes are cheap. That idea is behind prompt caching.
+
+```mermaid While generating, each new token adds one key and value to the cache and reuses all the saved ones
+sequenceDiagram
+  participant M as Model
+  participant C as KV cache
+  M->>C: Save keys and values for the prompt
+  loop For each new token
+    C-->>M: Saved keys and values of earlier tokens
+    M->>C: Save key and value of the new token
+  end
+```
 
 ## A worked example
 Take "The bank of the river was muddy." When the model handles "bank", attention pulls in "river", so the vector for "bank" moves toward "edge of water". In "The bank approved my loan", it pulls in "loan" and "approved" and moves toward "financial institution". The word is the same, but its meaning is set by its neighbors.
@@ -192,6 +300,15 @@ Watch the 3Blue1Brown chapters first. Then play with an interactive visualizatio
 Invented numbers for illustration. A token has three earlier tokens to look at. Its query compared with their keys gives scores 3, 1 and 0. Softmax turns these into weights: e^3 is about 20.1, e^1 about 2.7, e^0 equals 1, total about 23.8. The weights are about 0.84, 0.11 and 0.04.
 
 Say the three values are single numbers, 10, 20 and 30. The output is the weighted average: 0.84 × 10 + 0.11 × 20 + 0.04 × 30, about 12.0. Most of the answer comes from the first token, because its key matched the query best. Real models scale the scores before softmax and use long vectors, but the steps are the same.
+
+The same trace as a table, with one row per earlier token.
+
+| Earlier token | Score | e to the score | Weight | Value | Weight times value |
+|---|---|---|---|---|---|
+| 1 | 3 | 20.09 | 0.844 | 10 | 8.44 |
+| 2 | 1 | 2.72 | 0.114 | 20 | 2.28 |
+| 3 | 0 | 1.00 | 0.042 | 30 | 1.26 |
+| Total | | 23.80 | 1.000 | | 11.98 |
 
 ## Trade-offs and limits
 Each comparison costs work, and the number of comparisons grows with the square of the input length. As the history chapter showed, doubling the input quadruples this part of the cost.
@@ -241,6 +358,23 @@ Stage three is preference tuning. People compare two answers and pick the better
 
 Stage four, used for reasoning models, is reinforcement learning on tasks with checkable answers, such as math and code. The model gets a reward when the final answer is right, so it learns to think longer and more carefully.
 
+```mermaid Each stage starts from the previous model, and the last one only applies to reasoning models
+flowchart TD
+  A[Pretraining on huge text] -->|Base model| B[SFT on example conversations]
+  B -->|Assistant| C[Preference tuning]
+  C -.->|Reasoning models| D[RL on checkable tasks]
+  class A focus
+```
+
+The table compares what each stage learns from and what it produces.
+
+| Stage | Training data | What teaches the model | Result |
+|---|---|---|---|
+| Pretraining | A huge amount of text | Whether it predicted the next token | A base model that continues any text |
+| Supervised fine-tuning | Thousands of written example conversations | Matching the example answer | A model that answers like an assistant |
+| Preference tuning | Pairs of answers where people picked the better one | Moving toward the preferred answer | Clearer, safer, better organized answers |
+| Reinforcement learning | Tasks with checkable answers | A reward when the final answer is right | A reasoning model that thinks longer |
+
 ## Why it matters
 Pretraining has a cutoff date, so the model knows nothing newer. Politeness, refusals and tool use come from the later stages. That is why a prompt can change how a model behaves, but cannot reliably teach it new facts.
 
@@ -254,6 +388,16 @@ In pretraining, one sentence produces many practice questions. Take the six toke
 
 Fine-tuning uses the same scoring, but on conversations, and usually only the assistant's reply counts. Same mechanism, different data.
 
+Each row below is one practice question made from the single sentence.
+
+| Prediction | The model sees | It must predict |
+|---|---|---|
+| 1 | The | cat |
+| 2 | The cat | sat |
+| 3 | The cat sat | on |
+| 4 | The cat sat on | the |
+| 5 | The cat sat on the | mat |
+
 ## Trade-offs: prompt, retrieve or fine-tune
 Match the tool to what is missing.
 
@@ -262,6 +406,14 @@ Missing facts that change often: retrieve them. A company with 200 policy pages 
 Missing behavior you can describe: write a clearer prompt first, since it is free and instant.
 
 Missing consistency at huge scale: fine-tune a small model. A brand voice in a fixed three line format, millions of times a day, is a good fit. The costs are collecting good examples and the risk of side effects.
+
+```mermaid Pick the tool by what is missing from the answers
+flowchart TD
+  Q{What is missing?}
+  Q -->|Facts that change| R[Retrieve them]
+  Q -->|Behavior you can describe| P[Write a clearer prompt]
+  Q -->|Consistency at huge scale| F[Fine-tune a small model]
+```
 
 ## What goes wrong after tuning
 Symptoms to watch for:
@@ -309,6 +461,16 @@ Design around the failure instead of hoping it disappears. Give the model source
 ## Worked example: three guard rails
 Task: summarize a customer's contract. Rail one: give the model the contract text and tell it to answer only from it. Rail two: require a short quote for every claim, which you can check with a text search. Rail three: have a second prompt (or a person) verify a sample. None of these make the model perfect. Together they make errors visible.
 
+```mermaid Three rails make errors visible: ground the answer, check the quotes, verify a sample
+flowchart TD
+  A[Contract text and question] --> B[Model answers only from the text]
+  B --> C[Every claim has a short quote]
+  C --> D[Text search checks each quote]
+  D --> E[Second prompt or person checks a sample]
+  class D good
+  class E good
+```
+
 ## Where models are weak
 Exact arithmetic with long numbers, precise dates and names that are rare, anything after the knowledge cutoff, and counting letters in words (tokens hide letters). Where possible give the model a tool: a calculator, a search, a code runner.
 
@@ -316,6 +478,16 @@ Exact arithmetic with long numbers, precise dates and names that are rare, anyth
 Think about what happens with a rare fact. Ask for the author of an obscure book. The model has seen little about it, so its probabilities spread across many plausible names. Invented numbers: 12 percent for one name, 10 percent for another, 9 percent for a third. The sampler must still pick something, and the top choice at 12 percent is printed in the same confident tone as a name with 95 percent behind it.
 
 Nothing in that loop separates "I know" from "this looks right". Bigger models tend to make fewer such errors, but none are immune.
+
+```mermaid Invented odds for the first token of an answer: a well-known fact has a clear winner, a rare fact spreads thin
+xychart-beta
+  x-axis [First choice, Second choice, Third choice]
+  y-axis "probability percent" 0 --> 100
+  bar "Well-known fact" [95, 3, 1]
+  bar "Rare fact" [12, 10, 9]
+```
+
+In both cases the sampler prints its top choice in the same tone, so the 12 percent answer looks as sure as the 95 percent one.
 
 ## A second example: matching checks to stakes
 Guard rails cost time and money, so scale them to what a mistake costs. Rewriting an email to sound politer has few facts to get wrong, and a quick read by you is enough. Summarizing a legal contract needs the full set of rails.
@@ -326,6 +498,13 @@ Even a good rail can mislead. A required quote might exist in the contract but n
 Build a small test set of about 30 questions with known answers. Include some whose answers are not in the provided document. Count three things: right answers, wrong answers, and times the model said the answer is not available.
 
 A well-grounded setup should say "not stated" when asked, for example, the notice period of a contract that never mentions one. If it invents a number, your rails are not yet working. Rerun the set after every change to the prompt or model so you see whether the wrong-answer rate moved.
+
+Scoring the test set means looking at two kinds of question separately.
+
+| Kind of question | Good outcome | Bad outcome |
+|---|---|---|
+| Answer is in the document | Right answer, with a quote that supports it | Wrong answer |
+| Answer is not in the document | Says it is not stated | Invents an answer |
 
 ## Common mistake
 Reading confidence as accuracy. The tone is equally fluent when the answer is wrong.

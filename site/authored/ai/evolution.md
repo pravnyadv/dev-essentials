@@ -4,23 +4,22 @@ The vocabulary changed every year, but each new name points at a real shift in w
 ## The sequence
 Prompt engineering (2020 to 2023): GPT-3 showed that wording and examples change results, so people tuned prompts. Retrieval and tools (2023): models gained access to documents and functions. Agents (2024 to 2025): models run in a loop, choose tools and act over many steps. Context engineering (2025): the realization that what is in the window matters more than phrasing. Harness engineering (2025 to 2026): the recognition that the system around the model, not only the model, decides how well an agent does.
 
-## What the pattern is
-Each stage moved attention outward. First the sentence you type, then everything the model sees, then the loop that runs it, then the whole environment: tools, rules, checks, sandboxes and memory. The model did not get replaced at each step. The unit of engineering got bigger.
+The table lines up the five names with the support task from this example.
 
-## What is real and what is hype
-Real: the shift from judging one response to judging a whole run of many steps. Real: that most agent failures come from missing tools, vague rules or noisy context rather than a weak model. Rebranding: calling normal software engineering a new discipline. A harness has a retry loop, tests, permissions and logging, and those are old ideas applied to a new component. The honest framing is that they are the same ideas applied to a component that is non-deterministic, which makes them more important.
-
-## How to use this
-When you meet a new buzzword, ask three things. What mechanism does it name? What can I measure to know if it helps? What would I have called this last year? The next lessons apply that test to prompt engineering, harness engineering and the buzzwords around them. The Agents chapter covers agents in depth.
-
-## A worked example: the same task, five eras
-Task: answer customer questions. Prompt era: write a clever instruction. Retrieval era: add the right help articles to the prompt. Agent era: let the model look up orders and issue refunds with tools. Context era: carefully choose what is in the window at each step. Harness era: add tests, approvals, tracing and a separate checker so the whole system is dependable. Each era added a layer. None removed the model.
+| Name | Years | What gets engineered | Customer question task |
+|---|---|---|---|
+| Prompt engineering | 2020 to 2023 | The sentence you type | A clever instruction |
+| Retrieval and tools | 2023 | What the model can reach | Help articles added to the prompt |
+| Agents | 2024 to 2025 | A loop that chooses and acts | Look up orders, issue refunds with tools |
+| Context engineering | 2025 | Everything in the window at each step | Choose what is in the window for each step |
+| Harness engineering | 2025 to 2026 | The whole environment | Tests, approvals, tracing and a separate checker |
 
 ## A habit worth keeping
 When you meet a new term, find the mechanism, find the measurement, and find the old name. If you cannot find all three, wait.
 
 ## Running the three questions on a new term
 Take an invented term, "intent engineering", from a vendor post. Apply the checks in order.
+
 1. Mechanism: read for what the system does differently. Suppose the post says the app rewrites a vague request into a clear goal before the model sees it. That is a concrete step.
 2. Measurement: ask for a before and after. Suppose the vendor reports 62 of 100 test requests solved before, and 71 of 100 after. That is 9 points better, but 100 requests is a small test. Random luck alone can move a score by several points, so ask for more runs.
 3. Old name: rewriting a request before processing it is called query rewriting, and search engines have done it for years.
@@ -70,7 +69,15 @@ Prompts are now treated as code: versioned, tested against examples and reviewed
 Writing prompts turned into one of many skills. Today it is usually bundled with building the whole system: data, tools, tests and monitoring.
 
 ## How few-shot works, with a tiny trace
-Invented prompt: "Review: great -> positive. Review: awful -> negative. Review: fine ->". The model has seen no training on this exact list. It reads the pattern and continues it, so the next word is likely "positive" or "neutral" in the same one-word style.
+Invented prompt: "Review: great = positive. Review: awful = negative. Review: fine =". The model has seen no training on this exact list. It reads the pattern and continues it, so the next word is likely "positive" or "neutral" in the same one-word style.
+
+```mermaid The examples in the prompt show the model the task and the output format, so it continues the pattern
+flowchart TD
+  A[Prompt with two labeled examples] --> B[New input, fine]
+  B --> C[Model reads the pattern in context]
+  C --> D[Continues it in the same one-word format]
+  class C focus
+```
 
 Without the two examples, the same model might answer with a full sentence. The examples teach the format as well as the task. To measure it, run twenty inputs both ways and count outputs in the right format. Invented result: 11 of 20 without examples, 19 of 20 with.
 
@@ -78,6 +85,21 @@ Without the two examples, the same model might answer with a full sentence. The 
 You rewrite a prompt until three test inputs all pass. On twenty new inputs it fails half of them. The prompt learned your three cases, much like a student who memorizes the practice exam.
 
 To confirm, split your inputs into two groups. Tune the prompt on the first group only, then score the second group once, without changing anything. If the second score is far lower, you overfit the prompt. Keep the second group hidden until the end.
+
+```mermaid Tune on one group of inputs and score a hidden group once, or the prompt only learns your test cases
+flowchart TD
+  A[Your inputs] --> T[Tuning group]
+  A --> H[Held-out group]
+  T --> P[Rewrite the prompt until it passes]
+  P --> S[Score the held-out group once]
+  H --> S
+  S --> R{Far lower?}
+  R -->|yes| O[Prompt overfit your cases]
+  R -->|no| G[Prompt holds up on new inputs]
+  class H focus
+  class O bad
+  class G good
+```
 
 ## When a technique is not needed
 Chain of thought helps on multi-step problems, such as a bill with a discount and tax. It adds cost to a one-step lookup like "What is the capital of France?", because the model writes extra tokens it does not need. Reasoning models are trained to think before they answer. Adding "think step by step" to one may change nothing. Run both versions on your task before you keep the phrase.
@@ -111,6 +133,20 @@ Instructions and rule files such as AGENTS.md. Tools, including MCP servers and 
 ## Why it is more than a buzzword
 Anthropic's long-running work found two failure modes that the model alone does not fix. As context fills, models lose coherence and sometimes wrap up early, so the harness adds context resets with a written handoff. And a model grading its own work tends to praise it, so the harness separates the generator from a skeptical evaluator. Both are engineering decisions you can test, and they produced measurable gains.
 
+```mermaid A separate evaluator tries the generator's work and sends back problems, so the generator never grades itself
+sequenceDiagram
+  participant G as Generator
+  participant E as Skeptical evaluator
+  G->>E: Finished work
+  Note over E: Tries the work, looks for problems
+  alt Problems found
+    E-->>G: List of problems
+    G->>E: Revised work
+  else Nothing found
+    E-->>G: Approved
+  end
+```
+
 ## The honest caveat
 Most of this is ordinary systems engineering: retries, permissions, tests, logging and separation of duties. The new part is that the central component is probabilistic, so verification and observability matter more, and changes need evals to prove they help. Google's practice adds meta-debugging: when an agent fails, fix the workflow, not the model. If someone uses the word without naming which of these parts they changed, treat it as marketing.
 
@@ -120,6 +156,16 @@ Click through the parts in the diagram. Then take your own agent and list which 
 ## A worked example: one failure, one harness change
 Failure: the agent says "done" but half the feature is missing. Cause: no way to check. Harness change: give it the test suite and require passing tests before it can finish. Failure: it edited a config file it should not touch. Harness change: a permission rule blocking that folder. Each change is small and measurable.
 
+The table pairs each failure with the harness part involved.
+
+| What the agent did | Harness part involved | Change |
+|---|---|---|
+| Said done with half the feature missing | A way to check | Give it the test suite and require passing tests |
+| Edited a config file it should not touch | A permission rule | Block that folder |
+| Tried to commit a key | A hook | Scan staged files before the commit runs |
+| Dropped rules late in a long session | A rules file grown to 300 lines | Trim to the ten rules that matter |
+| Praised its own mediocre work | A separate evaluator | Add a skeptical checker |
+
 ## How a hook stops a bad action
 A hook is code that runs at a fixed point, so the model cannot talk its way past it. Trace for a secrets check:
 1. The agent finishes a change and asks to run the commit command.
@@ -127,6 +173,19 @@ A hook is code that runs at a fixed point, so the model cannot talk its way past
 3. The hook scans the staged files for text shaped like a password or key.
 4. It finds one and returns a refusal that names the file.
 5. The agent reads the refusal, removes the key, and tries again.
+
+```mermaid A hook runs before the commit and refuses it, whatever the model remembers
+sequenceDiagram
+  participant A as Agent
+  participant H as Harness
+  participant K as Hook
+  A->>H: Run the commit command
+  H->>K: Pause the call, run the hook
+  Note over K: Scans staged files for keys
+  K-->>H: Refuse, naming the file
+  H-->>A: Refusal message
+  A->>H: Remove the key, try again
+```
 
 A rule in the prompt, "never commit secrets", works most of the time. The hook runs every time, because the check does not depend on the model remembering. It still only catches what its scan can recognise.
 
@@ -164,6 +223,19 @@ Two teams use the same model for a coding agent. Team A types prompts into a cha
 
 # ai-buzzwords | A field guide to AI buzzwords | 1 | 12
 For each popular term: what it actually names, and how much of it is marketing.
+
+The table gives each term below its honest label before the details.
+
+| Term | What it names | Verdict | Question to ask |
+|---|---|---|---|
+| Vibe coding | Prompting and accepting output with little review | Real for prototypes | What verifies it? |
+| Agentic | The model chooses its steps | Real, but hype on a fixed flow | What does the model decide at runtime? |
+| AGI | No agreed definition | Undefined | What test would show it? |
+| Context engineering | Deciding what enters the window | Real | Can I measure tokens and results? |
+| Multi-agent swarm | Parallel agents | Real in narrow cases | Are the subtasks independent? |
+| Skills | Folders of instructions loaded when relevant | Packaging | What does it add beyond a file? |
+| Memory | Facts stored outside the window and retrieved | Real | What is kept, and when is it stale? |
+| Reasoning | Models trained to think before answering | Real | Does it beat the plain model on my task? |
 
 ## Vibe coding
 Real: building by prompting and accepting output with little review, fine for prototypes. Limit: without verification you cannot trust it for anything that matters. Agentic engineering is the same tools with specs, tests and review.
@@ -203,6 +275,17 @@ Mechanism, with an invented example:
 1. After a chat, a step asks the model which facts are worth keeping, such as "user prefers metric units".
 2. Those facts are saved to a file or database.
 3. In the next chat, a search finds the notes that match the new message and pastes them into the window.
+
+```mermaid Memory is a notebook the system reads before it answers
+flowchart TD
+  A[Chat ends] --> B[Model picks facts worth keeping]
+  B --> C[(File or database of notes)]
+  D[Next message arrives] --> E[Search finds matching notes]
+  C --> E
+  E --> F[Notes pasted into the window]
+  F --> G[Model answers]
+  class C focus
+```
 
 That is memory: a notebook the system reads before it answers. The failure is a stale note. You tell the assistant you moved from London to Paris, but the old note stays, so it keeps suggesting umbrellas for London. To confirm, change a fact and ask a question that depends on it in a new chat.
 

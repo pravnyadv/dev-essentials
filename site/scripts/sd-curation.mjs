@@ -90,4 +90,7 @@ export const EXPLAINERS = {
   'back-pressure': 'backlog',
   'consistency-models': 'quorum',
   'news-feed': 'fanout',
+  'sharding': 'shardkey',
+  'clocks-and-ordering': 'clocks',
+  'transactions-and-isolation': 'isolation',
 }

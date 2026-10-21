@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import DemoFrame from './DemoFrame.jsx'
 import { buttonClass } from './ui.jsx'
 
 // Shared pieces for the hand-built pattern explainers.
@@ -52,3 +53,13 @@ export function useFrames(frames) {
   const [i, setI] = useState(0)
   return [frames[Math.min(i, frames.length - 1)], i, () => setI(v => Math.min(frames.length - 1, v + 1)), () => setI(0)]
 }
+
+// A boxed demo with its title, a labelled number tile, and whole numbers with thousands separators.
+export const Box = ({ title, children }) => <DemoFrame boxed title={title}>{children}</DemoFrame>
+export const Stat = ({ label, value }) => (
+  <div className="rounded-lg border p-3 text-center">
+    <p className="text-xs text-fd-muted-foreground">{label}</p>
+    <p className="text-lg font-bold tabular-nums">{value}</p>
+  </div>
+)
+export const fmt = n => Math.round(n).toLocaleString('en-US')
