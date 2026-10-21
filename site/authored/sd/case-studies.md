@@ -15,9 +15,10 @@ flowchart TD
   B --> C[Core components]
   C --> D[Scale and fix]
   D -.-> B
+  D -.-> C
 ```
 
-Step 1 is where most weak answers fail. If you draw boxes before you know the numbers, you cannot tell whether one database is enough or whether you need [sharding](/sd/docs/data/sharding).
+Step 1 is the step people skip most often. If you draw boxes before you know the numbers, you cannot tell whether one database is enough or whether you need [sharding](/sd/docs/data/sharding).
 
 ## Requirements and assumptions
 Split requirements in two. Functional requirements are what the system does: "a user posts a message and followers see it". Non-functional requirements are how well it does it: fast reads, high availability, no lost messages, tolerate some stale data.
@@ -55,6 +56,8 @@ Invented prompt: design a photo-sharing service. You ask questions and the inter
 3. Views per day: 20 million times 50 is 1 billion. That is about 10,000 views per second.
 4. Read to write ratio: 10,000 to 20, so about 500 to 1.
 
+These are averages. Real traffic peaks, often at two or three times the average, so a careful answer says "about 20 uploads per second on average, maybe 60 at peak". The conclusions below do not change.
+
 Now the design nearly writes itself. 20 uploads per second is easy for a few servers. The 1.5 PB a year says photos go in an object store, not a database. The 10,000 reads per second at a 500 to 1 ratio says a [CDN](/sd/docs/scaling/cdn-and-edge) and caching do most of the work. Four lines of arithmetic told you where to spend the time.
 
 ```mermaid Each number from the estimate pushes the design toward one component
@@ -66,10 +69,10 @@ flowchart LR
 ```
 
 ## What goes wrong: designing without numbers
-A candidate hears "design a chat app" and starts with a database choice and microservices. Twenty minutes in, the interviewer asks how many users. The answer is 50,000, and the whole design is far bigger than needed. The symptom is a diagram with many boxes and no figure next to any of them. At work the same thing produces a system that costs ten times what it should. You confirm it by asking, for each box, which number made you add it. If you cannot name one, remove the box.
+A candidate hears "design a chat app" and starts with a database choice and microservices. Twenty minutes in, the interviewer asks how many users. The answer is 50,000, and the whole design is far bigger than needed. The symptom is a diagram with many boxes and no figure next to any of them. At work the same habit produces a system that costs much more than it needs to. You confirm it by asking, for each box, which number or requirement made you add it. If you cannot name one, remove the box.
 
 ## When the framework is the wrong tool
-The framework fits open-ended greenfield questions. It is the wrong tool when the problem is already constrained. If you must add a feature to a legacy system, the work is reading the existing system, finding what cannot change, and choosing the smallest safe step. Ubl calls this the degree of constraint. A design from a blank page and a design inside a tangle of old decisions need different documents. Debugging an outage is also not a design exercise. Follow the evidence first.
+The framework fits open-ended questions about a brand new system (people call these greenfield). It is the wrong tool when the problem is already constrained. If you must add a feature to a legacy system, the work is reading the existing system, finding what cannot change, and choosing the smallest safe step. Ubl calls this the degree of constraint. A design from a blank page and a design inside a tangle of old decisions need different documents. Debugging an outage is also not a design exercise. Follow the evidence first.
 
 ## Common mistake
 Spending 30 minutes on a perfect diagram of the easy parts and never reaching the hard part of the problem.
@@ -77,18 +80,18 @@ Spending 30 minutes on a perfect diagram of the easy parts and never reaching th
 ```resources
 article | How to approach a system design interview question | https://github.com/donnemartin/system-design-primer#how-to-approach-a-system-design-interview-question | Donne Martin | The four steps this lesson adapts, with the questions to ask in step 1.
 article | Design Docs at Google | https://www.industrialempathy.com/posts/design-docs-at-google/ | Malte Ubl | Explains the usual sections of a design doc, goals versus non-goals, and why 10 to 20 pages is the sweet spot.
-article | How to rock a systems design interview | https://web.archive.org/web/20210505130322/https://www.palantir.com/2011/10/how-to-rock-a-systems-design-interview/ | Palantir | A hiring team says the thought process matters more than the final design and that you steer the conversation.
+article | How to Ace a Systems Design Interview | https://web.archive.org/web/20210505130322/https://www.palantir.com/2011/10/how-to-rock-a-systems-design-interview/ | Palantir | A hiring team says the thought process matters more than the final design and that you steer the conversation.
 article | Google Pro Tip: Use Back-of-the-Envelope Calculations to Choose the Best Design | http://highscalability.com/blog/2011/1/26/google-pro-tip-use-back-of-the-envelope-calculations-to-choo.html | High Scalability | Shows why estimating before building tells you which design can work.
 ```
 
 ```quiz
-Why does the framework put use cases and numbers before any drawing? | Numbers decide which components are needed at all ; Interviewers always grade the drawing last ; Diagrams are hard to draw without a ruler | 0 | Without numbers you cannot tell whether one database is enough or you need sharding.
-In the photo example, 4 TB of new photos per day mostly tells you to use what? | A relational database with a big disk ; An object store for the photo files ; A larger application server fleet | 1 | Petabytes of binary files belong in an object store, not in database rows.
+An interviewer says a chat app has 50,000 users. What does that number change? | Add a message queue before anything else ; Probably one database is enough, so skip sharding ; Nothing, the design is the same at any size | 1 | Small numbers mean the simple design works. Sharding and queues are for numbers you do not have.
+In the photo example, 1.5 PB of new photos a year mostly tells you to use what? | A relational database with a big disk ; An object store for the photo files ; A larger application server fleet | 1 | Petabytes of binary files belong in an object store, not in database rows. The 4 TB a day adds up to 1.5 PB in a year.
 Which section of a design doc lists things you could do but chose not to? | Non-goals ; Alternatives considered ; Context and scope | 0 | Ubl defines non-goals as reasonable goals that are explicitly dropped, such as ACID compliance.
 ```
 
 ```story
-A candidate is asked to design a ride-hailing app and starts drawing Kafka and ten services at minute two. At minute twenty the interviewer asks how many rides per second. Nobody has worked it out. It is 40, which one server and one database could handle, and the whole diagram is wrong for the problem.
+A candidate is asked to design a ride-hailing app and starts drawing Kafka and ten services at minute two. At minute twenty the interviewer asks how many rides per second. Nobody has worked it out. It is 40 bookings per second, and a careful candidate would then ask about driver location updates too, which is the bigger number. Either way, the figures decide how many boxes the design needs, and ten services at minute two was a guess.
 ```
 
 ```adapted
@@ -111,7 +114,7 @@ Functional requirements, in scope:
 Out of scope: accounts, editing links, and custom short names. Non-functional: following a short link must be fast, traffic is uneven, and the service should be highly available.
 
 ## Estimates
-The Primer assumes 10 million users, 10 million writes a month and 100 million reads a month, so reads outnumber writes 10 to 1. Each record is about 1.27 KB in the Primer's pastebin (1 KB of content plus a 7 byte key and some metadata). For a shortener the stored URL is smaller, but we keep its numbers.
+The Primer assumes 10 million users, 10 million writes a month and 100 million reads a month, so reads outnumber writes 10 to 1. Each record is about 1.27 KB in the Primer's pastebin (1 KB of content plus a 7 byte key and some metadata). For a shortener the stored URL is smaller, but we keep its numbers. A real shortener row is closer to 500 bytes, so the true figure would be about 180 GB over three years (360 million times 500 bytes). We keep the Primer's 450 GB as an upper bound.
 
 1. New data: 1.27 KB times 10 million is 12.7 GB a month, or about 450 GB in three years.
 2. Keys: 10 million a month for 36 months is 360 million short links.
@@ -136,7 +139,9 @@ For a shortener, the POST body carries `url` instead of contents and the GET is 
 | shortlink | 7 characters, primary key, which creates an index that also enforces uniqueness |
 | expiration_length_in_minutes | integer |
 | created_at | datetime |
-| original_url or paste_path | the long URL, or in the pastebin a pointer to an object store file |
+| original_url | the long URL, about 100 bytes |
+
+Seven characters is the Primer's choice for truncated hashes. With a counter, 360 million links fit in 5 characters (62 to the power of 5 is about 916 million), so you can pad to 5 or 7, or let keys grow as the counter grows.
 
 The Primer treats the [relational database](/sd/docs/data/sql-vs-nosql) as a large hash table from key to value and notes a key-value NoSQL store is an alternative.
 
@@ -165,9 +170,9 @@ Three ways to get keys, and what each costs:
 | --- | --- | --- |
 | Hash and truncate | No coordination, stateless | Collisions, must check and retry |
 | Counter, then base62 encode | No collisions, short keys | Guessable order, one counter to scale |
-| Pre-generated key blocks | Fast writes, no check | A key service to run |
+| Counter in blocks (a counter plus a key service handing out ranges) | Fast writes, no check | A key service to run, guessable order |
 
-A counter hands out 1, 2, 3 and so on, and base62 encoding turns the number into a short string. To avoid one hot counter, each Write API server asks a small key service for a block, for example 1,000 numbers at a time, and hands them out locally. If a server crashes it loses at most the rest of its block, which is fine because the key space is huge. Guessable keys leak how many links exist. If that matters, shuffle the number with a keyed permutation before encoding.
+A counter hands out 1, 2, 3 and so on, and base62 encoding turns the number into a short string. To avoid one hot counter, each Write API server asks a small key service for a block, for example 1,000 numbers at a time, and hands them out locally. If a server crashes it loses at most the rest of its block, which is fine because the key space is huge. Guessable keys leak how many links exist. If that matters, scramble the number with a secret-keyed shuffle (a reversible scramble) before encoding.
 
 Base62 encoding of the counter value 5001 (digits 0 to 9, then a to z, then A to Z, so 41 is F, 18 is i and 1 is 1). Divide by 62, keep the remainder, repeat until the quotient is 0, then read the remainders from last to first:
 
@@ -198,7 +203,7 @@ A redirect needs a status code. A 301 means the resource has a new permanent URI
 The Primer's cleanup is a scan for rows whose expiry is older than now, deleting or marking them. Reads should also check the expiry, so an expired link never redirects while it waits for cleanup. Analytics follow the Primer: realtime counts are not required, so run a MapReduce job (a batch job that counts in parallel) over the web server logs, producing pairs like (2016-01, url0) with a total. A data warehouse such as BigQuery can store results.
 
 ## A worked example: collisions and cache
-Collisions with truncated hashes. The space has about 3.5 trillion keys and the design holds 360 million. When a new link is created at the end, the chance that its random key is already taken is 360 million divided by 3.5 trillion, about 0.01 percent. That is 1 in 10,000, so a check and one retry is rare and cheap. Across all inserts over three years, roughly 18,000 retries happen. That is not a problem, only a reason you must check the database for a duplicate, as the Primer does.
+Collisions with truncated hashes. This is the cost of the hash-and-truncate option, which we did not choose. The space has about 3.5 trillion keys and the design holds 360 million. When a new link is created at the end, the chance that its random key is already taken is 360 million divided by 3.5 trillion, about 0.01 percent. That is 1 in 10,000, so a check and one retry is rare and cheap. Across all inserts over three years, roughly 18,000 retries happen. That is not a problem, only a reason you must check the database for a duplicate, as the Primer does.
 
 Cache sizing (invented hit rate). Say peak is 400 reads per second. If the cache serves 90 percent, the database sees 40 per second. To hold the hottest data, cache 1 million links at about 500 bytes each. That is 500 MB, easily one Redis node. See [caching basics](/sd/docs/caching/caching-basics).
 
@@ -210,10 +215,10 @@ xychart-beta
 ```
 
 ## What goes wrong: a hot key on a viral link
-One link is shared by a celebrity and gets 20,000 reads a second. The cache entry is hot, and if it expires, thousands of requests miss at once and hit the database for the same row. The symptom is database latency spikes that line up with one key's expiry. Confirm by logging the top keys per minute. The fix is to refresh that key before it expires, coalesce concurrent misses so only one goes to the database, and let a [CDN](/sd/docs/scaling/cdn-and-edge) hold the redirect if you use 301 or a short cache lifetime. See [cache invalidation](/sd/docs/caching/cache-invalidation).
+One link is shared by a celebrity and gets 20,000 reads a second. The cache entry is hot, and if it expires, thousands of requests miss at once and hit the database for the same row. The symptom is database latency spikes that line up with one key's expiry. Confirm by logging the top keys per minute. The fix is to refresh that key before it expires, coalesce concurrent misses (let one request go to the database while the rest wait for its answer), and, if you do not need exact visit counts, let a [CDN](/sd/docs/scaling/cdn-and-edge) hold the redirect for a few seconds. Requests the CDN answers never reach your web server logs, so those clicks will not be counted. If counts matter, keep the CDN out and rely on the cache and coalescing. See [cache invalidation](/sd/docs/caching/cache-invalidation).
 
 ## Scaling the design
-The Primer says not to jump to the final design. Load test, profile, fix the worst bottleneck and repeat. Here the order is: a memory cache for popular links, read replicas for misses, an object store for large content, and a [load balancer](/sd/docs/scaling/load-balancing) with several web and API servers. 4 writes per second fit one write master with a standby. If writes grow far past that, add [sharding](/sd/docs/data/sharding) by key, or move to a key-value store.
+The Primer says not to jump to the final design. Load test, profile, fix the worst bottleneck and repeat. Here the order is: a memory cache for popular links, read replicas for misses (copies of the database that only serve reads), and a [load balancer](/sd/docs/scaling/load-balancing) with several web and API servers. 4 writes per second fit one write master (the primary database that takes all writes) with a standby (an idle copy ready to take over). If writes grow far past that, add [sharding](/sd/docs/data/sharding) by key, or move to a key-value store.
 
 ## Alternatives considered
 Three choices could have gone another way. A key-value store fits the table well, since the only lookup is by key, and it shards easily. At 4 writes a second we keep SQL, which most teams already run, and would move to a key-value store only if writes outgrew one primary. Hashing and truncating needs no key service, but it needs a duplicate check on every write. Counter blocks cost one small service and need no check.
@@ -237,13 +242,13 @@ docs | RFC 9110, HTTP Semantics: 301 and 302 | https://www.rfc-editor.org/rfc/rf
 ```
 
 ```quiz
-A site needs click analytics and the right to change a link's target later. Which redirect fits? | 302, so requests keep coming to you ; 301, so browsers remember the target ; Neither, because redirects cannot be used | 0 | A 302 is temporary, so clients come back and you can count clicks and change the target.
-The key space is 3.5 trillion and 360 million are used. About what share of new random keys collide? | 0.01 percent ; 10 percent ; Exactly zero | 0 | 360 million divided by 3.5 trillion is about 0.0001, so one in 10,000.
-Why hand each API server a block of 1,000 counter values? | It makes keys impossible to guess for users ; It shortens every key by a character ; It avoids asking one central counter on every write | 2 | Local blocks remove the single counter from the write path, and a crash only wastes some unused numbers.
+A site needs click analytics and the right to change a link's target later. Which redirect fits? | 302, so requests keep coming to you ; 301, so browsers remember the target ; 301 for the first week, then 302 | 0 | A 302 is temporary, so clients come back and you can count clicks and change the target. Any 301 period would be remembered by browsers and hide those clicks.
+A link is shared by a celebrity and its cache entry expires while 20,000 reads a second arrive. What helps most? | a bigger database server for every link ; coalescing misses so one request refills the cache ; switching to a 301 for all links | 1 | Only one request needs to reach the database; the rest can wait for its answer.
+Why hand each API server a block of 1,000 counter values? | It makes keys impossible for users to guess ; It shortens every key by exactly one character ; It avoids asking one central counter on every write | 2 | Local blocks remove the single counter from the write path, and a crash only wastes some unused numbers.
 ```
 
 ```story
-A founder shares a short link on a podcast with two million listeners. Every listener opens it within an hour, the link's cache entry expires mid-spike, and the database falls over under identical requests. The link shortener had been fine for a year at 40 reads a second. One hot key broke it.
+A founder shares a short link on a podcast with two million listeners. Most of them tap it in the first few minutes, so the link gets thousands of reads a second. Its cache entry expires mid-spike, thousands of requests miss at once, and the database falls over answering the same question again and again. The shortener had been fine for a year at 40 reads a second. One hot key broke it.
 ```
 
 ```adapted
@@ -279,7 +284,7 @@ Using 400 requests per second for every 1 billion requests a month:
 4. Fan-out deliveries: 150 billion a month is about 60,000 per second.
 5. Searches: 4,000 per second.
 
-Notice that one post becomes 10 deliveries on average. Writes are amplified, and reads dominate anyway.
+Notice that one post becomes 10 deliveries on average. So writes are amplified to 60,000 a second. Reads are still more, at 100,000 a second, and each read is cheap only if the work was done at post time. That is why the Primer pays the write cost.
 
 ## API and data model
 Following the Primer's REST style:
@@ -297,7 +302,7 @@ Posting: the client calls the web server, which forwards to a Write API. The Wri
 
 Reading: the client calls a Read API, which asks a Timeline Service. It reads the timeline entry list from the cache, which holds only ids. It then fetches the post bodies and user details with multiget calls (one request for many keys) to the Tweet Info and User Info services. See [caching patterns](/sd/docs/caching/cache-patterns) and [message queues](/sd/docs/async/message-queues).
 
-```mermaid Posting writes once and fans out into cached timelines; reading is one cache lookup
+```mermaid Posting writes once and fans out into cached timelines; reading is one timeline lookup plus multiget
 flowchart TD
   C[Client] --> WA[Write API]
   WA --> SQL[(Posts in SQL)]
@@ -312,7 +317,7 @@ flowchart TD
 ```
 
 ## Fan-out on write or on read
-Fan-out on write, which the Primer chooses, does the work at post time. Reading is one cache lookup. The cost is write amplification, and wasted work for followers who never log in.
+Fan-out on write, which the Primer chooses, does the work at post time. Reading is one lookup of the timeline in the cache, plus a multiget to fetch the post bodies. The cost is write amplification, and wasted work for followers who never log in.
 
 Fan-out on read keeps one list of posts per author. When you open the feed, the service fetches recent posts from everyone you follow and merges them. Posting is cheap, but a read touches hundreds of authors, which is slow when reads are 100,000 a second.
 
@@ -344,11 +349,11 @@ Use the Primer's rate of 60,000 fan-out deliveries a second for the whole servic
 2. Time at full capacity: 10 million divided by 60,000 is about 170 seconds, nearly 3 minutes.
 3. In practice the fan-out service is shared, so it takes longer, and everyone else's posts queue behind it.
 
-With the hybrid, that post costs one insert into the author's own list. A reader who follows 5 celebrities does 5 extra lookups and a merge of a few hundred items, which is milliseconds.
+With the hybrid, that post costs one insert into the author's own list. The User Graph Service marks accounts over the cutoff as celebrities, so the Timeline Service knows which of the accounts a reader follows to look up. A reader who follows 5 celebrities does 5 extra lookups and a merge of a few hundred items. Merging that many small items in memory is fast compared with the network calls around it, but measure it before promising a number.
 
 Try these numbers in the demo above.
 
-Cache size (our estimate, cap of 300 entries): 300 times 17 bytes is about 5 KB per user. For 100 million users that is 510 GB, so keep only active users in the cache, as the Primer suggests.
+Cache size (our estimate, cap of 300 entries): 300 times 17 bytes is about 5 KB per user, so 100 million users is about 510 GB before Redis overhead. That fits in a cache cluster, but total registered users are far more than 100 million, so keep timelines only for users active in the last 30 days and rebuild the rest from SQL on demand, as the Primer suggests.
 
 ```mermaid Seconds to fan one post out at the Primer's 60,000 deliveries a second, by follower count
 xychart-beta
@@ -361,16 +366,16 @@ xychart-beta
 After a cache outage or a launch, millions of users open the app and their timelines are not cached. Each one triggers a rebuild: find followed accounts, query SQL for their posts, merge and write back. The database falls over. Symptoms are low cache hit rate, SQL read latency climbing and timeouts. Confirm by watching hit rate and the rebuild rate. The Primer's answer for inactive users is to rebuild from SQL on demand. Add a limit on concurrent rebuilds, warm the cache for active users first, and use [timeouts and retries](/sd/docs/reliability/timeouts-and-retries) with backoff so retries do not pile up.
 
 ## Scaling the design
-The Primer's list: keep only a few hundred posts per timeline, keep only active users' timelines in cache (if a user was inactive for 30 days, rebuild from SQL), store only a month of posts in the Tweet Info service, and keep the search cluster in memory. One SQL master cannot take the write volume, so use read replicas, [sharding](/sd/docs/data/sharding), and a move of some data to NoSQL. The fan-out itself should run behind a queue so a slow follower list never blocks posting. For a related design problem see the [social graph](/sd/docs/practice/social-graph) practice lesson.
+The Primer's list: keep only a few hundred posts per timeline, keep only active users' timelines in cache (if a user was inactive for 30 days, rebuild from SQL), store only a month of posts in the Tweet Info service, and keep the search cluster in memory. Read replicas help with the reads that miss the cache, but they do not help with writes. One SQL master cannot take the write volume, so split the data with [sharding](/sd/docs/data/sharding) and move some of it to NoSQL. The fan-out itself should run behind a queue so a slow follower list never blocks posting. For a related design problem see the [social graph](/sd/docs/practice/social-graph) practice lesson.
 
 ## Alternatives considered
 | Design | Cost of a post | Cost of a read | Fits when |
 | --- | --- | --- | --- |
-| Fan-out on write for everyone | One insert per follower | One cache lookup | Follower counts are modest |
+| Fan-out on write for everyone | One insert per follower | One timeline lookup plus a multiget | Follower counts are modest |
 | Fan-out on read for everyone | One insert | A merge across every followed author | Reads are rare or the user base is small |
-| Hybrid (chosen) | Inserts for normal accounts only | One lookup plus a few celebrity merges | Reads dominate and a few accounts are huge |
+| Hybrid (chosen) | Inserts for normal accounts only | One timeline lookup plus a multiget and a few celebrity merges | Reads dominate and a few accounts are huge |
 
-Fan-out on read at 100,000 reads a second, each touching about 300 authors, means 30 million author lookups a second, so it loses here. Pure fan-out on write loses to the celebrity post in the worked example. A small system can skip all of this and run a simple join query. Feeds ranked by real-time signals resist precomputation, because the order changes on each read. For those, fetch candidates and rank at read time.
+Fan-out on read at 100,000 reads a second, assuming each user follows about 300 accounts (our assumption, not the Primer's), means 30 million author lookups a second, so it loses here. Pure fan-out on write loses to the celebrity post in the worked example. A small system can skip all of this and run a simple join query. Feeds ranked by real-time signals resist precomputation, because the order changes on each read. For those, fetch candidates and rank at read time.
 
 ```card News Feed
 Requirements | Post a message, view the home timeline and your own, search by keyword, send push notifications and stay highly available.
@@ -389,12 +394,12 @@ docs | Redis lists, capped lists | https://redis.io/docs/latest/develop/data-typ
 
 ```quiz
 A user with 10 million followers posts. The fan-out service does 60,000 deliveries a second. About how long does the fan-out take? | About one second, since writes are in memory ; About three hours, because queues are slow ; About three minutes | 2 | 10 million divided by 60,000 is about 170 seconds.
-Why use a cursor instead of an offset to paginate a feed? | Cursors use less memory in the browser app ; Offsets repeat items when new posts arrive ; Offsets cannot be used with SQL databases at all | 1 | New posts shift offsets, so page 2 repeats page 1 items, while a cursor marks a fixed position.
+A feed returns 20 posts per page, and page 2 is requested with offset=20. Between the two requests, 3 new posts arrive. What does the reader see on page 2? | Three posts they never get to see at all ; Three posts they already saw, then the rest ; The same posts as page 1, again in full | 1 | New posts push everything down 3 places, so the last 3 items of page 1 are now the first 3 of page 2. A cursor asks for items older than the last id seen, which does not move.
 What does the hybrid design do for accounts with huge follower counts? | Writes their posts to every follower cache early on ; Blocks them from posting at the busiest times of day ; Skips fan-out and merges at read time | 2 | Pull for celebrities avoids millions of writes per post, at the cost of a small merge on each read.
 ```
 
 ```story
-A pop star with 30 million followers posts a photo. The fan-out workers begin 30 million cache writes, and for ten minutes every other user's new posts wait in the same queue. Friends see each other's updates a quarter of an hour late, and the on-call engineer sees queue depth climb. The team switches celebrities to fan-out on read.
+A pop star with 30 million followers posts a photo. The fan-out workers begin 30 million cache writes. At the service's 60,000 deliveries a second that takes about 8 minutes, and for all that time every other user's new posts wait in the same queue. Friends see each other's updates minutes late, and the on-call engineer sees queue depth climb. The team switches celebrities to fan-out on read.
 ```
 
 ```adapted
@@ -411,7 +416,7 @@ Functional: send one-to-one messages, send to groups, see sent, delivered and re
 Assume 50 million daily users, each sending 40 messages a day, and 20 million connected at the busiest moment.
 
 1. Messages per day: 50 million times 40 is 2 billion.
-2. Per second: 2 billion divided by about 100,000 is 20,000, so plan for 60,000 at peak.
+2. Per second: 2 billion divided by about 100,000 is 20,000 (a day is really 86,400 seconds, rounded to 100,000). Assume the busiest moment is 3 times the average, so plan for 60,000 at peak.
 3. Storage: about 200 bytes each including metadata is 400 GB a day, about 146 TB a year.
 4. Connection servers: if one server holds about 100,000 open connections (depends on memory and tuning), 20 million needs 200 servers.
 
@@ -439,6 +444,7 @@ Sending, step by step:
 4. It looks up Bob in the session store. If he is online it forwards the message to his connection server, which pushes it on his socket.
 5. If Bob is offline it sends a push notification through the phone platform's service and leaves the message stored.
 6. Bob's client acknowledges, which becomes the delivered tick. Opening the chat sends a read receipt.
+7. If Bob's client never acknowledges, the message stays marked as not delivered. The chat service retries or sends a push once the session key expires, and anything missed is caught by the sync on reconnect.
 
 The key rule is to store first, then deliver. If delivery fails, the message still exists and Bob syncs when he returns. Routing needs the session store: when a client connects, the connection server writes `user to server` with a short lifetime and refreshes it while the socket lives.
 
@@ -457,12 +463,12 @@ flowchart TD
 ```
 
 ## IDs and ordering
-Order matters within one conversation, not across all of them. The message id should sort by time and be unique without a global lock. A common pattern is a Snowflake-style id: a timestamp in the high bits, then a machine id, then a counter. Discord says all of its ids are Snowflakes, which are chronologically sortable, and it uses the message id to order rows within a channel.
+Order matters within one conversation, not across all of them. The message id should sort by time and be unique without a global lock. A common pattern is a Snowflake-style id: a timestamp in the high bits, then a machine id, then a counter. Ids from different machines in the same millisecond are ordered by machine id, so this is close to arrival order, not exact. If strict order inside a conversation matters, have one owner stamp every message of that conversation (see the counter option below). Discord says all of its ids are Snowflakes, which are chronologically sortable, and it uses the message id to order rows within a channel.
 
 Another way is a per-conversation counter owned by whichever server handles that conversation. That gives gap-free numbers that make missing messages easy to detect, but needs one owner per conversation. Clients sync with "give me messages after id X".
 
 ## Storage
-Chat is write-heavy and queried by conversation and time. Discord's post "How Discord Stores Billions of Messages" describes moving from MongoDB, where data and index no longer fit in memory at 100 million messages, to Cassandra. The partition key was the channel and the clustering key was the message id. When partitions grew past 100 MB and caused trouble, they added a time bucket of about 10 days, so the key became channel plus bucket. A later post says that by early 2022 the cluster had 177 nodes and trillions of messages, then moved to ScyllaDB. The lesson is to partition by conversation and bound partition size. See [sharding](/sd/docs/data/sharding).
+Chat is write-heavy and queried by conversation and time. Discord's post "How Discord Stores Billions of Messages" describes moving from MongoDB, where data and index no longer fit in memory at 100 million messages, to Cassandra. In Cassandra, the partition key decides which node holds a row, and rows with the same partition key sit together on disk. The clustering key decides how rows are sorted inside that partition. Discord's partition key was the channel and its clustering key was the message id. When partitions grew past 100 MB and caused trouble, they added a time bucket of about 10 days, so the key became channel plus bucket. A later post says that by early 2022 the cluster had 177 nodes and trillions of messages, then moved to ScyllaDB. The lesson is to partition by conversation and bound partition size. See [sharding](/sd/docs/data/sharding).
 
 ## Groups and presence
 Small groups: write one message, then deliver to each member's connection, or add it to each member's inbox. For large groups, store once per group and let each member read from the group log using their own last-seen id. This is the fan-out choice from the [news feed](/sd/docs/case-studies/news-feed) again.
@@ -480,12 +486,12 @@ stateDiagram-v2
 ## A worked example: finding Bob
 Alice and Bob are on different servers out of 200. Bob's key in the session store says server 137.
 
-1. Alice's server writes the message and gets id 8841 for conversation C.
+1. Alice's server writes the message and gets id 8841 for conversation C. (Ids are shown as small numbers here to keep the example readable. Real Snowflake ids are 18 or 19 digits long.)
 2. It reads `session:bob`, which returns 137. One lookup, about a millisecond.
 3. It sends the message to server 137 on an internal call.
 4. Server 137 pushes on Bob's socket. Total added delay is a few milliseconds.
 
-If the lookup returns nothing, Bob is offline. The push notification fires and the message waits. When Bob reconnects, his app sends "last id I have: 8830", and the server returns 8831 onward.
+If the lookup returns nothing, Bob is offline. The push notification fires and the message waits. When Bob reconnects, his app sends "last id I have: 8830", and the server returns every message in C with an id greater than 8830, oldest first.
 
 ```mermaid Store first, then deliver: an offline user gets a push and syncs on return
 sequenceDiagram
@@ -503,7 +509,7 @@ sequenceDiagram
   C->>P: send push notification
   Note over B: later, Bob reconnects
   B->>C: last id I have is 8830
-  C-->>B: messages 8831 onward
+  C-->>B: every message after 8830
 ```
 
 ## What goes wrong: a reconnect storm
@@ -521,7 +527,7 @@ xychart-beta
 
 Other transports win in other cases. If updates are rare, such as an order status that changes a few times, polling every 30 seconds is much simpler. If only the server pushes, as with a live score, server-sent events are lighter.
 
-For ordering we pick Snowflake-style ids, because they need no coordination between servers. Per-conversation counters give gap-free numbers but need one owner per conversation.
+For ordering we pick Snowflake-style ids, because they need no coordination between servers and are ordered to within clock error. Per-conversation counters give exact, gap-free order but need one owner per conversation.
 
 ```card Chat System
 Requirements | Deliver one-to-one and group messages in near real time, keep history, handle offline users and show sent, delivered and read status and presence.
@@ -541,9 +547,9 @@ article | Short/long polling, SSE, WebSocket | https://bytebytego.com/guides/sho
 ```
 
 ```quiz
-Bob is offline when Alice sends a message. What should happen? | The message is stored and a push is sent ; The message is dropped and Alice must retry later ; The server holds the socket open until Bob comes back | 0 | Store first means the message survives, and a push notification tells Bob to reconnect and sync.
+A connection server restarts and its 100,000 users reconnect at once, and the database slows. Which change helps most? | Have clients wait a random delay before retrying ; Retry immediately so users reconnect faster ; Add a second copy of the message store | 0 | Random delays spread the reconnects over time, while instant retries make the spike worse.
 Your design has 20 million connections and each server holds 100,000. How many connection servers are needed at least? | 20 ; 200 ; 2,000 | 1 | 20 million divided by 100,000 is 200.
-Why does Discord add a time bucket to the partition key? | To make message ids shorter and easier to read ; To spread one channel across all nodes evenly ; To keep each partition from growing forever | 2 | A channel lives for years, and partitions over about 100 MB caused trouble, so buckets of about 10 days bound the size.
+Why does Discord add a time bucket to the partition key? | To make message ids shorter and easier to read ; To put every message of a channel on one node ; To keep each partition from growing forever | 2 | A busy channel keeps adding messages forever, and partitions over about 100 MB caused trouble, so buckets of about 10 days bound the size.
 ```
 
 ```story
@@ -565,7 +571,7 @@ The Primer assumes 1 billion links to crawl and a refresh about once a week, whi
 2. Crawl writes: 4 billion a month is about 1,600 per second.
 3. Searches: 100 billion a month is about 40,000 per second.
 
-Our addition: 1,600 pages a second at 500 KB each is 800 MB a second, about 6.4 Gbit per second of download bandwidth. Crawling is bandwidth-bound, and the Primer's scaling notes say to make sure there is enough.
+Our addition: 1,600 pages a second at 500 KB each is 800 MB a second, about 6.4 Gbit per second of download bandwidth. Crawling needs a lot of bandwidth (the Primer's scaling notes say to make sure there is enough), but per-host delays and DNS lookups can limit you first.
 
 ## Data model and components
 The Primer keeps two tables. `links_to_crawl` holds URLs waiting, ranked by priority. It suggests Redis sorted sets to keep the ranking. `crawled_links` holds processed URLs with a page signature. Both can live in a key-value NoSQL database (see [SQL vs NoSQL](/sd/docs/data/sql-vs-nosql)). The classes are a `PagesDataStore` that wraps the database, a `Page` (url, contents, child urls, signature) and a `Crawler` that loops over them.
@@ -578,12 +584,15 @@ Each crawler worker does the following, as in the Primer.
 3. Otherwise crawl the link. Queue a job for the Reverse Index Service and another for the Document Service, which makes the title and snippet.
 4. Generate the page signature, remove the link from `links_to_crawl`, and insert it with its signature into `crawled_links`.
 
+The Primer's loop is a sketch. In practice the signature check runs after the download, to catch a page already stored under another URL. A seen-URL check (see Duplicates) runs before a link is queued, and that is what actually breaks cycles. Links found on the page go back into `links_to_crawl` if they pass that check.
+
 The Query API serves searches: parse the query (remove markup, split into terms, fix typos, lower-case, convert to boolean logic), ask the Reverse Index Service for ranked matches, and ask the Document Service for titles and snippets. The work between the crawler and those services runs through [queues](/sd/docs/async/message-queues).
 
 ```mermaid Workers pull from the link list, and queues feed the index and document services
 flowchart TD
   F[Links to crawl] --> CW[Crawler workers]
   CW -->|check signature| CL[(Crawled links)]
+  CW -.->|new links| F
   CW --> Q[Queues]
   Q --> RI[Reverse Index Service]
   Q --> DS[Document Service]
@@ -626,13 +635,13 @@ The cycle between A and B ends at step 2, because the seen check removes the lin
 ## Duplicates
 URLs: the Primer removes duplicates with `sort | unique` for small lists, and for 1 billion links a MapReduce job that outputs only entries with frequency 1. A faster online check is a Bloom filter, a compact structure that answers "definitely not seen" or "probably seen". ByteByteGo's guide explains it as a bit vector with several hash functions. It never gives a false negative but may give a false positive, so you may skip a few new URLs.
 
-Content: two different URLs can show the same page. The Primer generates a signature from the content and compares signatures, with Jaccard index or cosine similarity for near matches. An exact hash catches identical pages. Normalize URLs first (lower-case host, remove fragments, sort query parameters).
+Content: two different URLs can show the same page. The Primer generates a signature from the content and compares signatures. A signature is a short fingerprint of a page's content. An exact hash (like SHA-256) matches only identical pages. For near copies, split the page into word groups and compare the sets. The Jaccard index is the shared groups divided by all groups, so two pages that share 90 of 100 groups score 0.9. Treat a score above a chosen cutoff, say 0.9, as a duplicate. (The Primer also names cosine similarity, another way to score closeness.) Normalize URLs first (lower-case host, remove fragments, sort query parameters).
 
 ## Recrawl
 Each stored page has a timestamp. After a default period of one week the page is refreshed. Popular or frequently changing sites refresh sooner, and the Primer suggests mining past crawls for the mean time before a page changes and using it to schedule the next visit.
 
 ## A worked example: sizing the Bloom filter and the hosts
-Bloom filter. For 1 billion URLs with a 1 percent false positive rate, the standard sizing formula gives about 9.6 bits per URL, which we round to 10. That is 10 billion bits, or 1.25 GB. It fits in memory on one machine, where a set of raw URLs would take 100 GB or more.
+Bloom filter. For 1 billion URLs with a 1 percent false positive rate, the standard sizing formula gives about 9.6 bits per URL, which we round to 10. That is 10 billion bits, or 1.25 GB. It fits in memory on one machine, where a set of raw URLs would take 100 GB or more (1 billion URLs at roughly 100 bytes each).
 
 ```mermaid False positive rate of a well-sized Bloom filter by bits per URL, from the standard formula
 xychart-beta
@@ -644,7 +653,7 @@ xychart-beta
 Hosts. Assume one request per second per host. To reach 1,600 pages a second the crawler needs at least 1,600 different hosts in flight at once. A frontier holding mostly one big site would stall, so the per-host queues must interleave many sites.
 
 ## What goes wrong: a crawler trap
-A calendar page links to "next month" forever, or a site makes endless session-id URLs. Every link is new, so duplicate checks pass. The crawler spends days in one site. Symptoms are a growing share of crawled pages from one host, URLs getting longer, and low-value content. Confirm by counting pages per host per day. Fix with limits: a maximum URL length, a maximum depth, and a cap on pages per host that lowers priority as it grows.
+A calendar page links to "next month" forever. Every page has new content and a new URL, so both the URL check and the content signature pass. (Endless session-id URLs fool the URL check too, but a content signature catches them.) The crawler spends days in one site. Symptoms are a growing share of crawled pages from one host, URLs getting longer, and low-value content. Confirm by counting pages per host per day. Fix with limits: a maximum URL length, a maximum depth, and a cap on pages per host that lowers priority as it grows.
 
 ## Scaling the design
 The Primer says to cache popular searches in memory, since some queries are very popular and others run once. The Reverse Index and Document services will need heavy [sharding](/sd/docs/data/sharding) and federation. DNS lookups can be a bottleneck, so the crawler keeps its own DNS cache that refreshes periodically. Connection pooling keeps many connections open. Bandwidth must sustain the throughput. The Primer also suggests UDP could help. Page fetches use HTTP, which runs over TCP, so we would skip that idea unless a custom protocol is involved. For a related design see the [query cache](/sd/docs/practice/query-cache) practice lesson.
@@ -671,9 +680,9 @@ article | How to Avoid Crawling Duplicate URLs at Google Scale | https://bytebyt
 ```
 
 ```quiz
-A crawler must reach 1,600 pages a second and allows one request per second per host. How many hosts must be active? | At least 16 hosts at a time ; At least 1,600 hosts ; At least 160 hosts at a time | 1 | Each host contributes one request a second, so 1,600 pages a second needs 1,600 hosts.
-robots.txt returns a 503 error. What does RFC 9309 tell the crawler to do? | Assume everything is allowed to be crawled ; Assume everything is disallowed ; Crawl, but only at half the normal speed | 1 | A server error makes the file undefined, so the crawler must assume complete disallow.
-What is a possible result from a Bloom filter that says a URL was seen? | It definitely was seen ; It was never seen ; It was probably seen | 2 | Bloom filters never give false negatives but can give false positives.
+A crawler must reach 1,600 pages a second and allows one request per second per host. How many hosts must be active? | At least 16 hosts at a time ; At least 1,600 hosts at a time ; At least 160 hosts at a time | 1 | Each host contributes one request a second, so 1,600 pages a second needs 1,600 hosts.
+robots.txt just started returning a 503 error. What does RFC 9309 tell the crawler to do? | Assume everything is allowed to be crawled ; Assume everything is disallowed ; Crawl, but only at half the normal speed | 1 | A server error makes the file undefined, so the crawler must assume complete disallow.
+A site generates a new URL for every "next month" link. Which check stops the crawler spending days there? | The seen-URL Bloom filter ; The page content signature ; A cap on pages per host that lowers priority | 2 | Every URL and page is new, so only a per-host budget notices the pattern.
 ```
 
 ```story

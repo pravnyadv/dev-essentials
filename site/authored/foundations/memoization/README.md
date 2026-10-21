@@ -18,9 +18,9 @@ function fib(n, memo = new Map()) {
 }
 ```
 
-## Bottom-up: tabulation
+## Bottom-up: fill a table (tabulation)
 
-Fill a table from the smallest subproblem upward. No recursion, no stack limit.
+Fill a table from the smallest subproblem upward. No recursion, so no call stack to run out of.
 
 ```js
 function fib(n) {
@@ -32,9 +32,9 @@ function fib(n) {
 
 If each cell only needs the previous one or two, keep just those variables and space drops from O(n) to O(1).
 
-## Complexity
+## What it costs
 
-Time is the number of **distinct states** times the work per state. Space is the number of states (plus recursion depth for top-down).
+Each distinct input to the function is one **state**. fib(5) has six states, 0 to 5. Time is the number of states times the work done for one state (here one addition). Space is the number of states stored, plus the recursion depth for top-down.
 
 ## Steps to solve a DP problem
 
@@ -44,6 +44,8 @@ Time is the number of **distinct states** times the work per state. Space is the
 4. Pick the **order**: top-down with a cache, or bottom-up.
 5. Optimise space if only the last few states matter.
 
+Applied to fib: the state is n, the recurrence (the rule that builds a state from smaller ones) is fib(n) = fib(n - 1) + fib(n - 2), the base cases are fib(0) = 0 and fib(1) = 1, and either order works.
+
 ## Choosing a cache key
 
 - One number: an array indexed by it is fastest.
@@ -52,6 +54,6 @@ Time is the number of **distinct states** times the work per state. Space is the
 
 ## Common mistakes
 
-- Memoizing a function that is not pure, or that depends on state outside its parameters.
+- Memoizing a function that is not pure, or that depends on state outside its parameters. A pure function always returns the same answer for the same arguments and reads nothing else. If it also reads a variable outside its arguments, the saved answer can go stale.
 - A cache key that omits a parameter, returning wrong answers for different inputs.
-- Deep recursion on large inputs hitting the stack limit: switch to bottom-up.
+- Deep recursion on large inputs hitting the stack limit: switch to bottom-up. Every recursive call keeps a frame on the call stack, which is limited, and very deep recursion (tens of thousands of calls) throws a RangeError.

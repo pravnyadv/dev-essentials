@@ -26,7 +26,7 @@ Space is O(n).
 
 ## Key equality
 
-`Map` and `Set` compare keys with SameValueZero. Primitives compare by value, objects and arrays compare by **reference**.
+`Map` and `Set` compare keys the way `===` does, with one difference: `NaN` equals `NaN`. (The spec calls this rule SameValueZero; it also treats `0` and `-0` as the same key.) Primitives compare by value, objects and arrays compare by **reference**.
 
 ```js
 new Set([[1, 2], [1, 2]]).size; // 2, two different arrays
@@ -49,4 +49,4 @@ To key by a pair, build a string key: `` `${r},${c}` ``.
 - Using an array `includes` in a loop when a Set would make it O(n) instead of O(n²).
 - Using an object as a map with user-supplied keys such as `__proto__`.
 - Expecting two equal-looking arrays to be the same key.
-- Mutating a Map or Set while iterating over it.
+- Adding entries to a Map or Set while iterating over it. The loop also visits the new entries, so it can run much longer than you expect or never stop. Deleting the entry you are on is safe.

@@ -8,12 +8,12 @@ Seth Gilbert and Nancy Lynch turned Eric Brewer's idea into a proof in 2002, so 
 
 Availability in CAP means that every request sent to a working node gets a non-error answer. The answer may be stale. A system where some node answers, but another node returns errors, does not meet this definition.
 
-Partition tolerance means the network may delay or drop messages between nodes. You do not get to opt out of this. Cables fail, switches reboot and a cloud region can lose contact with another one.
+Network partition tolerance means the network may delay or drop messages between nodes. You do not get to opt out of this. Cables fail, switches reboot and a cloud region can lose contact with another one.
 
-The System Design Primer opens with "you can only support two of the following guarantees" and then adds that networks are not reliable, so you must pick between consistency and availability. That second sentence is the useful one. The first is misleading, and Brewer himself wrote in 2012 that the "2 of 3" formulation was always misleading. A partition is an event, not a feature you buy. When there is no partition, a system can be both consistent and available. CAP only describes what you give up while the partition lasts.
+The System Design Primer's CAP section says "you can only support two of the following guarantees" and then adds that networks are not reliable, so you must pick between consistency and availability. That second sentence is the useful one. The first is misleading, and Brewer himself wrote in 2012 that the "2 of 3" formulation was always misleading. A partition is an event, not a feature you buy. When there is no partition, a system can be both consistent and available. CAP only describes what you give up while the partition lasts.
 
 ## Choosing during a partition
-Take two data centers, each holding a copy of the same data, and cut the link between them. A request arrives at one side. That node cannot ask the other side anything, so it has two choices.
+Take two data centers, each holding a copy of the same data, and cut the link (a network partition) between them. A request arrives at one side. That node cannot ask the other side anything, so it has two choices.
 
 ```mermaid During a partition the node must refuse or answer from what it has
 sequenceDiagram
@@ -38,21 +38,23 @@ An AP choice: answer from what it has. Users get a response, but it might be sta
 The Primer puts it this way: CP suits needs for atomic reads and writes, AP suits needs that allow eventual consistency or must keep working through external errors.
 
 ## Why labels like "CP database" mislead
-Martin Kleppmann argues in "Please stop calling databases CP or AP" that the labels fail for several reasons. CAP's model is a single read-write register. The only fault it considers is a partition, and it says nothing about latency, crashed nodes or multi-key transactions. One piece of software can have operations with different guarantees. And many real systems fit neither label. A single-leader database with asynchronous followers is not CAP-available, since a client cut off from the leader cannot write. It is also not CAP-consistent if followers serve stale reads. Dynamo-style stores (see [consistency models](/sd/docs/distributed/consistency-models)) are another example. Reading and writing one copy makes them CAP-available, but with quorums the minority side of a partition cannot reach a quorum, and features like sloppy quorums make linearizability unwise to rely on. ZooKeeper is often called CP, yet its default reads are not linearizable. Treat any "this database is CP" claim as a starting question, not an answer.
+Martin Kleppmann argues in "Please stop calling databases CP or AP" that the labels fail for several reasons. CAP's model is a single read-write register. The only fault it considers is a partition, and it says nothing about latency, crashed nodes or multi-key transactions. One piece of software can have operations with different guarantees. And many real systems fit neither label. Take a database with one leader that copies its changes to followers a moment later. If a client is cut off from the leader it cannot write, so the database is not CAP-available. If that client reads from a follower that is a little behind, the read can be stale, so it is not CAP-consistent either. It fits neither label. Stores in the style of Amazon's Dynamo, such as Cassandra and Riak (see [consistency models](/sd/docs/distributed/consistency-models)), depend on settings. With 3 copies, a client that reads and writes just 1 copy always gets an answer, so it is CAP-available. A client that insists on 2 of 3 copies (a quorum) cannot get an answer when it is cut off from the other two, so it is not. Even quorums do not guarantee linearizable reads once features like sloppy quorums are on. ZooKeeper is often called CP, yet its default reads are not linearizable. Treat any "this database is CP" claim as a starting question, not an answer.
 
 ## PACELC: the other half
 Daniel Abadi observed that CAP only matters while a partition lasts, and he calls partitions somewhat rare. Most of the time a replicated system faces a different trade. PACELC reads: if there is a Partition, trade Availability against Consistency. Else, trade Latency against Consistency.
 
-The reason is replication. To stay available when a machine dies, you must keep copies. To give strong answers, a write must reach other copies, or a read must ask them, before returning. Each wait costs a network round trip. Between data centers that is tens or hundreds of milliseconds. Abadi notes this trade is present all the time, so it may shape a design more than CAP does. In his 2012 paper, Dynamo, Cassandra and Riak (default settings) are PA/EL, and VoltDB and HBase are PC/EC. Those labels describe original designs, so check current docs.
+The reason is replication. To keep the service running when a machine dies (ordinary uptime, not the strict CAP meaning), you must keep copies. To give strong answers, a write must reach other copies, or a read must ask them, before returning. Each wait costs a network round trip. Between data centers that is tens or hundreds of milliseconds. Abadi notes this trade is present all the time, so it may shape a design more than CAP does. In his 2012 paper, Dynamo, Cassandra and Riak (default settings) are PA/EL, and VoltDB and HBase are PC/EC. Those labels describe original designs, so check current docs.
+
+A label reads in two halves. PA/EL means: during a partition choose availability, otherwise choose low latency. PC/EC means: during a partition choose consistency, otherwise choose consistency again and accept the slower answers.
 
 ```mermaid PACELC asks one of two questions depending on whether a partition is happening
 flowchart LR
   S{Is there a partition} -->|yes| P[Trade availability against consistency]
   S -->|no| L[Trade latency against consistency]
-  P --> PA[Answer anyway: stale or conflicting data]
-  P --> PC[Refuse: errors but correct data]
-  L --> EL[Answer from one copy: fast, may be stale]
-  L --> EC[Ask other copies first: slower, up to date]
+  P --> PA[PA: answer anyway, stale or conflicting data]
+  P --> PC[PC: refuse, errors but correct data]
+  L --> EL[EL: answer from one copy, fast, may be stale]
+  L --> EC[EC: ask other copies first, slower, up to date]
 ```
 
 ## A worked example: the last seat
@@ -62,7 +64,7 @@ An airline keeps one copy of its seat map in Frankfurt and one in Singapore. Sea
 2. Ana, in Frankfurt, books 14C. Ben, in Singapore, books 14C a minute later.
 3. AP design: each site answers "confirmed". Both customers have a ticket. When the link returns, the system sees two bookings for one seat. Someone must be moved or compensated.
 4. CP design, where Frankfurt holds the primary copy for this flight: Singapore cannot reach it, so it refuses Ben's booking, or shows "try again". Ana's booking is safe. Ben is unhappy, but the plane never holds two people for one seat.
-5. Now the link is healthy. A design that writes to both sites before confirming adds one round trip, say 180 ms. One that confirms locally and copies later answers in 5 ms, but readers elsewhere may briefly see 14C as free. That is the PACELC choice.
+5. Now the link is healthy. A design that writes to both sites before confirming adds one round trip, say 180 ms. One that confirms locally and copies later answers in 5 ms, but for those few milliseconds Singapore still shows 14C as free, so a second booking could be confirmed there too. The fast design keeps its low latency by risking the same clash, only for a much shorter window. That is the PACELC choice.
 
 ```mermaid The last seat: the AP design confirms both bookings, the CP design refuses one
 sequenceDiagram
@@ -91,7 +93,7 @@ CAP says nothing about speed, durability or transactions across keys, and it can
 Saying "we chose CP" or "we chose AP" for a whole product, and treating the choice as permanent. The choice is made per operation, and only matters during a partition.
 
 ```resources
-article | System Design Primer: CAP theorem | https://github.com/donnemartin/system-design-primer#cap-theorem | Donne Martin | A short, plain statement of C, A, P with CP and AP examples, and the base this lesson adapts.
+article | System Design Primer: CAP theorem | https://github.com/donnemartin/system-design-primer#cap-theorem | Donne Martin | A short, plain statement of C, A and P, and when to pick CP or AP, and the base this lesson adapts.
 article | Please stop calling databases CP or AP | https://martin.kleppmann.com/2015/05/11/please-stop-calling-databases-cp-or-ap.html | Martin Kleppmann | Shows that CAP's model is a single register with one kind of fault, and why real systems resist the CP or AP label.
 article | CAP Twelve Years Later: How the Rules Have Changed | https://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed/ | Eric Brewer | CAP's author explains why "2 of 3" misleads, why the choice can differ per operation, and how to recover after a partition.
 paper | Consistency Tradeoffs in Modern Distributed Database System Design | https://www.cs.umd.edu/~abadi/papers/abadi-pacelc.pdf | Daniel Abadi | Introduces PACELC and argues the latency versus consistency trade matters during normal operation.
@@ -100,7 +102,7 @@ repo | Distributed systems class notes | https://github.com/aphyr/distsys-class 
 
 ```quiz
 In CAP, what does availability require? | A working node never answers with an error ; At least one node of the cluster stays up and responds quickly ; Every response carries the newest value written | 0 | CAP availability allows stale answers but not errors from a working node.
-Singapore refuses Ben's booking during a partition so no seat is double sold. Which choice is that? | AP, it keeps answering every request it receives ; Neither, since the network is down anyway ; CP, it trades availability for safety | 2 | Refusing requests to protect correctness is the consistency-first choice.
+A booking site keeps accepting seat bookings on both sides of a cut link and sorts out clashes afterward. Which choice is that, and what does it risk? | CP, it risks timeouts for users ; AP, it risks losing every booking ; AP, it risks two people holding one seat | 2 | It answers every request, which is the availability-first choice, and the cost is conflicting writes to merge.
 A replicated store has a healthy network, yet strong reads are slower than weak ones. Which idea explains it? | The CAP rule that you can only pick two of three ; The latency versus consistency trade in PACELC ; The partition tolerance clause that CAP defines | 1 | PACELC covers the cost of coordinating replicas when no partition exists.
 ```
 
@@ -119,7 +121,7 @@ A consistency model is a promise about which values a read may return when data 
 The Primer groups consistency into three patterns. With weak consistency, a read after a write may or may not see it, and the system makes a best effort. The Primer cites memcached and real-time uses like voice calls. With eventual consistency, reads will see the write after a while, usually within milliseconds, because data is copied asynchronously. DNS and email are its examples. With strong consistency, a read after a write sees it, because data is copied synchronously. File systems and relational databases are its examples. These three words are a good first map. The sections below give names to the middle ground, using Jepsen's consistency pages as the reference.
 
 ## The models, one timeline each
-Use one register named x, starting at 0. Alice writes x = 1. The write starts at time 10 and is acknowledged at time 12.
+Use one shared value, called a register, named x, starting at 0. Alice writes x = 1. The write starts at time 10 and is acknowledged at time 12.
 
 ```mermaid The same write and read: linearizable forces 1, weaker models allow 0
 sequenceDiagram
@@ -149,7 +151,7 @@ What a read by Bob at time 13 may return, for the write of x = 1 acknowledged at
 | Monotonic reads | Your reads never go back in time | 0 or 1, if Bob has not yet seen 1 |
 | Eventual | Copies converge if writes stop | 0 or 1 |
 
-Sequential: everyone sees the same total order of operations, and each person's own operations stay in their program order. The order need not match the clock. If Alice texts Bob "done", Bob's read at time 13 may still return 0, because the order can place his read before her write. Jepsen's page warns that sequential reads may be arbitrarily stale, and points to linearizability when you tell another process about an event through a side channel.
+Sequential: everyone sees the same single list of operations (a total order), and each person's own operations stay in their program order. The order need not match the clock. If Alice texts Bob "done", Bob's read at time 13 may still return 0, because the order can place his read before her write. Jepsen's page warns that sequential reads may be arbitrarily stale, and points to linearizability when you tell another process about an event outside the system, such as by text message.
 
 Causal: operations linked by cause and effect appear in that order everywhere. Unrelated operations may appear in different orders to different readers. Example: Alice posts a question, Bob reads it and posts an answer. No reader may see the answer without the question. Two unrelated posts by Carol and Dan may appear in either order.
 
@@ -175,6 +177,8 @@ For N = 3, whether a read set and a write set must share a copy:
 | 1 | 3 | 4 | Yes |
 | 2 | 2 | 4 | Yes |
 | 3 | 1 | 4 | Yes |
+
+The cost is availability. With N = 3 and W = 2, a write still works with one copy down, but with W = 3 any single failed copy blocks every write. Larger W and R give fresher reads and tolerate fewer failures.
 
 ## A worked example: N=3, W=2, R=2
 Copies are A, B and C. All hold x = 0 at version 1. Try these numbers in the demo above.
@@ -228,7 +232,7 @@ sequenceDiagram
   Note over R2: returns 0, which went backward
 ```
 
-Other gaps exist too. With a sloppy quorum, a write goes to stand-in nodes outside the usual N, so a later read quorum may not overlap it. Two concurrent writes can reach copies in different orders, and a store that picks the winner by timestamp may drop one (see [clocks and ordering](/sd/docs/distributed/clocks-and-ordering)). Read repair often runs after the read has returned, so it does not reliably close the window above. Kleppmann warns that sloppy quorums and read repair combine into tricky edge cases, even deleted data coming back. Abadi notes Dynamo-style systems cannot reach full CAP consistency even with R + W > N. One known fix makes the reader write the newest value back to a quorum before it returns, which costs another round trip.
+Other gaps exist too. With a sloppy quorum, a write goes to stand-in nodes outside the usual N, so a later read quorum may not overlap it. Two concurrent writes can reach copies in different orders, and a store that picks the winner by timestamp may drop one (see [clocks and ordering](/sd/docs/distributed/clocks-and-ordering)). Read repair often runs after the read has returned, so it does not reliably close the window above. Kleppmann warns that sloppy quorums and read repair combine into tricky edge cases, even deleted data coming back. His post also says people often claim quorum reads and writes guarantee linearizability, and it is unwise to rely on it. One known fix is for the reader to write the newest value it saw back to a quorum before it returns, which costs another round trip.
 
 ## What goes wrong: a stale read after a save
 A user changes their display name. The write goes to the leader, and the next page load is served by a lagging follower, so the old name appears. The symptom is that users repeat the action. To confirm, log the replica that served each read and its replication lag. Read your writes fixes it: for a short time after a write, send that user's reads to the leader.
@@ -327,7 +331,7 @@ The cluster survives as many failures as leave a majority:
 
 $$ f = \lfloor (n - 1)/2 \rfloor $$
 
-With 5 servers, a majority is 3, so 2 can fail. With 4 servers, a majority is 3 and only 1 can fail, so an even size adds cost and no tolerance. Consul's docs list this table and recommend 3 or 5 servers for production. Any two majorities share at least one server. A committed entry sits on a majority, a winner needs votes from a majority, and the voting rule in step 5 means the winner's log is at least as up to date as every voter's. That is why a new leader always holds every committed entry.
+With 5 servers, a majority is 3, so 2 can fail. With 4 servers, a majority is 3 and only 1 can fail, so an even size adds cost and no tolerance. Consul's docs list this table and recommend 3 or 5 servers for production. Any two majorities share at least one server. With 5 servers, any 3 and any other 3 must share at least one, because 3 + 3 = 6 is more than 5. So the 3 servers holding a committed entry and the 3 voting for a new leader always overlap. A committed entry sits on a majority, a winner needs votes from a majority, and the voting rule in step 5 means the winner's log is at least as up to date as every voter's. That is why a new leader always holds every committed entry.
 
 ```mermaid Servers that may fail while the cluster still commits writes: even sizes add cost and no tolerance
 xychart-beta
@@ -357,7 +361,7 @@ State after each step, for the five servers:
 | 6 | S2, term 5 | S1 (down), S2, S3, S4, S5 | Index 8 reaches everyone, index 9 is S2's blank entry |
 
 ## Split brain and fencing tokens
-Split brain means two nodes both believe they lead. Raft prevents two leaders in one term, but an old leader cut off in a minority may not know it was replaced. It cannot commit anything, since it cannot reach a majority, and a higher term number makes everyone reject it once it reconnects. It could still serve stale reads if it answered them alone, so the Raft paper has a leader exchange heartbeats with a majority before it answers a read. The danger comes from outside Raft. Say a client holds a lock with a lease, then pauses for a long garbage collection. The lease expires and another client takes the lock. When the first wakes up, it still believes it holds the lock.
+Split brain means two nodes both believe they lead. Raft prevents two leaders in one term, but an old leader cut off in a minority may not know it was replaced. It cannot commit anything, since it cannot reach a majority, and a higher term number makes everyone reject it once it reconnects. It could still serve stale reads if it answered them alone, so the Raft paper has a leader exchange heartbeats with a majority before it answers a read. The danger comes from outside Raft. Say a client holds a lock with a time limit (a lease), then freezes for a while. A garbage collection pause (the runtime stops your program to free memory) can do this for seconds, and so can a busy machine or a slow disk. The lease expires and another client takes the lock. When the first wakes up, it still believes it holds the lock.
 
 Kleppmann's fix is a fencing token, a number that grows with each lock grant. Client 1 gets 33, client 2 gets 34. The storage service remembers the highest token it saw and rejects any write below it. The storage service must take part in the check. A lock service alone cannot stop the stale write.
 
@@ -423,7 +427,7 @@ A team guards a nightly payout job with a lock. One run pauses for 40 seconds du
 Machines cannot agree on what time it is, so wall clock timestamps are a weak way to say which event came first. Logical clocks order events by cause and effect instead, and a few systems buy better physical clocks.
 
 ## Two kinds of clock
-A wall clock tells the date and time. Computers set it from NTP, a protocol that adjusts it using servers over the network. Two machines never agree exactly. Their clocks drift (run slightly fast or slow) and differ by some skew (the offset between them). NTP may also move a clock backward to correct it: by default it jumps the clock when the error is over 128 ms. Aphyr's course notes list hardware clocks that ran fast, hypervisors that lied about time and a leap second that made time go backward.
+A wall clock tells the date and time. Computers set it from NTP, a protocol that adjusts it using servers over the network. Two machines never agree exactly. Their clocks drift (run slightly fast or slow) and differ by some skew (the offset between them). NTP may also move a clock backward to correct it: the classic ntpd steps the clock when the error is over 128 ms, and other clients have their own thresholds. Aphyr's course notes list hardware clocks that ran fast, hypervisors that lied about time and a leap second that made time go backward.
 
 A monotonic clock only moves forward and counts elapsed time from some arbitrary start. Use it to measure durations and timeouts. It is useless across machines, since each has its own starting point. It has quirks too. On Linux, CLOCK_MONOTONIC stops counting while the machine is suspended (CLOCK_BOOTTIME keeps counting), and some platforms have had bugs where monotonic time went backward.
 
@@ -458,10 +462,10 @@ sequenceDiagram
   Note over A,B: LWW compares stamps and keeps Draft
 ```
 
-The fix is not a better clock alone. Compare versions with logical clocks and keep both writes when they are concurrent, or use a store where one node orders writes.
+The fix is not a better clock alone. Logical clocks order Bob's edit after Alice's, because he read her version first, and keep both writes only when two edits never saw each other. Another option is a store where one node orders writes.
 
 ## Lamport clocks
-Leslie Lamport's 1978 paper "Time, Clocks, and the Ordering of Events in a Distributed System" starts from the "happened before" relation: event a happened before b if they are on one process with a first, or a is a send and b is its receive, or through a chain of these. Events with no chain are concurrent. The relation is a partial order. Lamport's clock gives each event a number so that if a happened before b then the number for a is smaller. His rules: increment the counter between any two events, put the counter on each message, and on receive set the counter at least as high as its own value and higher than the message's. The usual way to write the receive rule is max(own, message) + 1.
+Leslie Lamport's 1978 paper "Time, Clocks, and the Ordering of Events in a Distributed System" starts from the "happened before" relation: event a happened before b if they are on one process with a first, or a is a send and b is its receive, or through a chain of these. Events with no chain are concurrent. So some pairs of events can be ranked and some cannot. That is what a partial order means. A total order ranks every pair. Lamport's clock gives each event a number so that if a happened before b then the number for a is smaller. His rules: increment the counter between any two events, put the counter on each message, and on receive set the counter at least as high as its own value and higher than the message's. The usual way to write the receive rule is max(own, message) + 1.
 
 Worked example, all counters start at 0.
 
@@ -484,10 +488,10 @@ sequenceDiagram
   Note over P3: receive m2 = 5
 ```
 
-Now a happened before f, and 1 is less than 5. But c has 1 and b has 2 while the two are concurrent. The converse does not hold: a smaller number does not prove one event caused another. Ties break with a process id, giving a total order that all agree on, though it may not be intuitive.
+Now a happened before f, and 1 is less than 5. But look at c and b. c has 1 and b has 2, yet no message links them, so they are concurrent. The smaller number does not mean c came first or caused b, and in general a smaller number does not prove one event caused another. Ties break with a process id, giving a total order that all agree on, though it may not be intuitive.
 
 ## Vector clocks, briefly
-A vector clock keeps one counter per process. Alice's replica writes with [1,0], Bob's with [0,1]. Neither is less than or equal to the other in every slot, so they are concurrent, and the store keeps both for the application to merge. If one vector is at least the other everywhere, that write is the newer. The cost is space that grows with the number of processes.
+A vector clock keeps one counter per process. Now suppose Alice and Bob both edit without having seen each other's version. Alice's replica writes with [1,0], Bob's with [0,1]. Neither is less than or equal to the other in every slot, so they are concurrent, and the store keeps both for the application to merge. If one vector is at least the other everywhere, that write is the newer. If Bob had read Alice's version first, his write would be [1,1], which is at least [1,0] in every slot, so his is the newer and the store keeps only it. The cost is space that grows with the number of processes.
 
 Comparing two vector clocks slot by slot:
 
@@ -521,7 +525,7 @@ paper | Logical Physical Clocks and Consistent Snapshots in Globally Distributed
 
 ```quiz
 P2 has counter 6 and receives a message stamped 9. What is its counter after the receive? | 7, its own counter plus one ; 10, larger value plus one ; 9, the number copied from the message | 1 | The rule is max(own, message) + 1, so max(6, 9) + 1 = 10.
-Server A's clock is 5 s fast. Alice writes at true 12:00:00 and Bob writes at true 12:00:03 on a correct server. LWW keeps which? | Bob's, since he wrote later in real time ; Both, since LWW merges the two values ; Alice's, since her stamp is 12:00:05 | 2 | Alice's skewed stamp is larger, so Bob's later edit is dropped.
+Server A's clock is 2 s slow. Alice writes on A at true 12:00:00, so A stamps 11:59:58. Bob writes on correct server B at true 11:59:59 with stamp 11:59:59. LWW keeps which? | Alice's, since she wrote later in real time ; Both, since the two stamps are one second apart ; Bob's, since his stamp is the larger one | 2 | LWW compares stamps only, and Alice's slow clock gave her later write the smaller stamp.
 Lamport counter for event x is smaller than for event y. What can you conclude? | y cannot have happened before x ; x happened before y, with certainty ; x and y are concurrent for sure | 0 | A happened-before chain forces a smaller number, so a smaller number rules out y happening before x.
 ```
 

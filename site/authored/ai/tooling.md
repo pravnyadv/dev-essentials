@@ -2,23 +2,13 @@
 AI tools stack in layers. Knowing the layers tells you what a new tool replaces and what it does not.
 
 ## The layers
-Models: the trained networks you call, from labs like Anthropic, OpenAI and Google, or open-weight families you host. Inference: the software that runs a model fast, such as vLLM for servers and llama.cpp or Ollama for local use. Data and retrieval: embedding models, vector databases such as Chroma or pgvector, and search. Orchestration: libraries that manage prompts, tools and loops, such as LangGraph, Pydantic AI and the OpenAI and Claude agent SDKs. Protocols: MCP for tools, AGENTS.md for repo instructions, A2A for agent-to-agent calls. Evals and observability: promptfoo, Langfuse, Phoenix and Inspect. Applications: chat apps and coding agents like Claude Code, Codex and Cursor.
+Models: the trained networks you call, from labs like Anthropic, OpenAI and Google, or open-weight families (models whose trained weights are published) that you host. Inference: the software that runs a model fast, such as vLLM for servers and llama.cpp or Ollama for local use. Data and retrieval: embedding models (they turn text into a list of numbers that captures meaning, see step 3 below), vector databases such as Chroma or pgvector, and search. Orchestration: libraries that decide which prompt, tool or model call happens next, such as LangGraph, Pydantic AI and the OpenAI and Claude agent SDKs. Protocols: MCP for tools, AGENTS.md for repo instructions, A2A for agent-to-agent calls. Evals and observability: promptfoo, Langfuse, Phoenix and Inspect. Applications: chat apps and coding agents like Claude Code, Codex and Cursor.
 
 ## How to use the map
-When a tool shows up, find its layer. Many new releases are one layer repackaged. Learn the layer's job first, then pick the tool. For most projects you need a model, a way to call it, some retrieval or tools, and evals. Everything else is optional until a problem shows up.
+When a tool shows up, find its layer. A new release is often one layer repackaged, for example another vector database or another agent framework. Learn the layer's job first, then pick the tool. Most projects need a model and a way to call it. Retrieval, tools and evals join when a problem calls for them. Everything else is optional until a problem shows up.
 
 ## A worked example: a stack for a support bot
-Model: a mid-size API model. Data: documents embedded and stored in pgvector. Orchestration: a short script with one tool-calling loop. Protocol: none yet. Evals and tracing: a test set in promptfoo and traces in Langfuse. Application: a web chat page. Six layers, each with a clear job. Nothing exotic.
-
-The two stacks from this lesson side by side, for the layers the lesson describes. A small stack is a good sign.
-
-| Layer | Support bot | Morning summary script |
-| --- | --- | --- |
-| Model | A mid-size API model | A model and one call |
-| Data and retrieval | Documents embedded and stored in pgvector | None, it reads one text file |
-| Orchestration | A short script with one tool-calling loop | None, no framework |
-| Protocols | None yet | None |
-| Evals and tracing | A test set in promptfoo and traces in Langfuse | Not part of the example |
+Model: a mid-size API model. Inference: none, the API provider runs it for us. Data: documents embedded and stored in pgvector. Orchestration: a short script with one tool-calling loop. Protocol: none yet. Evals and observability: a test set in promptfoo and traces in Langfuse (a trace is a record of every step one request took). Application: a web chat page. Six of the seven layers are in play, each with a clear job. Nothing exotic. (pgvector is a Postgres extension, so a team already running Postgres adds no new system.)
 
 ## Reading a new tool
 Which aisle is it in? Does it replace something I use, or add a layer I do not have? What problem of mine does it solve today? If you cannot answer the third question, bookmark it and move on.
@@ -32,9 +22,12 @@ sequenceDiagram
   participant P as Chat page
   participant S as Script
   participant D as Vector database
+  participant E as Embedding model
   participant M as Model API
   V->>P: Question
   P->>S: Question
+  S->>E: Question
+  E-->>S: Numbers
   S->>D: Embedded question
   D-->>S: Similar chunks
   S->>M: Question and chunks
@@ -47,42 +40,42 @@ sequenceDiagram
 2. A short script (orchestration) receives it.
 3. The script turns the question into an embedding, a list of numbers that captures meaning, and finds similar document chunks in the database (data and retrieval).
 4. It sends the question and those chunks to a model API.
-5. The model runs on someone's inference software and returns an answer.
+5. The model API provider runs the model on its own inference software and returns an answer.
 6. The script logs the full exchange (observability), and a nightly test run checks quality (evals).
 
 Each hop has one job. When something breaks, you ask which hop it was.
 
-## A second example: a stack with fewer layers
-A script reads one text file each morning and emails a three-line summary. It needs a model and a call. There is no vector database, no framework and no protocol. Adding them would add code to maintain and nothing else. A small stack is a good sign, not a gap.
+## A second example: a stack where privacy changes one choice
+A clinic wants to search its own patient letters, and the letters may never leave its building. The decision here is the inference layer. An API provider would run the model on its servers, so the clinic picks an open-weight model and runs it on a single office machine with Ollama. That one layer now needs a person to own it: updates, memory limits, restarts. The other layers stay modest. Notes are searched by keyword in a local file, there is no framework, and the application is a command-line tool for two staff. Same seven layers, but one moved from "someone else's problem" to "ours", and that is the whole trade. Privacy bought control, and control costs upkeep.
 
 ## What goes wrong
 One product covers two layers, so you cannot tell what it replaces. Symptom: a tool you cannot place on the map. Read its docs for the one job it does best.
 
 You skip evals because everything seems to work. Later you change the prompt and cannot tell if answers improved. The symptom is arguments based on feelings. A small test set fixes it.
 
-You pick a layer's tool before understanding the layer. Switching later costs more than learning first.
+You pick a layer's tool before understanding the layer. Switching later can cost more than learning first, especially for data you have already embedded.
 
 ## Try it yourself
-Take a project idea and draw the six layers as boxes on paper. Mark each as "needed today", "later" or "never". Write one tool name under every "needed today" box. Expect to mark at least two or three layers as "later". Those are the tools you should not install yet.
+Take a project idea and draw the seven layers as boxes on paper. Mark each as "needed today", "later" or "never". Write one tool name under every "needed today" box. Most small projects end up with several layers marked "later". Those are the tools you should not install yet.
 
 ## Common mistake
-Adopting tools for layers you do not need yet.
+Installing a vector database and an agent framework for a script that makes one model call. Ask what problem each layer solves today.
 
 ```resources
 repo | Awesome LLM Apps | https://github.com/Shubhamsaboo/awesome-llm-apps | Shubham Saboo | Runnable examples across agents, RAG and multi-agent apps.
-repo | Awesome Agentic Engineering Resources | https://github.com/EthicalML/awesome-agentic-engineering-resources | EthicalML | Curated list of articles, courses, papers and tools, updated monthly.
-article | Start AI Engineering in 2026 | https://github.com/louisfb01/start-ai-engineering | Louis-François Bouchard | A broad guide organized by learning style.
+repo | Awesome Agentic Engineering Resources | https://github.com/EthicalML/awesome-agentic-engineering-resources | EthicalML | Curated reading list of articles, books, courses, papers and talks for agentic engineering (tools live in a sister list), with monthly additions.
+repo | Start AI Engineering in 2026 | https://github.com/louisfb01/start-ai-engineering | Louis-François Bouchard | A broad guide organized by learning style.
 tool | roadmap.sh AI Engineer | https://roadmap.sh/ai-engineer | roadmap.sh | A community roadmap with a clickable map of skills.
 ```
 
 ```quiz
-A new tool claims to replace everything. What do you do first? | Rewrite your main project with it ; Find which stack layer it replaces ; Wait a year before looking at it | 1 | Placing it in a layer shows what job it does and what it leaves to others.
-What is the minimum stack for most AI features? | A vector database, a framework, agents ; Fine-tuning, a GPU cluster, a registry ; A model, a call path, tools, evals | 2 | Add other layers only when a concrete problem requires them.
-Your team wants a vector database for 20,000 chunks. What should you ask? | Could our current database hold it ; How to shard it across three regions ; Which vendor has the best dashboard | 0 | Match infrastructure to the size of the problem.
+A new tool claims to replace everything. What do you do first? | Compare its benchmark scores with your tool ; Find which stack layer it replaces ; Check how many GitHub stars it has | 1 | Placing it in a layer shows what job it does and what it leaves to others.
+A script summarises one text file each morning. Which layers does it need? | A model, a vector database and an orchestration framework ; A model, an evals suite and a protocol server ; A model and one call to it | 2 | Every layer beyond the model and the call is added only when a concrete problem needs it.
+A release is called an agent platform with built-in retrieval, tracing and a chat UI. What does the map tell you? | It covers several layers, so list which and compare each to what you use ; It is one new layer, so adopt it in place of your whole stack ; It is an application, so ignore the layers under it | 0 | Mapping a bundle to layers shows which of your tools it overlaps.
 ```
 
 ```story
-A hardware store is organized by aisle: fasteners, paint, plumbing. A new gadget does not confuse you because you know which aisle it belongs in. The AI tooling market is overwhelming until you learn the aisles: models, serving, data, orchestration, protocols, testing and applications.
+A hardware store is organized by aisle: fasteners, paint, plumbing. A new gadget does not confuse you because you know which aisle it belongs in. Some products, like a big-box store, sell from several aisles at once. You still ask which aisle each item came from. The AI tooling market is overwhelming until you learn the aisles: models, inference, data and retrieval, orchestration, protocols, evals and observability, and applications.
 ```
 
 # provider-landscape | Model providers and API styles | 1 | 12
@@ -92,13 +85,15 @@ Several labs and clouds sell access to models. Learn the shapes so you can switc
 Anthropic (Claude), OpenAI (GPT and o-series reasoning models), Google (Gemini, and the open Gemma), Meta (Llama, and now the Muse models), Mistral, Cohere (enterprise and retrieval focus), DeepSeek, Alibaba (Qwen), xAI (Grok) and others. Each releases families in sizes from small and cheap to large and strong. See the model atlas for current names.
 
 ## Where to call them
-Direct from the lab's API, through a cloud such as AWS Bedrock, Google Vertex AI or Azure, or through a router such as OpenRouter that offers one API for many models. Clouds add enterprise controls and billing. Routers add flexibility and fallback.
+Direct from the lab's API, through a cloud such as AWS Bedrock, Google's Gemini platform (formerly Vertex AI) or Azure, or through a router such as OpenRouter that offers one API for many models. Clouds add enterprise controls and billing. Routers add flexibility and fallback.
+
+Go direct to the lab for the newest features. Go through a cloud provider when your company already uses it and needs its controls. Go through a router when you want to try many models quickly. Prices, limits and features change often, so check the vendor pages.
 
 ## API shapes
-Most offer chat-style message APIs, tool calling, structured output, streaming, vision input and batch discounts. Many accept the OpenAI-compatible format, so one client library works across them with a different base URL. Local runners such as Ollama and LM Studio also expose that format.
+Most offer chat-style message APIs, tool calling, structured output, streaming, vision input and batch discounts. Many accept the OpenAI-compatible format, so one client library works across them with a different base URL. The base URL is the web address your client sends requests to, for example the lab's address or a router's address. Changing it points the same code at a different provider. Local runners such as Ollama and LM Studio also expose that format.
 
 ## Staying portable
-Keep model names and prompts in config, wrap calls in one function, and run your eval set on any candidate. Provider-specific features such as caching and extended thinking differ, so isolate them in one place.
+Keep model names and prompts in config, wrap calls in one function, and run your eval set on any candidate. Provider-specific features such as caching (reusing a long repeated prompt at lower cost) and extended thinking (the model reasons at length before answering) differ, so isolate them in one place.
 
 ## A worked example: one function
 callModel(prompt, options) is the only place in the code that talks to a provider. It reads the model name from config, logs usage and handles retries. Switching providers means changing config and running the test set, not hunting through the code.
@@ -113,9 +108,6 @@ flowchart TD
   class W focus
 ```
 
-## Where to call from
-Direct from the lab for the newest features. Through a cloud provider when your company already uses it and needs its controls. Through a router when you want to try many models quickly. Prices, limits and features change often, so check the vendor pages.
-
 ## What actually differs between providers
 Many things look the same: messages in, a message out. The differences are in the details. The way tool calls are written, how the system prompt is passed, the names of usage fields, the error codes, the rate limits and the rules for caching all vary. An OpenAI-compatible endpoint covers the common core. Features beyond it, such as caching or extended thinking, usually need provider-specific code.
 
@@ -128,15 +120,13 @@ The three ways to reach a model, compared on what each gives and what to watch.
 | Route | Choose it when | What you gain | What to watch |
 | --- | --- | --- | --- |
 | Lab directly | You want the newest features | The fewest middlemen | Special features you use everywhere are hard to swap |
-| A cloud such as Bedrock or Vertex AI | Your company already uses it | Company controls and billing | A model may arrive later and some features may differ |
+| A cloud such as Bedrock or the Gemini platform (formerly Vertex AI) | Your company already uses it | Company controls and billing | A model may arrive later and some features may differ |
 | A router such as OpenRouter | You want to try many models quickly | One API for many models, with fallback | Another company in the path, one more point of failure |
-
-Calling a lab directly gives the newest features and the fewest middlemen. A cloud adds company controls, but a model may arrive there later and some features may differ. A router makes trying models easy, but it puts another company between you and the model. That is one more point of failure and one more place your data passes through.
 
 ## What goes wrong
 A model name in your code is retired, and calls start to fail with a not-found error. Keep names in config and read the provider's deprecation notices.
 
-Costs differ for the same text, because each provider splits text into tokens its own way. Compare the logged token counts, not your guess.
+Costs differ for the same text, because each provider splits text into tokens its own way and charges its own price per token. Compare the logged token counts and the price per token, not your guess.
 
 A feature you relied on does not exist on the second provider. Isolate such features in one place.
 
@@ -149,7 +139,7 @@ Using one provider's special features everywhere. Isolate them so they are easy 
 ```resources
 tool | OpenRouter | https://openrouter.ai/ | OpenRouter | One API and model comparison across providers.
 docs | Amazon Bedrock | https://aws.amazon.com/bedrock/ | AWS | Managed access to several providers' models.
-docs | Vertex AI | https://cloud.google.com/vertex-ai | Google Cloud | Google's platform for Gemini and others.
+docs | Gemini platform, formerly Vertex AI (Google Cloud) | https://cloud.google.com/vertex-ai | Google Cloud | Google's platform for Gemini, Claude and open models through Model Garden.
 repo | LiteLLM | https://github.com/BerriAI/litellm | BerriAI | A library that calls many providers through one interface.
 docs | Gemini API | https://ai.google.dev/gemini-api/docs | Google | Models, quickstarts and pricing for Gemini.
 docs | Claude Messages API | https://platform.claude.com/docs/en/api/messages | Anthropic | The reference for Anthropic's chat API.
@@ -167,16 +157,16 @@ A small startup builds on one model provider. When that provider has a bad day, 
 ```
 
 # frameworks | Agent frameworks: do you need one? | 2 | 12
-A framework packages the agent loop, tool plumbing and state. It helps with speed and costs you visibility.
+A framework packages the agent loop, tool plumbing and state. The agent loop is the cycle of calling the model, running any tool it asks for, adding the result and repeating until it gives a final answer. A framework helps with speed and costs you visibility.
 
 ## The options
-LangGraph models an agent as a graph of steps with persistent state. Pydantic AI builds typed agents around validated outputs. The OpenAI Agents SDK and Claude Agent SDK provide the loop, tools, handoffs and guardrails from each lab. smolagents from Hugging Face is a small library where agents write and run code. CrewAI and AutoGen focus on multiple cooperating agents. LlamaIndex and Haystack lean toward retrieval and document pipelines. The OpenAI Agents SDK (with AgentKit for visual building), Google's Agent Development Kit (ADK) and Vertex AI Agent Builder are the labs' own offerings.
+LangGraph models an agent as a graph of steps with persistent state. Pydantic AI builds typed agents around validated outputs. The OpenAI Agents SDK and Claude Agent SDK provide the loop, tools, handoffs and guardrails from each lab. smolagents from Hugging Face is a small library where agents write and run code. CrewAI and AutoGen focus on multiple cooperating agents. LlamaIndex and Haystack lean toward retrieval and document pipelines. Google's Agent Development Kit (ADK) is an open-source framework from Google. OpenAI also offers AgentKit, a visual builder, next to its Agents SDK.
 
 ## Do you need one?
 You can write the core loop in under 100 lines. A framework is worth it when you need durable state, human approval steps, tracing or many integrations. It is a cost when it hides prompts or makes behavior hard to inspect. A sound path is to write the loop yourself once to learn it, then choose a framework with that understanding.
 
 ## A worked example: when a framework earns its place
-You need an agent that can pause for human approval, survive a server restart and resume from the same step. Building that yourself takes weeks. A framework with checkpoints gives it to you. For a script that calls a model twice, a framework is more weight than help.
+You need an agent that can pause for human approval, survive a server restart and resume from the same step. Building that yourself is real work: you need storage, a way to skip steps that already ran, and a plan for tool calls that stopped halfway. A framework with checkpoints gives it to you. For a script that calls a model twice, a framework is more weight than help.
 
 ## How to evaluate one
 Can you see the exact prompts it sends? Can you swap models? How does it handle errors and retries? Who maintains it and how often does it break? Try it on a small real task before committing.
@@ -195,7 +185,7 @@ flowchart TD
   class K focus
 ```
 
-Saved state is the part beginners miss. Imagine a six-step task that pauses for approval at step 4. The framework writes a checkpoint after each step. If the server restarts, it resumes at step 4 instead of step 1. Doing this by hand means handling storage, repeated steps and half-finished tool calls.
+Saved state is the part beginners miss. Imagine a six-step task that pauses for approval at step 4. The framework writes a checkpoint after each step. If the server restarts, it resumes at step 4 instead of step 1. Doing this by hand means handling storage, repeated steps and half-finished tool calls. A step that was running when the server died is run again.
 
 The six-step task from above, paused for approval at step 4 while the server restarts.
 
@@ -203,7 +193,7 @@ The six-step task from above, paused for approval at step 4 while the server res
 | --- | --- | --- |
 | Steps 1 to 3 finish | A checkpoint is written after each | Results sit in memory |
 | Step 4 waits for approval | State is saved at step 4 | Still in memory |
-| The server restarts | Nothing is lost | Memory is gone |
+| The server restarts | Finished steps are kept | Memory is gone |
 | Work resumes | Starts at step 4 | Starts at step 1 and repeats steps 1 to 3 |
 
 ## A second example: the framework gets in the way
@@ -224,7 +214,7 @@ Real mechanism versus marketing: nothing in a framework makes the model smarter.
 Expect the framework version to be shorter and the hand-written one to be easier to inspect.
 
 ## Common mistake
-Choosing by popularity alone.
+Choosing by stars or a tutorial and never checking what the framework sends. The first time you need to change a prompt or debug a failed tool call, you find you cannot see it. Run the questions in "How to evaluate one" on a small task before you commit.
 
 ```resources
 repo | LangGraph | https://github.com/langchain-ai/langgraph | LangChain | Graph-based orchestration with state and human-in-the-loop.
@@ -241,8 +231,8 @@ article | Introducing AgentKit | https://openai.com/index/introducing-agentkit |
 
 ```quiz
 When is a framework most worth using? | For a quick script of about 20 lines ; When you need approvals and tracing ; When you want to avoid reading the docs | 1 | Those are costly to build and are what frameworks provide.
-What is the main risk of a framework? | Its license is nearly always restrictive ; It cannot call tools you define yourself ; Hidden prompts make debugging harder | 2 | You must be able to see what the model saw.
-You can write your agent loop in 80 lines. Why might that be a good first step? | You learn what a framework would hide ; Frameworks never work with tools ; It is always faster than any framework | 0 | Writing the loop once teaches you what to look for when you later pick a framework.
+What is the main risk of a framework? | It makes the model give worse answers ; It cannot call tools you define yourself ; Hidden prompts make debugging harder | 2 | You must be able to see what the model saw.
+A teammate says the prompt edit they made has no effect. What do you check first? | The raw request sent to the provider ; The model's temperature setting ; The number of tools registered | 0 | Frameworks can wrap your prompt in their own instructions, so read what the model actually received.
 ```
 
 ```story
@@ -255,13 +245,13 @@ Hugging Face is where open models, datasets and demos live, plus the libraries t
 ## What is there
 Hugging Face is the place where open AI is shared. It has four main parts.
 
-The Hub hosts well over a million models and many datasets. Each one is a git repository with a model card that describes how it was trained, what it is bad at and what license it has.
+The Hub hosts well over a million models and many datasets. Each one is a git repository with a model card, a README the author writes. A good card says how the model was trained, what it is bad at and what license it has. Some cards are thin, so treat a missing limits section as "unknown", not "none".
 
 Spaces host small demo apps, so you can try a model in your browser before downloading it.
 
-Libraries do the work. Transformers loads and runs thousands of models in a few lines of code. PEFT fine-tunes cheaply with LoRA. TRL trains with rewards. Transformers.js runs models inside a web browser.
+Libraries do the work. Transformers loads and runs thousands of models in a few lines of code. PEFT (parameter-efficient fine-tuning) adapts a model cheaply with methods like LoRA. TRL (Transformer Reinforcement Learning) post-trains models, including with reward signals. Transformers.js runs models inside a web browser.
 
-Inference Providers and Endpoints run models for you if you do not want to host them.
+Inference Providers and Inference Endpoints run models for you if you do not want to host them. Providers are shared hosted services you call per request. Endpoints are a dedicated server for your model.
 
 ## How to use it
 Filter the Hub by task (text generation, embeddings, speech recognition), by size and by license. Read the model card. Try the model in its Space. Then either download it and run it locally, or call it through a provider.
@@ -270,7 +260,7 @@ Filter the Hub by task (text generation, embeddings, speech recognition), by siz
 You find a speech-to-text model. The card says: task, speech recognition. Size, 1.5 GB. Languages, 12. License, check whether commercial use is allowed. Known limits, weaker with heavy accents. Example code, ten lines. Five minutes with the card tells you whether it fits your project and saves you from expensive surprises.
 
 ## Free learning
-Hugging Face runs free hands-on courses on LLMs, agents, MCP, deep reinforcement learning and diffusion models. They all use the libraries above.
+Hugging Face runs free hands-on courses on LLMs, agents, MCP, deep reinforcement learning and diffusion models. They use Hugging Face's own libraries, such as Transformers and diffusers.
 
 ## How a model gets from the Hub to your laptop
 A model repository holds weight files, a config file describing the architecture and the tokenizer files. When you load it, the library downloads these into a local cache folder (a saved copy on disk), builds the model from the config and fills it with the weights. The first run is slow. Later runs reuse the cache.
@@ -288,7 +278,7 @@ flowchart TD
 ```
 
 ## Will it fit? A memory check
-Weights take memory equal to parameters times bytes per parameter. Invented 7 billion parameter model at 16 bits (2 bytes each): 7 billion x 2 = 14 billion bytes, about 14 GB. Quantized to 4 bits (half a byte each), it is about 3.5 GB. Real use needs extra memory beyond the weights, so leave headroom.
+Weights take memory equal to parameters times bytes per parameter. Invented 7 billion parameter model at 16 bits (2 bytes each): 7 billion x 2 = 14 billion bytes, about 14 GB. Quantized to 4 bits (half a byte each), it is about 3.5 GB. On a 16 GB laptop the 14 GB version leaves about 2 GB for everything else, which is too tight, while the 3.5 GB version fits easily. Check the memory your model will actually run in (GPU memory if you have a GPU, otherwise system memory). Real use needs extra memory beyond the weights, so leave headroom.
 
 ```mermaid Memory for the weights alone in gigabytes: only the two 7 billion parameter bars fit under 16 GB, and the 14 GB one leaves almost no headroom
 xychart-beta
@@ -303,7 +293,7 @@ A 70 billion parameter model needs about 140 GB at 16 bits and about 35 GB at 4 
 ## What goes wrong
 An out-of-memory error: the model is larger than your memory. Compare file size on the Hub with your free memory.
 
-A repository asks you to allow custom code when loading. That code runs on your machine, so read it first and trust only authors you can check. Prefer weights in the safetensors format, which stores numbers only and cannot run code on load. Older formats can.
+A repository asks you to allow custom code when loading. Read it first and trust only authors you can check. Two different things can run code. Old pickle-based weight files can run code when loaded, so prefer safetensors, which stores numbers only. Separately, some repositories ship their own Python code and ask you to pass `trust_remote_code=True`. That code runs on your machine even when the weights are safetensors.
 
 The model works but answers poorly in your language or task. The model card lists its training languages and limits. Test on your own examples.
 
@@ -326,9 +316,9 @@ docs | Inference client | https://huggingface.co/docs/huggingface_hub/en/package
 ```
 
 ```quiz
-What does a model card tell you? | Its current price per million tokens ; Its training, limits and license ; How many people downloaded it today | 1 | Always read it before using a model.
+What does a model card tell you? | Its current price per million tokens ; What the author says about training, limits and license ; How many people downloaded it today | 1 | A card is the author's description of the model: how it was trained, where it fails and which license applies. Price and download counts are shown elsewhere on the page.
 What does Transformers.js do? | Trains models on a GPU cluster ; Hosts demo apps for other people ; Runs models in the browser | 2 | It brings inference to JavaScript environments.
-You find a promising model but its license is unclear. What should you do? | Check the license before commercial use ; Use it anyway, since the weights are public ; Delete the model card to avoid confusion | 0 | Licenses vary and some forbid commercial use.
+You find a promising model but its license is unclear. What should you do? | Check the license before commercial use ; Use it anyway, since the weights are public ; Ask in the discussion tab and assume it is fine to use meanwhile | 0 | Licenses vary and some forbid commercial use.
 ```
 
 ```story

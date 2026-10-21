@@ -25,7 +25,7 @@ Caches stack in layers, from the user outward to the data:
 5. Distributed cache: Redis or Memcached, a key-value store held in RAM and shared by all servers. RAM is much faster than disk-based databases but smaller, so it keeps only hot data.
 6. Database: most databases cache disk pages in a buffer pool by default. Tuning those settings for your access pattern can help further.
 
-Avoid file-based caches on app servers. They make cloning servers and autoscaling harder, because each new server starts empty. The AWS Builders' Library makes the matching point: a new server with an empty local cache can send a burst of requests to the dependency while it refills, and an external cache avoids that because it stays populated.
+Avoid file-based caches on app servers. They make cloning servers and autoscaling harder, because each new server starts empty. An AWS article on caching (Jas Chhabra, 2019) makes the matching point: a new server with an empty local cache can send a burst of requests to the dependency while it refills, and an external cache avoids that because it stays populated.
 
 ## The math
 Average latency is the hit-weighted blend of the two paths, where $h$ is the hit ratio (the fraction of requests found in the cache):
@@ -77,10 +77,10 @@ A trace of an LRU cache that holds 3 items, with the most recently used item fir
 | E | miss, evicts D | E A B |
 | C | miss, evicts B | C E A |
 
-Two hits in nine reads. A is read often, so it stays. B is evicted once and then comes back as a miss.
+Two hits in nine reads. A is read often, so it stays. B is evicted, comes back as a miss, and is evicted again a few reads later.
 
 ## What goes wrong: a cache that never hits
-You add a cache and the database load barely moves. Typical causes: the key includes something unique per request (a timestamp, a session id), the TTL is shorter than the gap between repeat reads, or the working set is far larger than the cache so LRU keeps evicting items before they are reused. Confirm by reading the cache's own counters (in Redis, `INFO stats` reports `keyspace_hits`, `keyspace_misses` and `evicted_keys`, the number of keys evicted because of the `maxmemory` limit) and computing $h$ as hits divided by hits plus misses. If $h$ is low, say under about 50 percent for a read-heavy workload, the cache adds a network hop and a failure point for little gain.
+You add a cache and the database load barely moves. Typical causes: the key includes something unique per request (a timestamp, a session id), the TTL is shorter than the gap between repeat reads, or the set of items people actually read is far larger than the cache, so LRU keeps evicting items before they are reused. Confirm by reading the cache's own counters (in Redis, `INFO stats` reports `keyspace_hits`, `keyspace_misses` and `evicted_keys`, the number of keys evicted because of the `maxmemory` limit) and computing $h$ as hits divided by hits plus misses. If $h$ is low, say under about 50 percent for a read-heavy workload, the cache adds a network hop and a failure point for little gain.
 
 ## When a cache is the wrong tool
 If every request asks for something different (a unique search, a one-time report), there is nothing to reuse. If the data must always be exactly current, such as an account balance during a transfer, a copy that may be stale is dangerous. If the database is slow because of a missing [index](/sd/docs/data/indexes), fix the index first: a cache hides that problem and adds invalidation work. Caching also means maintaining consistency between the cache and the source of truth, which is the hard part covered in [invalidation](/sd/docs/caching/cache-invalidation).
@@ -88,7 +88,7 @@ If every request asks for something different (a unique search, a one-time repor
 The opposite mistake has its own name too. The No Caching antipattern is a system that repeats the same expensive fetches on every request. [Retry Storm and No Caching](/sd/docs/antipatterns/retry-storm-and-no-caching) shows how to spot it in production and fix it.
 
 ## Common mistake
-Judging a cache by average latency alone and ignoring the database load and the cold-start case.
+Judging a cache by average latency alone and ignoring the database load and the cold-start case (a cache that starts empty, or is lost, so every read goes to the database until it refills).
 
 ```resources
 article | System Design Primer: Cache | https://github.com/donnemartin/system-design-primer#cache | Donne Martin | The layers of caching, what to cache, and the update strategies this chapter builds on.
@@ -98,7 +98,7 @@ article | Caching, Karan Pratap Singh | https://github.com/karanpratapsingh/syst
 ```
 
 ```quiz
-With a 1 ms cache and a 20 ms database, what is the average latency at a 90 percent hit ratio? | 2.9 ms ; 19.1 ms ; 10.5 ms | 0 | 0.9 × 1 plus 0.1 × 20 gives 0.9 plus 2.0.
+A site at a 99 percent hit ratio loses its only cache node. What happens to the database? | It gets every read, 100 times its usual load ; Nothing, since it already serves most reads ; Its load rises by about one percent | 0 | At 99 percent the database normally sees 1 percent of reads. With no cache it sees all of them, which is 100 times more.
 Moving the hit ratio from 90 to 99 percent changes database load by about how much? | It falls by about ten percent ; It falls to a tenth of what it was ; It falls to half of what it was | 1 | Misses drop from 10 percent to 1 percent of requests, a 10 times drop.
 A full cache must make room for a new item. What does LRU remove? | The item that was added first ; The item with the fewest total reads ; The item that was used longest ago | 2 | LRU tracks recency of use, not count or insertion order.
 ```
@@ -112,10 +112,10 @@ The System Design Primer | https://github.com/donnemartin/system-design-primer |
 ```
 
 # cache-patterns | Cache-Aside, Write-Through and Write-Behind | 2 | 12
-Four strategies decide who fills the cache and when data is written. Each trades speed, freshness and complexity differently, and each has its own way of failing.
+Four patterns decide how the cache is filled and kept in step with the database. Three are about writes and one, refresh-ahead, is about reads. Each trades speed, freshness and complexity differently, and each has its own way of failing.
 
 ## The four strategies
-Because a cache holds only a limited amount of data, you must decide how it is kept up to date. The Primer describes four common answers.
+A cache holds a copy, and the database can change underneath it. So you must decide who loads the cache, and what happens to the copy when data is written. The Primer describes four common answers.
 
 ```card Cache-Aside
 Problem | Reading the database on every request is slow, but a cache that loads itself needs a database connection and rules it cannot know.
@@ -160,7 +160,7 @@ def get_user(user_id):
 
 Memcached is generally used this way. Only requested data gets cached, so the cache is not filled with things nobody reads. Facebook's memcache paper describes the same shape as a "demand-filled look-aside cache": on a write, the web server updates the database and then deletes the cache key.
 
-Write-through: the application treats the cache as the main store. It writes to the cache, and the cache synchronously writes to the database before returning. Writes are slower overall, but reads of just-written data are fast, and the cached data is never stale. Users tolerate latency on updates better than on reads.
+Write-through: the application treats the cache as the main store. It writes to the cache, and the cache synchronously writes to the database before returning. Writes are slower overall, but reads of just-written data are fast, and the cached copy is fresh as long as every write goes through the cache. Users are generally more tolerant of latency on updates than on reads.
 
 Write-behind (write-back): the application writes to the cache, and the cache writes to the database later, asynchronously. Writes are fast and can be batched.
 
@@ -185,7 +185,7 @@ Refresh-ahead: the cache refreshes recently used entries before they expire. It 
 | Strategy | Write path | Read after write | Failure mode |
 | --- | --- | --- | --- |
 | Cache-aside | write DB, then delete key | miss, then reload | stale data until TTL or delete; empty cache is slow |
-| Write-through | cache and DB, synchronous | hit, fresh | slow writes; cache fills with data never read |
+| Write-through | cache and DB, synchronous | hit, fresh if all writes go through the cache | slow writes; cache fills with data never read |
 | Write-behind | cache now, DB later | hit, fresh | data loss if the cache dies first |
 | Refresh-ahead | n/a, a read-side idea | hit | wrong guesses waste work and can be slower than no refresh |
 
@@ -201,7 +201,7 @@ Now the cost. If the cache node dies with a one-second buffer, up to 5,000 ackno
 ## What goes wrong: stale reads and silent loss
 With cache-aside, a user edits their profile and refreshes: the old name appears. The cause is a write path that updated the database but did not delete the key, so the old value lives until the TTL runs out. Confirm by reading the key directly in the cache and comparing it with the database row. If the values differ, the write path is missing its invalidation step. Lethain's article warns the same thing: errors creep in easily when multiple code paths write to the database and the cache.
 
-With write-behind, the symptom is missing rows after a cache restart. Confirm by comparing the write-ahead queue length and acknowledged-write counts to rows in the database. See [invalidation](/sd/docs/caching/cache-invalidation) for the races that make cache-aside stale even when you do delete.
+With write-behind, the symptom is missing rows after a cache restart. Confirm by comparing the number of writes the cache acknowledged with the number of rows that reached the database. If the cache has a pending-writes queue, check its length too: after a restart it starts empty, so the gap between the two counts is what was lost. See [invalidation](/sd/docs/caching/cache-invalidation) for the races that make cache-aside stale even when you do delete.
 
 ## When these patterns are the wrong tool
 Write-behind is wrong for data you cannot afford to lose, such as money or inventory counts. Write-through is wrong when most written data is never read, because you pay slow writes and fill the cache with dead entries. Refresh-ahead is wrong when access is unpredictable. Cache-aside is wrong when you need every reader to see the latest write immediately, since a reader can fetch the old value between your database write and your delete. In those cases read from the primary database, or use [transactions](/sd/docs/data/transactions-and-isolation). For caching a search engine's results with a similar design, see the [query cache design](/sd/docs/practice/query-cache).
@@ -213,13 +213,13 @@ Choosing write-behind for speed without writing down what happens to the buffere
 article | System Design Primer: When to update the cache | https://github.com/donnemartin/system-design-primer#when-to-update-the-cache | Donne Martin | Defines cache-aside, write-through, write-behind and refresh-ahead with each one's disadvantages.
 paper | Scaling Memcache at Facebook | https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf | Nishtala et al. (NSDI 2013) | Describes a demand-filled look-aside cache where writes update the database and then delete the cached key.
 article | Introduction to Architecting Systems for Scale | http://lethain.com/introduction-to-architecting-systems-for-scale/ | Will Larson | Prefers write-through to reduce backend stampedes and warns about multiple code paths writing to both stores.
-article | Top caching strategies | https://bytebytego.com/guides/top-5-caching-strategies | ByteByteGo | A visual overview of the common strategies (read for comparison, linked as an extra explainer).
+article | Top caching strategies | https://bytebytego.com/guides/top-5-caching-strategies | ByteByteGo | A visual overview of the common strategies. It also uses the names read-through, write-around and write back; write back is the same idea as write-behind here.
 ```
 
 ```quiz
 Which strategy loses acknowledged writes if the cache node crashes before flushing? | Write-through ; Write-behind ; Cache-aside | 1 | Write-behind returns before the database has the data.
 A cache-aside miss costs how many trips? | Two: a cache read and a cache write ; One: only the database read ; Three: cache read, database read, cache write | 2 | The app checks the cache, loads from the database, then fills the cache.
-Write-behind merges repeated updates, so 5,000 writes per second to 500 distinct keys, flushed once a second, send what to the database? | 500 writes per second ; 5,000 writes per second ; 50 writes per second | 0 | One write per distinct key per flush, so 500.
+A user edits their profile in a cache-aside system and then sees the old name. The write path updated the database. What is the most likely missing step? | Deleting the cached key after the write ; Reading the database twice per request ; Making the TTL much longer | 0 | Cache-aside never updates the cache on its own. Without a delete, the old copy stays until the TTL expires.
 ```
 
 ```story
@@ -246,7 +246,7 @@ Even the delete approach has a gap, which the Facebook paper calls a stale set. 
 3. Writer B deletes the cache key.
 4. Reader A, slow, now writes "Ann" into the cache.
 
-The cache holds the old value and nothing will delete it again. It stays wrong until the TTL ends. The diagram shows the order of events.
+The cache now holds the old value, and no delete is queued to fix it. It stays wrong until the next write to that row deletes the key, or the TTL ends, whichever comes first. The diagram shows the order of events.
 
 ```mermaid The stale set: reader A's late write puts the old name back after B's delete
 sequenceDiagram
@@ -261,18 +261,18 @@ sequenceDiagram
   B->>DB: update name to Anna
   B->>C: delete name
   A->>C: set name = Ann
-  Note over A,C: The cache now holds Ann and nothing will delete it
+  Note over A,C: The cache now holds Ann and no delete is pending
 ```
 
-The paper's fix is a lease: on a miss, the cache gives the reader a 64-bit token bound to that key. The reader must present the token when setting the value. A delete by writer B invalidates the token, so reader A's set is rejected. The paper compares this to load-link/store-conditional. The paper says stale sets can occur when concurrent updates to memcache get reordered. Updating the cache instead of deleting has the same risk: two writers' cache updates can land in the opposite order to their database updates.
+The paper's fix is a lease: on a miss, the cache gives the reader a 64-bit token bound to that key. The reader must present the token when setting the value. A delete by writer B invalidates the token, so reader A's set is rejected. It works like a conditional write: the set only succeeds if nothing invalidated the token since it was issued. The paper says stale sets can occur when concurrent updates to memcache get reordered. Updating the cache instead of deleting has the same risk: two writers' cache updates can land in the opposite order to their database updates.
 
 ## Stampedes
 A cache stampede (thundering herd) happens when a popular key expires and many requests miss at once, all recomputing the same value. The Facebook paper uses the term for a key with heavy reads and writes, where each write keeps invalidating the cached value, so many reads fall through to the database. Fixes:
 
-1. Request coalescing: only one pending request goes to the source for an uncached key, and the others wait for its answer (the AWS Builders' Library describes this, and says tools like Nginx and Varnish support it).
+1. Request coalescing: only one pending request goes to the source for an uncached key, and the others wait for its answer (Jas Chhabra's AWS article describes this, and says tools like Nginx and Varnish support it).
 2. Locks: the first requester takes a lock and recomputes. Others wait or serve a slightly stale value.
 3. Jittered TTLs: add a random amount to each expiry so keys loaded together do not expire together.
-4. Probabilistic early expiration: each request may refresh the item before it expires, with a chance that grows as expiry nears. Vattani, Chierichetti and Lowenstein call this XFetch. Each entry stores how long it took to compute (delta). On a read, the request draws a random gap equal to delta times a tuning factor beta (the paper's default is 1) times the negative log of a random number between 0 and 1. If the current time plus that gap is at or past the expiry, this request recomputes the value now. Entries that are slow to compute get refreshed earlier, and the chance of an early refresh rises as expiry nears.
+4. Probabilistic early expiration: each request may refresh the item before it expires, with a chance that grows as expiry nears. Vattani, Chierichetti and Lowenstein call this XFetch. Each entry stores how long it took to compute (delta). On a read, the request draws a random gap equal to delta times a tuning factor beta (the paper's default is 1) times the negative log of a random number between 0 and 1. If the current time plus that gap is at or past the expiry, this request recomputes the value now. Entries that are slow to compute get refreshed earlier, and the chance of an early refresh rises as expiry nears. Example: delta is 0.2 s and beta is 1. The random gap is 0.2 s or more about 37 times in 100, so a read 0.2 s before expiry refreshes with a 37 percent chance, and a read 1 s before expiry only about 0.7 percent.
 5. Leases with rate limits: in the Facebook paper a memcached server returns a token only once every 10 seconds per key by default, and requests in that window are told to wait a short time and retry.
 
 ```mermaid A stampede: one expired hot key sends every waiting request to the database, coalescing sends one
@@ -295,7 +295,9 @@ xychart-beta
 ```
 
 ## Negative caching
-If a key exists nowhere, every request for it misses the cache and hits the database. Attackers can exploit this by asking for random ids. Negative caching stores the absence (a null marker) with a short TTL. The AWS article says caching error responses with a different TTL from successes mattered, and that failing to do so led to higher failure rates. A bloom filter is another option, but it is more machinery.
+If a key exists nowhere, every request for it misses the cache and hits the database. If the same missing id is asked for again and again (a deleted product, a bad link), negative caching helps: store the absence (a null marker) with a short TTL, so repeats are answered from the cache. If an attacker asks for a different random id every time, no id repeats and negative caching does nothing. A bloom filter (a compact structure that can say "definitely not present") in front of the database stops those, at the price of one more component to run.
+
+The AWS article uses "negative cache" for something related: caching an error response from a failing dependency, with its own TTL, so a struggling service is not asked again on every request. It reports that not doing this led to higher failure rates.
 
 ## A worked example: a hot key and a mass expiry
 Invented numbers. One product page gets 2,000 requests per second. Rebuilding it takes 200 ms. When its TTL expires, requests during those 200 ms all miss: 2,000 × 0.2 = 400 identical database queries at once, instead of 1. With coalescing, it is 1 query and 399 waiters.
@@ -309,20 +311,20 @@ Symptom: database CPU and latency spike at a regular interval, such as exactly e
 Jitter does nothing for a single hot key, and locks add a failure point: if the lock holder dies, waiters stall until the lock times out. Probabilistic early refresh needs you to know roughly how long a recompute takes. For data where staleness is never acceptable, such as permissions after a user is removed, use short TTLs, or skip the cache and read the primary. See [replication](/sd/docs/data/replication) for why even a database replica can lag.
 
 ## Common mistake
-Setting one fixed TTL for every key, so they all expire together.
+Giving every key the same TTL and then loading many of them at once (a deploy warm-up, a cache restart), so they all expire in the same second. Add jitter to the TTL when you fill keys in bulk.
 
 ```resources
 article | System Design Primer: Cache | https://github.com/donnemartin/system-design-primer#cache | Donne Martin | Query-level versus object-level caching, and why invalidation is the hard part.
 paper | Scaling Memcache at Facebook | https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf | Nishtala et al. (NSDI 2013) | Section 3.2.1 explains stale sets and thundering herds and how leases fix them.
 paper | Optimal Probabilistic Cache Stampede Prevention | https://www.vldb.org/pvldb/vol8/p886-vattani.pdf | Vattani, Chierichetti, Lowenstein (VLDB 2015) | Defines stampedes and gives the XFetch early-expiration algorithm, with a recompute test of the form time minus delta times beta times log of a random number, at or past expiry.
-article | Caching challenges and strategies | https://builder.aws.com/content/3K9TeXp6strMiJ4vhakpRD7BQWO/caching-challenges-and-strategies | AWS Builder Center | Covers request coalescing and negative caching.
+article | Caching challenges and strategies | https://builder.aws.com/content/3K9TeXp6strMiJ4vhakpRD7BQWO/caching-challenges-and-strategies | Jas Chhabra (AWS) | Covers request coalescing and negative caching.
 article | How can cache systems go wrong | https://bytebytego.com/guides/how-can-cache-systems-go-wrong | ByteByteGo | A short visual list of cache failures (read for comparison, linked as an extra explainer).
 ```
 
 ```quiz
-In the stale-set timeline, why does the cache end up wrong? | The writer updates the cache before the database ; The delete removes the key from the database ; A slow reader writes an old value after the delete | 2 | The reader's late set puts back the value it read before the update.
-A deploy loads 100,000 keys with the same 3,600 second TTL. What does jitter of up to 720 seconds do? | Spreads rebuilds to about 139 per second ; Removes the need to rebuild at all ; Cuts the TTL to 720 seconds | 0 | Expiries spread over 720 seconds, so 100,000 divided by 720.
-Many requests ask for ids that exist nowhere. Which fix stops them reaching the database? | Add a longer TTL to successful entries ; Cache the absence with a short TTL ; Add more cache servers | 1 | A cached null answers repeat misses without a query.
+In the stale-set timeline, why does the cache end up wrong? | The writer updates the cache before the database ; The reader's read from the database was cached for too long ; A slow reader writes an old value after the delete | 2 | The reader's late set puts back the value it read before the update.
+A deploy loads 100,000 keys with the same 3,600 second TTL and no jitter. Roughly how many rebuilds hit the database in the same second? | About 100,000 ; About 139 ; Just one rebuild | 0 | All keys expire together. Jitter of up to 720 seconds would spread them to about 139 per second.
+Many requests ask for ids that exist nowhere, and the same missing ids are requested over and over. Which fix stops them reaching the database? | Add a longer TTL to successful entries ; Cache the absence with a short TTL ; Add more cache servers | 1 | A cached null answers repeat misses without a query.
 ```
 
 ```story

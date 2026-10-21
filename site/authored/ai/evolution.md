@@ -4,7 +4,9 @@ The vocabulary changed every year, but each new name points at a real shift in w
 ## The sequence
 Prompt engineering (2020 to 2023): GPT-3 showed that wording and examples change results, so people tuned prompts. Retrieval and tools (2023): models gained access to documents and functions. Agents (2024 to 2025): models run in a loop, choose tools and act over many steps. Context engineering (2025): the realization that what is in the window matters more than phrasing. Harness engineering (2025 to 2026): the recognition that the system around the model, not only the model, decides how well an agent does.
 
-The table lines up the five names with the support task from this example.
+My read: retrieval, tools and agents each added something new you could build. Context engineering is mostly a better name for prompt plus retrieval plus memory, though the habit of counting what is in the window is useful. Harness engineering is real where it brought measured gains (separate checkers, context resets) and ordinary software engineering where it did not.
+
+The table lines up the five names. The last column shows how each era would handle one job: answering a customer's question about an order.
 
 | Name | Years | What gets engineered | Customer question task |
 |---|---|---|---|
@@ -21,14 +23,14 @@ When you meet a new term, find the mechanism, find the measurement, and find the
 Take an invented term, "intent engineering", from a vendor post. Apply the checks in order.
 
 1. Mechanism: read for what the system does differently. Suppose the post says the app rewrites a vague request into a clear goal before the model sees it. That is a concrete step.
-2. Measurement: ask for a before and after. Suppose the vendor reports 62 of 100 test requests solved before, and 71 of 100 after. That is 9 points better, but 100 requests is a small test. Random luck alone can move a score by several points, so ask for more runs.
+2. Measurement: ask for a before and after. Suppose the vendor reports 62 of 100 test requests solved before, and 71 of 100 after. That is 9 points better, but 100 requests is a small test. Random luck alone can move a score by about 5 points at this size (a score near 65 of 100 wobbles by roughly 5 either way), and the gap between two such scores wobbles by about 7. A 9 point gain is barely more than that, so ask for more runs.
 3. Old name: rewriting a request before processing it is called query rewriting, and search engines have done it for years.
 Verdict: a real technique with a small, uncertain gain, applied in a new place. It is not a new discipline.
 
 ## When the mechanism is real but the claim is not
-A pitch says: "Harness engineering lets any model act like a top engineer." The mechanism behind it is real. Tests catch wrong answers, and permissions stop bad actions. The claim goes too far, because a harness checks and limits a model. It cannot add knowledge or reasoning the model lacks.
+A pitch says: "Harness engineering lets any model act like a top engineer." The mechanism behind it is real. Tests catch wrong answers, and permissions stop bad actions. The claim goes too far, because a harness checks, limits and feeds a model. It can give the model documents and tools, but it cannot make the model reason better than it can. A harness can lift results a lot (one team moved a coding agent from outside the top 30 into the top 5 on a benchmark by changing only the harness), but a weaker model still fails tasks a stronger one passes.
 
-You can test the claim. Keep the harness fixed and swap in a weaker model, then run the same twenty tasks and count passes. If the count drops a lot, the model still matters. Expect that result. A good harness raises the floor, so fewer runs fail badly, but it does not remove the gap between models.
+You can test the claim. Keep the harness fixed and swap in a weaker model, then run the same hundred tasks, since twenty is too few to trust a small gap, and count passes. If the count drops a lot, the model still matters. Expect that result. A good harness helps every model, but it does not remove the gap between models.
 
 ## Common mistake
 Thinking you must learn the newest name to be current. The mechanisms underneath last longer than the labels.
@@ -42,34 +44,31 @@ article | Industrial Agentic Engineering | https://research.google/pubs/industri
 
 ```quiz
 What is the clearest sign a term is rebranding rather than new? | It was coined by a well known engineer ; It names no new mechanism or method ; It trended on social media this week | 1 | Useful terms name a mechanism you can implement and measure.
-What stayed constant across the eras? | The model as the core part ; The wording of every prompt ; The design of each provider API | 0 | The scope of what engineers design grew, while the model stayed at the center.
-A vendor announces "agentic harness orchestration". What is your first question? | What changed, and what did the eval show ; Which conference are they presenting it at ; How many models does it list as supported | 0 | Look for the mechanism and a measurement.
+What stayed constant across the eras? | A model that does the reasoning ; The wording of every prompt ; The design of each provider API | 0 | The scope of what engineers design grew, while the model stayed at the center.
+A post says "workflow orchestration" cut errors but gives no before and after numbers. What do you do? | Adopt it, since errors fell ; Reject it, since vendors exaggerate ; Ask for the test set, the scores before and after, and how many runs | 2 | A real mechanism may exist, but without a measurement you cannot tell luck from a gain.
 ```
 
 ```story
-A shop owner hears "prompt engineering" in 2023, "agents" in 2024, "context engineering" in 2025 and "harness engineering" in 2026. Each time the headlines say everything changed. A better question each time: what can I now do that I could not do before, and what would I have called this last year?
+A shop owner hears "prompt engineering" in 2023, "agents" in 2024, "context engineering" in 2025 and "harness engineering" in late 2025 or 2026. Each time the headlines say everything changed. A better question each time: what can I now do that I could not do before, and what would I have called this last year?
 ```
 
 # prompt-engineering-era | The prompt engineering era | 1 | 12
 What survived from prompt engineering is a handful of techniques with a mechanism behind them. The magic-words era mostly did not.
 
 ## What was real
-Few-shot examples work because the model infers the task from patterns in context, which is in-context learning. Chain-of-thought works because written reasoning gives later tokens something to condition on. Clear structure and delimiters help because the model has to tell instructions from data. ReAct interleaved reasoning with tool calls and is the direct ancestor of agent loops.
+Few-shot examples work because the model infers the task from patterns in context, which is in-context learning. Chain-of-thought works because written reasoning gives later tokens something to build on, since each new token is chosen using all the text before it. Clear structure and delimiters (markers like ### or triple quotes that fence off the data) help because the model has to tell instructions from data. ReAct interleaved reasoning with tool calls and is the direct ancestor of agent loops.
 
 ## What was hype
-Secret phrases that supposedly unlock hidden performance, "act as a world-class expert", and prompt marketplaces. Much of this faded as models got better at following plain instructions. "Prompt engineer" as a standalone job title mostly dissolved into general software and product work, because a prompt is a small part of a system that also needs data, tools and tests.
+Secret phrases that supposedly unlock hidden performance, "act as a world-class expert", and prompt marketplaces. Much of this faded as models got better at following plain instructions.
 
 ## What it became
-Prompts are now treated as code: versioned, tested against examples and reviewed. Writing one is still a skill. It is just no longer the whole job.
+Prompts are now treated as code: versioned, tested against examples and reviewed. Writing one is still a skill, but no longer the whole job. "Prompt engineer" as a standalone job title mostly dissolved into general software and product work, because a prompt is a small part of a system that also needs data, tools and tests.
 
 ## A worked example: separating habit from superstition
-"You are a world-class expert": no measurable effect on many tasks. "Think step by step": real effect on multi-step problems for older models. "Here are three examples": real, reliable effect on format. "Take a deep breath and work on this problem step-by-step": a 2023 DeepMind paper found it reached 80.2 percent on a grade-school math set with one model (PaLM 2-L), and I found no evidence of a reliable effect on current models. The test is simple: run both versions on twenty inputs and count.
-
-## What became of the job title
-Writing prompts turned into one of many skills. Today it is usually bundled with building the whole system: data, tools, tests and monitoring.
+"You are a world-class expert": reported gains are mixed, so test it on your task before trusting it. "Think step by step": real effect on multi-step problems for older models. "Here are three examples": real, reliable effect on format. "Take a deep breath and work on this problem step-by-step": in a 2023 Google DeepMind paper (Yang et al., "Large Language Models as Optimizers"), a program searched for the best instruction for a model called PaLM 2-L on a grade-school math set. This phrase scored 80.2 percent, against 71.8 for "Let's think step by step" and 34.0 with no instruction. It was the winner of a long search, so it may partly fit that one test. I know of no evidence it helps reliably on current models. The test is simple: run both versions on twenty inputs and count. Twenty inputs can only show big gaps. If the two versions differ by one or two, you have learned nothing yet, so add more inputs.
 
 ## How few-shot works, with a tiny trace
-Invented prompt: "Review: great = positive. Review: awful = negative. Review: fine =". The model has seen no training on this exact list. It reads the pattern and continues it, so the next word is likely "positive" or "neutral" in the same one-word style.
+Invented prompt: "Review: great = positive. Review: awful = negative. Review: fine =". The model has seen no training on this exact list. It reads the pattern and continues it, so the next word is a one-word label such as "positive", not a full sentence.
 
 ```mermaid The examples in the prompt show the model the task and the output format, so it continues the pattern
 flowchart TD
@@ -84,7 +83,7 @@ Without the two examples, the same model might answer with a full sentence. The 
 ## What goes wrong: tuning to your test cases
 You rewrite a prompt until three test inputs all pass. On twenty new inputs it fails half of them. The prompt learned your three cases, much like a student who memorizes the practice exam.
 
-To confirm, split your inputs into two groups. Tune the prompt on the first group only, then score the second group once, without changing anything. If the second score is far lower, you overfit the prompt. Keep the second group hidden until the end.
+To confirm, split your inputs into two groups. Tune the prompt on the first group only, then score the second group once, without changing anything. If the second score is far lower, you overfit the prompt. This second group is called held-out: set aside and never used for tuning. Keep it hidden until the end.
 
 ```mermaid Tune on one group of inputs and score a hidden group once, or the prompt only learns your test cases
 flowchart TD
@@ -109,6 +108,7 @@ Copying prompts from a social media thread without testing them on your own task
 
 ```resources
 paper | Language Models are Few-Shot Learners | https://arxiv.org/abs/2005.14165 | Brown et al. | The origin of few-shot prompting.
+paper | Large Language Models as Optimizers | https://arxiv.org/abs/2309.03409 | Yang et al. | Source of the "deep breath" instruction result.
 paper | Chain-of-Thought Prompting Elicits Reasoning in LLMs | https://arxiv.org/abs/2201.11903 | Wei et al. | Step-by-step reasoning improves accuracy.
 paper | ReAct: Synergizing Reasoning and Acting | https://arxiv.org/abs/2210.03629 | Yao et al. | Reasoning and tool use in one loop.
 article | Prompt Engineering | https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/ | Lilian Weng | A clear survey of techniques from the peak of the era.
@@ -116,7 +116,7 @@ article | Prompt Engineering | https://lilianweng.github.io/posts/2023-03-15-pro
 
 ```quiz
 Why does few-shot prompting work? | It memorizes the examples for good ; It infers the task from the examples ; It retrains its weights on every prompt | 1 | In-context learning lets the model pick up the task from examples in the prompt.
-What happened to the "prompt engineer" job title? | It became a separate licensed trade ; It became the top role at most firms ; It merged into wider engineering | 2 | A prompt is one part of a system that also needs data, tools and tests.
+A teammate's prompt passes the 3 inputs they tuned on. What is the best next step? | Score it once on inputs it was not tuned on ; Ship it because the three inputs pass ; Add more magic phrases to the prompt | 0 | Passing your tuning cases says nothing about new inputs.
 You find a viral "magic prompt" online. How do you decide whether to use it? | Adopt it because it went viral ; Test it on your own inputs ; Adopt it if its author is famous | 1 | Count results on twenty inputs before adopting any prompt.
 ```
 
@@ -128,10 +128,12 @@ In 2023 people shared "magic prompts" like secret codes. Some were just good hab
 Agent = Model + Harness. The harness is everything around the model that turns text prediction into finished work. The name is new. The parts are concrete.
 
 ## What a harness contains
-Instructions and rule files such as AGENTS.md. Tools, including MCP servers and the descriptions that tell the model when to use them. Sandboxes where code runs, with limits on what it can reach. Orchestration: subagents, model routing and handoffs. Hooks, which are deterministic code at fixed points such as before a tool call or a commit. Observability: logs, traces and cost metering. Memory and context management, including compaction and resets.
+Instructions and rule files such as AGENTS.md. Tools, including MCP servers and the descriptions that tell the model when to use them. Sandboxes where code runs, with limits on what it can reach. Orchestration, meaning how several agents or models are coordinated: subagents, model routing and handoffs. Hooks, which are deterministic code at fixed points such as before a tool call or a commit. Observability: logs, traces and cost metering. Memory and context management, including compaction and resets.
 
 ## Why it is more than a buzzword
-Anthropic's long-running work found two failure modes that the model alone does not fix. As context fills, models lose coherence and sometimes wrap up early, so the harness adds context resets with a written handoff. And a model grading its own work tends to praise it, so the harness separates the generator from a skeptical evaluator. Both are engineering decisions you can test, and they produced measurable gains.
+Anthropic's long-running work found two failure modes in the models they tested. As context fills, some models lose coherence and start wrapping up early, so the harness clears the context and starts a fresh agent with a written handoff of what was done and what is next. A later model largely stopped doing this, and that harness part was dropped. Second, a model grading its own work tends to praise it, so the harness separates the generator from an evaluator. The evaluator is still a model and still too generous at first, but it is much easier to tune a separate evaluator to be skeptical than to make a generator critical of itself. Parts of a harness that cover a model's weakness can be removed when the model improves, so test whether each part still earns its place. Both are engineering decisions you can test, and they produced measurable gains. In Anthropic's test the full harness cost about 20 times more ($200 against $9) and the solo run's main feature did not work, so the gain has to be worth the bill.
+
+A reset is different from compaction. Compaction summarizes the old conversation and the same agent carries on. A reset throws the conversation away and starts a new agent that reads a handoff note, for example a progress file and the git history.
 
 ```mermaid A separate evaluator tries the generator's work and sends back problems, so the generator never grades itself
 sequenceDiagram
@@ -148,7 +150,7 @@ sequenceDiagram
 ```
 
 ## The honest caveat
-Most of this is ordinary systems engineering: retries, permissions, tests, logging and separation of duties. The new part is that the central component is probabilistic, so verification and observability matter more, and changes need evals to prove they help. Google's practice adds meta-debugging: when an agent fails, fix the workflow, not the model. If someone uses the word without naming which of these parts they changed, treat it as marketing.
+Most of this is ordinary systems engineering: retries, permissions, tests, logging and separation of duties. The new part is that the central component is probabilistic: the same input can give different outputs, so you cannot assume it will behave the same way twice. Verification and observability matter more, and changes need evals to prove they help. Google Research's "Industrial Agentic Engineering" adds meta-debugging: when an agent fails, debug the workflow, not the model. If someone uses the word without naming which of these parts they changed, treat it as marketing.
 
 ## Try it
 Click through the parts in the diagram. Then take your own agent and list which parts exist, which are missing and which failure each missing part allows.
@@ -162,7 +164,7 @@ The table pairs each failure with the harness part involved.
 |---|---|---|
 | Said done with half the feature missing | A way to check | Give it the test suite and require passing tests |
 | Edited a config file it should not touch | A permission rule | Block that folder |
-| Tried to commit a key | A hook | Scan staged files before the commit runs |
+| Tried to commit a key | A hook | Scan the files staged for the commit (the ones about to be saved) before it runs |
 | Dropped rules late in a long session | A rules file grown to 300 lines | Trim to the ten rules that matter |
 | Praised its own mediocre work | A separate evaluator | Add a skeptical checker |
 
@@ -208,13 +210,14 @@ article | Harness design for long-running application development | https://www.
 article | Effective harnesses for long-running agents | https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents | Anthropic | Initializer and coding agents, progress files and handoffs.
 article | Harness engineering | https://openai.com/index/harness-engineering/ | OpenAI | OpenAI's account of building software with agents inside a harness.
 article | The New Software Lifecycle | https://addyosmani.com/blog/new-sdlc-vibe-coding/ | Addy Osmani | The harness anatomy diagram and its role in each phase.
+article | Industrial Agentic Engineering | https://research.google/pubs/industrial-agentic-engineering/ | Google Research | Specification, harness, trajectory, verification and meta-debugging.
 repo | 12-Factor Agents | https://github.com/humanlayer/12-factor-agents | HumanLayer | Principles for building reliable LLM software, with code.
 ```
 
 ```quiz
 A model grades its own output as excellent but it is mediocre. Which harness change helps? | Give the generator a higher temperature ; Add a separate, skeptical evaluator ; Ask the generator for a longer self-review | 1 | Tuning a standalone evaluator to be skeptical is easier than making a generator self-critical.
-Which statement about harness engineering is most accurate? | It applies old ideas to an uncertain part ; It replaces software engineering entirely ; It only matters when you build coding agents | 0 | The parts are old ideas. The new context is that the central component is probabilistic.
-An agent keeps editing a folder it should not touch. Which harness part addresses this? | A firmer line in the prompt ; A switch to a larger model ; A permission rule or hook | 2 | Rules enforced in code cannot be argued around.
+Which statement about harness engineering is most accurate? | It applies old ideas to an uncertain part ; It has no overlap with ordinary software engineering ; It is mostly about picking the best model | 0 | The parts are old ideas. The new context is that the central component is probabilistic.
+An agent keeps editing a folder it should not touch. Which harness part addresses this? | A firmer line in the prompt ; A switch to a larger model ; A permission rule or hook | 2 | A rule enforced in code runs every time, so the model cannot talk its way past it. A prompt line depends on the model remembering it.
 ```
 
 ```story
@@ -238,7 +241,7 @@ The table gives each term below its honest label before the details.
 | Reasoning | Models trained to think before answering | Real | Does it beat the plain model on my task? |
 
 ## Vibe coding
-Real: building by prompting and accepting output with little review, fine for prototypes. Limit: without verification you cannot trust it for anything that matters. Agentic engineering is the same tools with specs, tests and review.
+Real: building by prompting and accepting output with little review, fine for prototypes. Limit: without verification you cannot trust it for anything that matters. Reviewed AI-assisted coding is the same tools used with a written spec, tests and a human reading the code. Simon Willison's article draws this line.
 
 ## Agentic
 Real if it means the model chooses its steps. Hype if it is stuck on a fixed chatbot flow. Ask what decisions the model makes at runtime.
@@ -262,13 +265,13 @@ Real: storing facts outside the window and retrieving them. Mostly files plus se
 Real: models trained to spend tokens on thinking before answering. It improves multi-step problems. It does not mean the model understands in a human sense.
 
 ## "10x" and "replaces developers"
-Studies are mixed. One 2025 randomized study by METR followed 16 experienced open-source developers on 246 real issues and found tasks took 19 percent longer with the AI tools of early 2025, partly from the time spent verifying. It is a small sample and the tools have since changed, so treat it as one data point. Gains are real on well-specified, verifiable work and smaller elsewhere.
+Studies are mixed. One 2025 randomized study by METR followed 16 experienced open-source developers on 246 real issues and found tasks took 19 percent longer with the AI tools of early 2025, partly from the time spent verifying. METR itself says these results no longer reflect current tools and has published a newer round, so treat the 19 percent as a snapshot from early 2025. Gains are real on well-specified, verifiable work and smaller elsewhere.
 
 ## A worked example: translating a pitch
 Pitch: "Our multi-agent swarm autonomously builds your product." Translation: several model calls coordinated by code. Questions: what does each agent do, what checks the output, what is the pass rate, what does a run cost, what happens when it is wrong? If the answers are vague, it is a demo.
 
 ## A quick glossary of caution
-Real mechanism with a hype halo: agents, reasoning models, context engineering, skills, memory. Mostly packaging: "swarm", "autonomous employee". Undefined: AGI.
+Real mechanism with a hype halo: agentic behavior, reasoning models, context engineering, memory. Real but narrow: multi-agent systems. Mostly packaging: skills, and pitch phrases like "autonomous employee". Undefined: AGI.
 
 ## A second example: "our assistant has memory"
 Mechanism, with an invented example:
@@ -290,7 +293,7 @@ flowchart TD
 That is memory: a notebook the system reads before it answers. The failure is a stale note. You tell the assistant you moved from London to Paris, but the old note stays, so it keeps suggesting umbrellas for London. To confirm, change a fact and ask a question that depends on it in a new chat.
 
 ## When the buzzword is the wrong tool
-A task has three steps: fetch a page, pull out a date, write one sentence. A swarm of four agents is overkill. Invented cost count: each agent reads the same 8,000-token brief and adds 2,000 tokens of its own work. That is 4 times 10,000, or 40,000 tokens, before the agents send each other messages. One agent doing all three steps might use 10,000. Use several agents only when subtasks are independent and large enough to pay for the overhead.
+A task has three steps: fetch a page, pull out a date, write one sentence. A swarm of four agents is overkill. Invented cost count: each agent reads the same 8,000-token brief and does about 2,000 tokens of work. Four agents cost 4 times 10,000, or 40,000 tokens, before they message each other. One agent reads the brief once and does all three steps: 8,000 plus 3 times 2,000, or about 14,000. Use several agents only when subtasks are independent and large enough to pay for the overhead.
 
 ## Checking that reasoning helps
 Reasoning models spend extra tokens thinking before they answer. Collect ten multi-step questions and ten one-step lookups. Run each set with reasoning on and off. Expect a clear gain on the multi-step set, little on the lookups, and a higher token bill both times. If you see no gain on your own task, switch it off.
@@ -301,11 +304,11 @@ Rejecting a whole idea because the marketing is silly. Look for the mechanism un
 ```resources
 article | Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity | https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/ | METR | A randomized trial that found slower completion, with caveats.
 article | Not all AI-assisted programming is vibe coding | https://simonwillison.net/2025/Mar/19/vibe-coding/ | Simon Willison | Draws the line between vibe coding and reviewed AI-assisted code.
-article | AI Snake Oil | https://www.aisnakeoil.com/ | Narayanan and Kapoor | A newsletter that separates real capability from claims.
+article | AI Snake Oil and AI as Normal Technology | https://www.normaltech.ai/ | Narayanan and Kapoor | A newsletter that separates real capability from claims.
 ```
 
 ```quiz
-What question best tests a new buzzword? | Who coined the term, and how popular is it ; Does it have a polished logo and website ; What does it name, and can I measure it | 2 | A useful term names something you can implement and measure.
+A vendor says its product is "agentic". Which fact would show the word is real? | It has a chat window and a friendly name ; The model picks which tool to call next at runtime ; It runs on one of the largest models | 1 | Agentic means the model chooses its own steps, so look for decisions made at runtime.
 When is a multi-agent system justified? | For parallel tasks such as research ; Always, because more agents are smarter ; Never, because one agent always costs less | 0 | Coordination cost makes it overkill for most tasks, but it fits parallel independent subtasks.
 A study finds developers were 19 percent slower with AI tools. How should you treat this? | As proof AI never helps developers ; As irrelevant, since it is one study ; As one small, early data point | 2 | The study had 16 developers and early-2025 tools, so weigh it as evidence, not a verdict.
 ```

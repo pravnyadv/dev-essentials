@@ -8,8 +8,8 @@ const A = [1, 2, 4, 6, 8, 11]
 const STEPS = [
   'Goal: find two numbers in this sorted list that add up to 10. Trying every pair is slow. Instead, put one marker at each end of the list.',
   'Add the two marked numbers: 1 + 11 = 12. That is more than 10, so the sum is too big.',
-  'To make the sum smaller we need a smaller right number, and everything left of 11 is smaller. 11 can never be part of the answer, so cross it out and move the right marker in.',
-  'Now 1 + 8 = 9, which is too small. To make it bigger we need a bigger left number, so cross out 1 and move the left marker in.',
+  '12 is too big. Even the smallest number in the list (1) added to 11 gives 12, and every other partner is bigger, so 11 can never be part of the answer. Cross it out and move the right marker in.',
+  'Now 1 + 8 = 9, too small. 8 is the biggest number still in play, so 1 can never reach 10 with any partner. Cross out 1 and move the left marker in.',
   '2 + 8 = 10. Found it. Every move crossed out one number for good, so we look at each number at most once. Two markers closing in on each other is called two pointers, and it works because the list is sorted.',
   'Your turn. The target is now 14. Look at the sum, then choose which marker to move.',
 ].map(text => ({ text }))

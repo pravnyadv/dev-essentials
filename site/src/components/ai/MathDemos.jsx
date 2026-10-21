@@ -164,7 +164,7 @@ export function MatrixDemo() {
         <div className="space-y-1">{out.map((o, i) => <div key={i} className="grid h-10 w-14 place-items-center rounded-md border border-fd-primary bg-fd-primary/10 font-semibold tabular-nums max-md:h-11">{o}</div>)}</div>
       </div>
       <Line>{M.map((row, i) => `row ${i + 1}: ${row.map((m, j) => `${m}×${x[j]}`).join(' + ')} = ${out[i]}`).join('   |   ')}</Line>
-      <Hint>Each output is a dot product of one row with the input. A neural network layer is this, plus a bend.</Hint>
+      <Hint>Each output is a dot product of one row with the input. A neural network layer is this, plus an activation (a simple curve applied to each output).</Hint>
     </Box>
   )
 }

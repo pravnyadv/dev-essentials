@@ -10,6 +10,8 @@ flowchart TD
 ```
 The code on this page adds every value to a min heap, then removes the smallest value one at a time. Each removal moves the last heap value to the top and sinks it back down, so every step costs about log n.
 
+Read the array left to right as the tree top to bottom: 1 is the top, 3 and 2 are its children, 5 and 9 are the children of 3, and 8 is the child of 2. To sink a value, swap it with its smaller child until it is no larger than both children.
+
 | Step | Heap as an array after the step | Output so far |
 | :-- | :-- | :-- |
 | All six values added | 1, 3, 2, 5, 9, 8 | empty |
@@ -21,7 +23,7 @@ The code on this page adds every value to a min heap, then removes the smallest 
 | Remove 9 | empty | 1, 2, 3, 5, 8, 9 |
 
 # algorithms/sorting/shell-sort | before Code
-Shell sort on the lesson's array `35, 33, 42, 10, 14, 19, 27, 44` using the gaps the code picks (length 8, so gaps 4, 2, 1). Each row is the array after one full pass.
+Shell sort on the lesson's array `35, 33, 42, 10, 14, 19, 27, 44` using the gaps the code picks (length 8, so gaps 4, 2, 1). Each row is the array after one full pass. If the gap 2 picture above disagrees with this table, trust the table, which was traced with the code.
 
 | Gap | Array after the pass | Swaps so far |
 | :-- | :-- | :-- |
@@ -41,7 +43,7 @@ xychart-beta
 ```
 
 # algorithms/sorting/radix-sort | before Efficiency
-Radix sort on `170, 45, 75, 90, 802, 24, 2, 66`. Each pass drops the numbers into ten buckets by one digit, then reads the buckets from 0 to 9. The longest number has 3 digits, so there are 3 passes. Equal digits keep their earlier order, which is what makes the result correct.
+Radix sort on `170, 45, 75, 90, 802, 24, 2, 66`. Each pass drops the numbers into ten buckets by one digit, then reads the buckets from 0 to 9. The longest number has 3 digits, so there are 3 passes. Equal digits keep their earlier order, which is what makes the result correct. In the table above k is the number of passes (3 here). The Efficiency text below calls the same thing w.
 
 | Pass | Digit used | Buckets that got numbers (bucket: values) | Array after the pass |
 | :-- | :-- | :-- | :-- |
@@ -79,6 +81,10 @@ flowchart LR
 Bucket 1 and bucket 3 are sorted inside (to 21, 25 and 43, 49) before the gather step. Buckets are already in value order, so no final merge is needed.
 
 # algorithms/search/jump-search | before Code
+Binary search needs fewer steps (about 7 for 100 items, against 19 here), so on an array in memory you would normally pick binary search. Jump search is worth knowing for data where stepping backwards is expensive, such as a tape or a stream: it only ever moves forward, and moves back at most one block.
+
+A note on the code below. The text above describes checking the first element of each block. The code checks the last element of each block (indexes m - 1, 2m - 1, 3m - 1, and so on) and stops at the first block whose last value is not smaller than the target. Both versions find the same block. The trace that follows matches the code.
+
 Searching for 29 in the 16 sorted values `2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44, 47`. The jump size is floor(sqrt(16)) = 4.
 
 | Step | What the code checks | Result |
@@ -99,6 +105,10 @@ xychart-beta
 ```
 
 # algorithms/search/interpolation-search | before Code
+The O(log(log(n))) figure above is the average for evenly spread values. In the worst case, for example when a few huge values skew the spread, it falls to O(n), which is slower than binary search. A probe is one array position the search looks at.
+
+The position formula can give a fraction, so the code rounds it down. For example 8 * 9 / 999 is about 0.07, which becomes index 0. (The upstream text writes `arr[Lo]` with a capital L; it means `arr[lo]`.)
+
 Searching for 78 in 20 evenly spaced values `3, 8, 13, ..., 98` (each is 5 more than the last). The formula needs one calculation: pos = 0 + (78 - 3) * (19 - 0) / (98 - 3) = 75 * 19 / 95 = 15. Index 15 holds 78, so the search ends on the first probe. Binary search needs four probes on the same array (indexes 9, 14, 17, 15).
 
 The speed depends on the data being evenly spread. The second case has values `1, 2, 3, 4, 5, 6, 7, 8, 9, 1000` and searches for 9.
@@ -109,3 +119,27 @@ The speed depends on the data being evenly spread. The second case has values `1
 | 1 to 9, then 1000 | 9 | 9 | 3 |
 
 The huge last value makes every interpolated guess land near the left end, so the search creeps one index at a time.
+
+# algorithms/sorting/heap-sort | after Complexity
+
+The Memory column of the table lists the in-place version of heap sort, which needs 1 extra slot. The code below is a simpler version. It copies every value into a separate min heap and then into a new output array, so it uses O(n) extra memory. The time stays n log(n) either way.
+
+The intro above describes the in-place version, which uses a max heap and moves the largest value to the end of the array. The code on this page uses a min heap and takes the smallest value first. Both give a sorted result.
+
+# algorithms/sorting/shell-sort | after Complexity
+
+The Best and Worst columns assume a well-chosen gap sequence. The code below uses the simple halving gaps (n/2, n/4, ..., 1), and with those the worst case is O(n^2). Better gap sequences give about n (log(n))^2.
+
+This code also does not stop early. For each position it compares all the way back along the gap chain, so even a sorted list costs about n^2 / 2 comparisons in the last pass. The n log(n) best case needs an insertion step that stops at the first value that is already in place.
+
+# algorithms/sorting/radix-sort | after Code
+
+This code only sorts whole numbers that are 0 or larger, or words made of the letters a to z. Negative numbers and decimals do not work. To handle negatives, sort the negatives and the non-negatives separately, or add the smallest value to every number first and subtract it afterwards.
+
+# algorithms/sorting/bucket-sort | after Complexity
+
+The code on this page sorts each bucket with radix sort, not insertion sort. If every value lands in one bucket, the cost is then that of radix sort, about n * k for numbers with k digits, instead of n^2. Space is O(n + number of buckets) and the sort is stable only if the inner sort is stable (radix sort is).
+
+# algorithms/sorting/bucket-sort | after Code
+
+Because each bucket is sorted by radix sort, this code only accepts whole numbers that are 0 or larger.

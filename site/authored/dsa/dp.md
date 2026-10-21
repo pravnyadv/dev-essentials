@@ -36,7 +36,7 @@ How often each question is asked when computing `fib(5)`. Plain recursion makes 
 | fib(0) | 3 | 1 | base case | 0 |
 
 # foundations/memoization | after Top-down: recursion plus a cache
-Order of events for `fib(5)` with the cache, in the order they happen:
+Order of events for `fib(5)` with the cache. A row that says "stores" is not a new call: it is the earlier call of that name finishing. The 13 rows are 9 calls plus 4 stores.
 
 | Step | Call | What happens |
 | --- | --- | --- |
@@ -75,8 +75,30 @@ The three variants on the same items and capacity 10, found by trying every comb
 | Bounded | at most 2 (here) | 14 | D x2 |
 | Unbounded | any number | 14 | D x2 |
 
+In plain words: pick how many copies xi of each item i to take (0 or 1 for 0/1). Add up value vi times xi to get the total value, and weight wi times xi to get the total weight. Maximize the first while the second stays at or below W.
+
+Warning: the Knapsack.js below is the upstream version. Its trace-back step fails on the example above (it reads a row that does not exist and throws) and picks wrong items on other inputs. Use it to see the idea, and rely on the table above. A version that matches the table and the demo:
+
+```js
+function knapsack01(items, W) { // items: [{ weight, value }]
+  const dp = [Array(W + 1).fill(0)];
+  items.forEach(({ weight, value }, k) => {
+    dp.push(dp[k].map((skip, w) => (weight <= w ? Math.max(skip, value + dp[k][w - weight]) : skip)));
+  });
+  const taken = [];
+  for (let i = items.length, w = W; i > 0; i--) {
+    if (dp[i][w] !== dp[i - 1][w]) { taken.push(items[i - 1]); w -= items[i - 1].weight; }
+  }
+  return { best: dp[items.length][W], taken };
+}
+```
+
+The unbounded method in Knapsack.js is a greedy shortcut, not dynamic programming. It takes items by value per weight and can miss the best answer: with capacity 10, item P (weight 6, value 10) and item Q (weight 5, value 8), greedy takes one P for 10, but two Q give 16. It can also add an item that does not fit. For unbounded knapsack the dynamic programming version is best[w] = max over items of (value + best[w - weight]), with best[0] = 0.
+
+The table has one row per item and one column per capacity from 0 to W, so time and space are O(n * W). Keeping only the previous row cuts space to O(W). W is a number, not a size, so doubling W doubles the work even though the input did not get longer to write.
+
 # algorithms/sets/longest-common-subsequence | before Code
-Table for `ABCDGH` (rows) and `AEDFHR` (columns), the first example above. Cell (i, j) is the LCS length of the first i letters of one string and the first j of the other. When the two letters match, take the diagonal cell plus 1. Otherwise take the larger of the cell above and the cell to the left.
+Table for `ABCDGH` (rows) and `AEDFHR` (columns), the first example above. (The code puts its first input along the columns, so its own table is this one turned on its side. The numbers and the answer are the same.) Cell (i, j) is the LCS length of the first i letters of one string and the first j of the other. When the two letters match, take the diagonal cell plus 1. Otherwise take the larger of the cell above and the cell to the left.
 
 |  | (empty) | A | E | D | F | H | R |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -89,6 +111,8 @@ Table for `ABCDGH` (rows) and `AEDFHR` (columns), the first example above. Cell 
 | **H** | 0 | 1 | 1 | 2 | 2 | **3** | 3 |
 
 The bottom right cell is 3. The bold cells mark the matches found when walking back from it, and they spell ADH, as the lesson says.
+
+Complexity: the table has (m + 1) * (n + 1) cells and each takes constant work, so time and space are both O(m * n), where m and n are the string lengths. The second code block below is the same idea written top-down. If the first letters match, they belong in the LCS, so keep that letter and solve the rest. If not, try dropping the first letter of each string in turn and keep the longer answer. The memo stores answers for pairs it has already solved, so each pair of suffixes is solved once.
 
 # algorithms/sets/longest-increasing-subsequence | before Code
 The O(n * n) dynamic programming in the code gives each element a length: the longest increasing subsequence that ends at it. It is 1 plus the best length among earlier smaller elements. On the 16-term example:
@@ -126,16 +150,28 @@ The full table for `kitten` (rows) and `sitting` (columns). Cell (i, j) is the d
 | **e** | 5 | 5 | 4 | 3 | 2 | 2 | 3 | 4 |
 | **n** | 6 | 6 | 5 | 4 | 3 | 3 | 2 | 3 |
 
-Last cell, step by step: letters n and g differ. The three options are deletion (4 + 1 = 5), insertion (2 + 1 = 3) and substitution (3 + 1 = 4). The smallest is 3, the distance given in the Example section.
+Last cell, step by step: letters n and g differ. The three options are: take the cell above and add 1 (4 + 1 = 5, drop the extra letter from kitten), take the cell to the left and add 1 (2 + 1 = 3, add the missing g), or take the diagonal cell and add 1 for the swap (3 + 1 = 4, substitution). The smallest is 3, the distance given in the Example section. In the code below the word `a` runs along the columns, so there the left cell is the one called deletion. The names depend on which word is the rows, the arithmetic does not.
 
 # algorithms/uncategorized/unique-paths | before Algorithms
-Filled grid for the second example, m = 7 columns and n = 3 rows. Each cell is the cell above plus the cell to the left, and the first row and column are all 1. The bottom right cell is 28, matching the example.
+Filled grid for the second example, m = 7 and n = 3 (the grid has 7 columns and 3 rows here, and swapping m and n gives the same answer; the LeetCode page uses m for rows). Each cell is the cell above plus the cell to the left, and the first row and column are all 1. The bottom right cell is 28, matching the example.
 
 |  | col 0 | col 1 | col 2 | col 3 | col 4 | col 5 | col 6 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | **row 0** | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
 | **row 1** | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 | **row 2** | 1 | 3 | 6 | 10 | 15 | 21 | 28 |
+
+# algorithms/uncategorized/unique-paths | after Algorithms
+Correction: the 3 x 2 table above has a typo. The column labels should be 0, 1, 2 and the top-left cell is 1, not 0. The 3 x 2 board is:
+
+|     | 0 | 1 | 2 |
+| --- | --- | --- | --- |
+| **0** | 1 | 1 | 1 |
+| **1** | 1 | 2 | 3 |
+
+Correction on time: the backtracking call tree has one leaf per path, and the number of paths on an n by n board is 2, 6, 20, 70, 252, 924, 3432 for n = 2 to 8. That is much more than 2^n (256 at n = 8). A path has m + n - 2 moves with two choices each, so the safe bound is O(2^(m + n)).
+
+Pascal's triangle starts with the row 1, then 1 1, then 1 2 1, then 1 3 3 1. Each entry is the two entries above it added, which is the same rule as our grid. Rows and positions both count from 0. For m = 7, n = 3: row 8 is 1 8 28 56 70 56 28 8 1, position 2 is 28, the answer. Why: every route has 6 rights and 2 downs, 8 moves in all, so you are choosing which 2 of the 8 moves go down: 8 choose 2 = 28.
 
 # algorithms/uncategorized/unique-paths | before Code
 ```mermaid Unique paths on a square k by k grid: each extra row and column multiplies the count by 3.7 at k = 8, and the factor keeps creeping toward 4
@@ -145,3 +181,19 @@ xychart-beta
   bar "paths" [2, 6, 20, 70, 252, 924, 3432]
 ```
 
+Dividing neighbours gives the factor: 3432 / 924 = 3.7.
+
+# algorithms/math/fibonacci | after Code
+Both iterative functions above expect n of 1 or more. Called with 0 they never return, because the loop counts down from -1 and -1 is never 0. If you need fib(0) = 0, add a line at the top: if (n <= 0) return 0.
+
+The code counts positions from 1: fibonacciNth(1) = 1, fibonacciNth(2) = 1, fibonacciNth(5) = 5, and fibonacci(5) returns [1, 1, 2, 3, 5]. The leading 0 of the sequence above is left out.
+
+The third function uses Binet's formula: fib(n) is the nearest whole number to phi^n / sqrt(5), where phi = (1 + sqrt(5)) / 2, about 1.618. Worked example for n = 10: phi^10 is about 122.992, divided by 2.236 is about 55.004, which rounds to 55, the tenth Fibonacci number. It runs in constant time, but it uses floating point numbers, which lose exactness past 16 digits. From position 71 the answer is off by one, which is why the code refuses positions above 70.
+
+The loop keeps only the last two values, so fibonacciNth takes O(n) time and O(1) space. It is the bottom-up version from the Memoization lesson with the table cut down to two variables. fibonacci(n) keeps the whole list, so it needs O(n) space.
+
+# algorithms/sets/longest-increasing-subsequence | after Code
+Why the tails list works: tails[k] is the smallest value that can end an increasing subsequence of length k + 1. A smaller ending is never worse, because anything that can extend a larger ending can also extend a smaller one. So a new value replaces the first entry that is not smaller than it (that entry stays the best ending for its length), and it is appended only when it beats every entry, which makes the longest length one bigger. tails is always sorted, so each step can find that entry with binary search, which gives O(n log n). The 16-term example is just a convenient test input: a sequence built by reversing the binary digits of 0 to 15 (the Van der Corput sequence).
+
+# algorithms/string/levenshtein-distance | after Code
+Cost: the table has (len(a) + 1) * (len(b) + 1) cells and each takes constant work, so time and space are both O(len(a) * len(b)). Tabulation means filling this table from the smallest sub-problems up, instead of recursing down with a cache as in the memoization lesson.

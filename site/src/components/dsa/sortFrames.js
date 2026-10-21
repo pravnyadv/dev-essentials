@@ -7,9 +7,15 @@ export const SORTS = {
     const snap = (hi, note) => f.push({ a: [...a], hi, done: [...done], note })
     snap([], 'Bubble sort: compare neighbours and swap if they are out of order. Each pass pushes the largest remaining value to the end.')
     for (let end = a.length - 1; end > 0; end--) {
+      let swapped = false
       for (let j = 0; j < end; j++) {
         snap([j, j + 1], `Compare ${a[j]} and ${a[j + 1]}.`)
-        if (a[j] > a[j + 1]) { [a[j], a[j + 1]] = [a[j + 1], a[j]]; snap([j, j + 1], `${a[j + 1]} is bigger, so swap them.`) }
+        if (a[j] > a[j + 1]) { [a[j], a[j + 1]] = [a[j + 1], a[j]]; swapped = true; snap([j, j + 1], `${a[j + 1]} is bigger, so swap them.`) }
+      }
+      if (!swapped) {
+        for (let k = 0; k <= end; k++) done.push(k)
+        snap([], 'No swaps this pass, so the array is already sorted. Stop early.')
+        return f
       }
       done.push(end)
       snap([], `${a[end]} has bubbled to its final place.`)

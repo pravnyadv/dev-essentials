@@ -20,7 +20,9 @@ A **functional requirement** says what the system does: users can upload a photo
 Beginners spend all their time on the functional list. Experienced designers spend it on the second list, because the non-functional numbers decide the architecture. Two products with the same features can need completely different designs if one has 1,000 users and the other has 100 million.
 
 ## Performance and scalability
-These two get confused. If your system is slow for a single user, you have a performance problem. If it is fast for one user but slow when many arrive together, you have a scalability problem. A service is scalable if its performance rises in proportion to the resources added. Usually that means serving more units of work, but it can also mean handling larger units of work, such as a growing dataset. Fixing one does not fix the other. A faster algorithm helps the single user. More machines help the crowd, but only if the design lets work be split up.
+These two get confused. If your system is slow for a single user, you have a performance problem. If it is fast for one user but slow when many arrive together, you have a scalability problem. A service is scalable if its performance rises in proportion to the resources added. Usually that means serving more units of work, but it can also mean handling larger units of work, such as a growing dataset. Here "performance" in the scalability definition means how much work gets done, such as requests served per second. In the sentence before, a "performance problem" meant one request taking too long. Same word, two meanings, so watch which one is meant.
+
+Fixing one does not automatically fix the other. A faster algorithm helps the single user, and usually lets each machine serve more people too, but it cannot grow past one machine. More machines help the crowd, but only if the design lets work be split up, and they do nothing for one slow request.
 
 ## Trade-offs are the core skill
 Every choice buys something and costs something. A cache makes reads fast and risks showing stale data. Copying data to three machines survives a crash and triples the storage bill. There is rarely a best answer, only an answer that fits your numbers. A good design explanation sounds like "I chose X because the load is Y, and the price is Z".
@@ -50,11 +52,11 @@ flowchart TD
 ## A worked example: turning "fast and reliable" into numbers
 A founder says: "The photo feed must be fast and reliable." That is not a requirement yet. Turn it into numbers (all invented).
 
-1. Fast: 95 percent of feed loads finish in under 300 ms, measured at the server.
+1. Fast: 95 percent of feed loads (the 95th percentile, so a few slow ones are allowed) finish in under 300 ms, measured at the server.
 2. Reliable: 99.9 percent availability. A 30-day month has 30 x 24 x 60 = 43,200 minutes. Allowed downtime is 0.1 percent of that, so 43.2 minutes per month.
 3. Cost: a budget of $2,000 per month.
 
-Now ask what each number forces. 43.2 minutes a month means you cannot have one server, because a single reboot or bad deploy eats the budget. Two servers at an invented $70 each is $140, well inside the cost target, so a second server is cheap insurance. The 300 ms target means the feed cannot be assembled from scratch on every request, which points toward caching, a topic for later. Vague words became three numbers, and the numbers pushed the design.
+Now ask what each number forces. 43.2 minutes a month leaves little room. One server has no spare: a long outage, a bad deploy that takes 20 minutes to roll back, or a failed disk could use up most of the budget in one go. Two servers at an invented $70 each is $140, well inside the cost target. They only help if something sends traffic to the healthy one when the other dies, which is the job of a load balancer, a topic for later. The 300 ms target means the feed cannot be assembled from scratch on every request, which points toward caching, a topic for later. Vague words became three numbers, and the numbers pushed the design.
 
 ## What goes wrong: designing for a scale you do not have
 A team of four builds a startup product on a dozen microservices, a message queue and a sharded database "so it scales". It has 200 users. The symptom is that simple features take weeks, deploys break across services, and the cloud bill is high for almost no traffic. You can confirm it by reading the real numbers: requests per second, database size, and CPU use. If one small server sits at 5 percent CPU, the complexity bought nothing yet.
@@ -72,9 +74,9 @@ docs | Google SRE Book: Service Level Objectives | https://sre.google/sre-book/s
 ```
 
 ```quiz
-A founder says "the app must be reliable". What is the best next step? | Pick a database and a cloud provider ; Turn it into a number like 99.9 percent uptime ; Add a second server right away | 1 | A requirement has to be measurable before it can drive a design.
-Your app answers in 80 ms for one user but takes 6 seconds when 5,000 users arrive. What do you have? | A scalability problem under heavy load ; A pure performance problem for one user ; A functional requirement that is missing | 0 | It is fast alone but slow under load, which is the Primer's definition of a scalability problem.
-A 30-day month allows 99.9 percent availability. How much downtime is that? | About 4.3 minutes per month ; About 7 hours per month ; About 43 minutes per month | 2 | 43,200 minutes times 0.001 is 43.2 minutes.
+A founder says "the app must be reliable". What is the best next step? | Pick a database and a cloud provider to build on ; Turn it into a number like 99.9 percent uptime ; Add a second server right away to be safe | 1 | A requirement has to be measurable before it can drive a design.
+Your app answers in 80 ms for one user but takes 6 seconds when 5,000 users arrive. What do you have? | A scalability problem under heavy load ; A pure performance problem for one user ; A performance problem that more machines will fix | 0 | It is fast for one user but slow when many arrive together, which is the definition of a scalability problem.
+A 30-day month has 43,200 minutes. The team raises its target from 99.9 to 99.99 percent. About how much downtime is now allowed per month? | About 7 hours ; About 43 minutes ; About 4 minutes | 2 | 0.01 percent of 43,200 is 4.32 minutes, ten times less than at 99.9 percent.
 ```
 
 ```story
@@ -89,7 +91,7 @@ The System Design Primer | https://github.com/donnemartin/system-design-primer |
 A client sends a request over the network and a server sends back a response. HTTP is the shared language for that conversation, and every extra network round trip costs time you can count.
 
 ## Request and response
-HTTP (Hypertext Transfer Protocol) is a request and response protocol. The client sends one request, the server sends one response. The server never speaks first. A request has a **method** (what to do), a **path** (which resource), headers and sometimes a body. A response has a **status code**, headers and usually a body.
+HTTP (Hypertext Transfer Protocol) is a request and response protocol. The client sends one request, the server sends one response. The client always starts: the server only answers, and never opens a conversation on its own. (The section on when plain request and response is the wrong tool covers what to do when the server needs to push.) A request has a **method** (what to do), a **path** (which resource), headers and sometimes a body. A response has a **status code**, headers and usually a body.
 
 The common methods are these.
 
@@ -108,9 +110,9 @@ Status codes are grouped by their first digit. 2xx means success (200 OK, 201 Cr
 **Headers** are small key and value lines that carry extra information: the content type, a login token, how long a response may be cached, and so on.
 
 ## What carries HTTP
-HTTP does not move bits itself. It rides on a lower layer. **TCP** (Transmission Control Protocol) opens a connection with a handshake, numbers every packet, adds a checksum to catch corruption, and waits for acknowledgements. Lost packets are resent, and after repeated timeouts the connection is dropped. It also slows the sender when the receiver or network is overloaded (flow and congestion control). That reliability costs time and memory. A busy server holding many open connections uses a lot of memory, and a connection pool to a database or cache helps. **UDP** (User Datagram Protocol) sends packets with no handshake, no ordering and no resend. It is faster and loses data silently. Web pages, databases, email, FTP and SSH use TCP. Live video, voice calls and games often use UDP, where a late packet is worthless and a lost one is tolerable.
+HTTP does not move bits itself. It rides on a lower layer. **TCP** (Transmission Control Protocol) opens a connection with a handshake, numbers every packet, adds a checksum to catch corruption, and waits for acknowledgements. Lost packets are resent, and after repeated timeouts the connection is dropped. It also slows the sender when the receiver or network is overloaded (flow and congestion control). That reliability costs time and memory. Every open connection takes memory on the server, so a busy server cannot hold unlimited connections. (This is also why clients reuse connections instead of opening new ones, which the next section covers.) **UDP** (User Datagram Protocol) sends packets with no handshake, no ordering and no resend. It is faster and loses data silently. Web pages, databases, email, FTP and SSH use TCP. Live video, voice calls and games often use UDP, where a late packet is worthless and a lost one is tolerable.
 
-**TLS** (Transport Layer Security) is what turns HTTP into HTTPS. After the TCP connection opens, client and server run a handshake to agree on keys, then encrypt everything. This stops others on the network from reading or changing traffic, and it proves the server is who it claims to be through a certificate.
+**TLS** (Transport Layer Security) is what turns HTTP into HTTPS. After the TCP connection opens, client and server run a handshake to agree on keys, then encrypt everything. This stops others on the network from reading or changing traffic, and it proves the server is who it claims to be through a certificate (a signed document that says this website owns this key).
 
 ## Connections cost round trips
 A **round trip** is one message out and one reply back, and its length is the **round-trip time**, RTT. Opening a TCP connection takes one RTT. A TLS 1.3 handshake takes one more. A TLS 1.2 handshake takes two. Only then can the request go out.
@@ -149,7 +151,7 @@ HTML first:
 
 That is 3 RTT, so 150 ms before the browser even sees the six other files.
 
-HTTP/1.1 then opens up to six connections in parallel, one per file. Each new connection needs TCP, TLS and the request, so 3 more RTT, which is 150 ms. Total is 300 ms.
+HTTP/1.1 can reuse the first connection for one file, but each connection carries one request at a time, so the browser opens five more in parallel. Each new connection needs TCP, TLS and the request, 3 RTT, which is 150 ms. Total is 300 ms.
 
 HTTP/2 reuses the existing connection and sends all six requests together. That takes 1 RTT, so 50 ms. Total is 200 ms. A third of the time disappeared with no faster hardware. The lesson is that distance times round trips is often the real cost of a page, and the way to win is fewer round trips or shorter distance (a [CDN](/sd/docs/scaling/cdn-and-edge) shortens it).
 
@@ -187,13 +189,13 @@ article | HTTP/1 to HTTP/2 to HTTP/3 | https://bytebytego.com/guides/http1-http2
 ```
 
 ```quiz
-Which status code class means the client made a mistake? | 4xx ; 5xx server errors ; 3xx redirects | 0 | 4xx codes such as 400, 404 and 429 report client errors.
-RTT is 40 ms. A TLS 1.3 HTTPS request on a new connection needs TCP, TLS and one request. How long until the response arrives, ignoring server time? | 40 ms ; 80 ms ; 120 ms | 2 | That is three round trips, 3 x 40 = 120 ms.
-Why do voice calls often use UDP instead of TCP? | A late packet is useless, so resending it wastes time ; UDP encrypts the audio and TCP does not ; UDP guarantees every packet arrives in order | 0 | TCP resends and orders packets, which adds delay that real-time audio cannot use.
+A client sends PUT /users/7 with the same body and the connection drops before any reply. Is it safe to send it again? | No, a repeat would create a second user record ; Yes, PUT is idempotent, so a repeat is safe ; Only after the server first returns a 200 reply | 1 | PUT replaces the resource, so doing it twice equals doing it once. POST is the method that could create a duplicate.
+RTT is 40 ms. A TLS 1.3 HTTPS request on a new connection needs TCP, TLS and one request. How long until the response arrives, ignoring server time? | 80 ms ; 120 ms ; 160 ms | 1 | That is three round trips, 3 x 40 = 120 ms.
+Why do voice calls often use UDP instead of TCP? | A late packet is useless, so resending it wastes time ; UDP encrypts the audio and TCP leaves it in the clear ; UDP guarantees every packet arrives, in order, and fast | 0 | TCP resends and orders packets, which adds delay that real-time audio cannot use.
 ```
 
 ```story
-An engineer sees an API that answers in 20 ms on the server but takes 180 ms for users on another continent. Nothing is wrong with the code. Three round trips of 55 ms each are spent on handshakes before the first byte of the request is sent.
+An engineer sees an API that answers in 20 ms on the server but takes about 185 ms for users on another continent. Nothing is wrong with the code. Two round trips of 55 ms each go to the TCP and TLS handshakes, and a third carries the request and its reply.
 ```
 
 ```adapted
@@ -297,14 +299,14 @@ Changing a DNS record and testing it from your own laptop, which still has the o
 ```resources
 repo | The System Design Primer: Domain name system | https://github.com/donnemartin/system-design-primer#domain-name-system | Donne Martin | Concise description of the hierarchy, record types and routing policies, which this lesson adapts.
 docs | RFC 1035: Domain names, implementation and specification | https://www.rfc-editor.org/rfc/rfc1035 | IETF | The original DNS specification, which describes resolvers hiding the distribution of data among name servers from the user.
-article | How Does the Domain Name System (DNS) Lookup Work? | https://bytebytego.com/guides/how-does-the-domain-name-system-dns-lookup-work/ | ByteByteGo | Describes the root, TLD and authoritative levels and the caching layers, to compare with the steps above.
+article | How Does the Domain Name System (DNS) Lookup Work? | https://bytebytego.com/guides/how-does-the-domain-name-system-dns-lookup-work/ | ByteByteGo | Describes the root, TLD and authoritative levels and the resolver's trip through them, to compare with the steps above. The caching layers are in the next resource.
 article | What Happens When You Type a URL Into Your Browser? | https://bytebytego.com/guides/what-happens-when-you-type-a-url-into-your-browser/ | ByteByteGo | Walks the same path from URL to page, including the DNS cache layers and the TCP connection, for comparison with the chain here.
 ```
 
 ```quiz
-In a DNS lookup, who finally returns the IP address of example.com? | The root server ; The authoritative server ; The TLD server | 1 | The root and TLD servers only point onward, the authoritative server holds the records.
-A record has TTL 600. You change it at 10:00. Latest time an old cached answer can still be served? | 10:10 ; 10:06 ; 11:00 | 0 | A cache can hold the old answer for 600 seconds, which is 10 minutes.
-Which record type points a name at another name? | A ; MX mail record ; CNAME | 2 | A CNAME is an alias that points to a different name.
+Which server holds the real record for example.com, so its answer is the one the resolver trusts? | The root server that starts every lookup ; The authoritative server for the domain ; The TLD server for the .com suffix | 1 | The root and TLD servers only point onward, the authoritative server holds the records.
+A record has TTL 600. A resolver fetched it at 10:00 and you change the record at 10:00. At what time does that resolver stop returning the old answer? | 10:10 ; 10:06 ; 11:00 | 0 | A cache can hold the answer for 600 seconds, which is 10 minutes.
+www.shop.example should always follow wherever shop.example points, with no second record to update. Which record type do you add for www? | A, a fixed copy of shop's IP address ; MX, pointing at a mail server ; CNAME, an alias to shop.example | 2 | A CNAME makes www an alias of shop.example, so changing the target once moves both.
 ```
 
 ```story
@@ -321,9 +323,9 @@ An API is the contract that lets a client and a server talk. REST, RPC and Graph
 ## Three styles
 An **API** (application programming interface) is the set of requests a server accepts and the responses it gives. The style you pick shapes how clients use it for years.
 
-**REST** models the world as resources with names. A path like `/persons/1234/items` identifies things, and HTTP methods say what to do: GET reads, POST creates, PUT replaces, DELETE removes. The server stays stateless, so any request can go to any server, which suits caching and scaling. REST is the usual choice for public APIs. Its core qualities are using one URI per resource whatever the operation, changing resources through representations (verbs, headers, body), and using the standard status codes for errors instead of inventing new ones.
+**REST** models the world as resources with names. A path like `/persons/1234/items` identifies things, and HTTP methods say what to do: GET reads, POST creates, PUT replaces, DELETE removes. The server stays stateless, so any request can go to any server, which suits caching and scaling. REST is the usual choice for public APIs. Three of its main qualities are using one URI per resource whatever the operation, changing resources through representations (verbs, headers, body), and using the standard status codes for errors instead of inventing new ones.
 
-**RPC** (remote procedure call) models actions. The client calls a function on a remote machine as if it were local, such as `addItemToUsersItemsList`. Under the hood a client stub packs the procedure id and arguments into a message, the network carries it, and a server stub unpacks it and runs the matching function. Remote calls are slower and less reliable than local ones, so it helps that they look different in code. Its downsides are tight coupling between client and service, a new endpoint for every new action, and being harder to debug and cache. **gRPC** is a popular RPC system. It uses a compact binary format (Protocol Buffers) over HTTP/2, with a schema file that generates client code in many languages. It is fast and strictly typed, and is often used between internal services.
+**RPC** (remote procedure call) models actions. The client calls a function on a remote machine, and the code looks almost like a local call, such as `addItemToUsersItemsList`. That is convenient, but it hides the network: a remote call can be slow or fail in ways a local one never does, so good RPC code marks its remote calls clearly. Under the hood a client stub packs the procedure id and arguments into a message, the network carries it, and a server stub unpacks it and runs the matching function. Many web APIs borrow the idea and name each URL after an action, as in the table below. Its downsides are tight coupling between client and service, a new endpoint for every new action, and being harder to debug and cache. **gRPC** is a popular RPC system. It uses a compact binary format (Protocol Buffers) over HTTP/2, with a schema file that generates client code in many languages. It is fast and strictly typed, and is often used between internal services.
 
 **GraphQL** gives the client one endpoint and a query language. The client lists exactly the fields it wants, even across related objects, and the server returns just those. It avoids both many round trips and large unused payloads.
 
@@ -334,7 +336,7 @@ An **API** (application programming interface) is the set of requests a server a
 | Remove an item | POST /removeItem | DELETE /items/456 |
 
 ## Choosing between them
-REST fits public APIs and data that is naturally a set of things. Tools, caches and browsers already understand it. RPC fits internal calls where speed and a typed contract matter, and where an action does not map to a noun. GraphQL fits clients with varied screens, such as mobile apps, where one view needs data from many places and bandwidth is tight. The cost of GraphQL is on the server: arbitrary queries can be expensive, so you need limits, and HTTP caching is harder because queries usually go to one URL as POST requests.
+REST fits public APIs and data that is naturally a set of things. Tools, caches and browsers already understand it. RPC fits internal calls where speed and a typed contract matter, and where an action does not map to a noun. GraphQL fits clients with varied screens, such as mobile apps, where one view needs data from many places and bandwidth is tight. The cost of GraphQL is on the server: arbitrary queries can be expensive, so you need limits, and HTTP caching is harder because queries usually go to one URL as POST requests. RPC that uses GET for reads can be cached as well as REST; the gap is that tools cannot assume it.
 
 The three styles compared on the points the lesson uses to choose.
 
@@ -342,18 +344,18 @@ The three styles compared on the points the lesson uses to choose.
 | --- | --- | --- | --- |
 | Models | Resources with names | Actions as function calls | One query over related objects |
 | Endpoints | One path per resource | One per action | One for everything |
-| HTTP caching | Easy, tools understand it | Harder | Harder, queries usually go as POST |
+| HTTP caching | Easy, tools understand it | Harder if everything is a POST | Harder, queries usually go as POST |
 | Fits | Public APIs, sets of things | Internal calls, typed contract | Mobile screens needing data from many places |
 | Watch out for | Several round trips for nested views | Tight coupling, a new endpoint per action | Expensive arbitrary queries, so set limits |
 
 ## Versioning
-Clients you do not control will not upgrade when you do. Adding a new optional field is safe. Renaming or removing a field breaks people. Put a version in the URL (`/v2/persons`) or a header, keep the old one running for a stated period, and measure who still uses it before turning it off.
+Clients you do not control will not upgrade when you do. Adding a new optional field is usually safe, as long as clients ignore fields they do not know. Renaming or removing a field breaks people. Put a version in the URL (`/v2/persons`) or a header, keep the old one running for a stated period, and measure who still uses it before turning it off.
 
 ## Pagination
-Never return a million rows. Return a page. **Offset pagination** says "skip 20, give me 10". It is simple, and lets users jump to page 7. **Cursor pagination** says "give me 10 items after this item". The cursor is a marker, often the last item's id or timestamp, encoded in a token.
+Never return a million rows. Return a page. **Offset pagination** says "skip 20, give me 10". It is simple, and lets users jump to page 7. **Cursor pagination** says "give me 10 items after this item". The cursor is a marker, often the last item's id or timestamp, encoded in a token. The trade-off is that a cursor cannot jump straight to page 7, so it suits infinite scroll and "next" buttons better than numbered pages.
 
 ## Idempotency keys
-A POST is not safe to repeat. If a client sends "charge $50", the connection drops, and it cannot tell whether the charge happened, retrying risks charging twice. An **idempotency key** fixes this. The client generates a unique id per operation and sends it in a header. The server stores the key with the result. If the same key arrives again, the server returns the stored result instead of running the work again. Stripe documents this pattern for its payments API.
+An operation is **idempotent** if doing it twice has the same effect as doing it once. GET, PUT and DELETE are meant to be idempotent. POST is not: sending "charge $50" twice charges twice. If a client sends "charge $50", the connection drops, and it cannot tell whether the charge happened, retrying risks charging twice. An **idempotency key** fixes this. The client generates a unique id per operation and sends it in a header. The server stores the key with the result. If the same key arrives again, the server returns the stored result instead of running the work again. Stripe documents this pattern for its payments API.
 
 ```mermaid The server remembers the key, so a retry gets the saved answer instead of a second charge
 sequenceDiagram
@@ -398,7 +400,7 @@ sequenceDiagram
 A mobile app times out waiting for a "create order" call and retries. The first call had actually succeeded, so the customer has two orders. Symptoms are duplicate rows with identical contents and timestamps a few seconds apart, usually clustered around slow network periods. Confirm it by grouping orders by user and contents and looking for near-identical pairs. Fix it by requiring an idempotency key on POST /orders and storing it with a unique constraint.
 
 ## When each style is the wrong tool
-REST is awkward for operations that are not nouns (the Primer's example is moving expired documents to an archive folder), for nested views that need several round trips, and for responses that grow bloated as fields are added. It is also awkward for queries such as "all records updated in the last hour that match these events", which do not fit a simple path. gRPC does not work directly from a browser without a proxy, so it is a poor public API. GraphQL is overkill for a small API with two clients that need the same shape. Offset pagination is wrong for feeds that change quickly or tables with millions of rows.
+REST is awkward for operations that are not nouns (the Primer's example is moving expired documents to an archive folder), for nested views that need several round trips, and for responses that grow bloated as fields are added. It is also awkward for queries such as "all records updated in the last hour that match these events", which do not fit a simple path. gRPC does not work directly from a browser without a proxy, so it is a poor public API. GraphQL is overkill for a small API with two clients that need the same shape. Offset pagination is a poor fit for feeds that change quickly or tables with millions of rows.
 
 ## Common mistake
 Using offset pagination on a live feed and then chasing "duplicate item" bug reports.
@@ -412,9 +414,9 @@ article | We need tool support for keyset pagination | https://use-the-index-luk
 ```
 
 ```quiz
-A client retries POST /charge after a timeout and the customer is billed twice. What prevents this? | Switching the request to GET ; Sending a unique idempotency key with each charge ; Making the timeout longer | 1 | The server returns the saved result when it sees the same key again.
+A client retries POST /charge after a timeout and the customer is billed twice. What prevents this? | Switching the request to GET ; Sending a unique idempotency key per charge ; Adding a longer timeout so the response arrives | 1 | The server returns the saved result when it sees the same key again.
 A feed has page size 3. After page 1 shows ids 10, 9, 8, two new posts arrive. Offset 3 returns what? | 7, 6, 5 ; 8, 7, 6 ; 9, 8, 7 | 2 | The two new posts push everything down by two, so 9 and 8 repeat.
-Which style suits a mobile screen that needs a few fields from many related objects in one call? | GraphQL ; gRPC ; Plain RPC | 0 | The client names exactly the fields it needs across related data.
+A public API for third-party developers must be easy to call from any language with plain HTTP tools and a browser. Which style fits best? | REST ; gRPC ; GraphQL | 0 | gRPC needs a proxy to work from a browser, and REST works with the tools every client already has.
 ```
 
 ```story
@@ -434,7 +436,7 @@ Latency is how long one request takes, and throughput is how many requests finis
 ## Why averages lie
 Latency is not one number. It varies request to request. The **average** (mean) squashes that into one value, and a few very slow requests are hidden inside it. Users do not experience the average. They experience their own request.
 
-So we look at **percentiles**. The p50 (median) is the value that half of requests beat. The p95 is the value that 95 percent of requests beat, so 1 in 20 is slower. The p99 means 1 in 100 is slower. The slow end is called the **tail**. The demo above lets you drag latencies around and watch the average stay calm while p99 jumps.
+So we look at **percentiles**. The p50 (median) is the latency that half of requests come in at or under. The p95 is the latency that 95 percent of requests come in at or under, so at most 1 in 20 is slower. The p99 means at most 1 in 100 is slower. The slow end is called the **tail**. The demo above lets you raise the share of slow requests and watch the median barely move while the average and p99 climb. Try 1 slow request, then 2, and see where p99 flips.
 
 ## Tail latency at fan-out
 Modern requests often fan out: one user action calls many servers and waits for all of them. Then the slowest one decides the response time. Google's paper "The Tail at Scale" explains that short slow episodes that do not matter in a small system can dominate the performance of a large one.
@@ -489,7 +491,7 @@ You measure 100 requests (invented). 98 take 50 ms and 2 take 3,000 ms.
 3. p95: the 95th is still 50 ms.
 4. p99: the 99th and 100th are 3,000 ms, so p99 is 3,000 ms.
 
-A dashboard showing "average 109 ms" looks healthy. Yet 2 percent of users waited three seconds. Then do the Little's law check. Traffic is 200 requests per second, and the typical request takes 0.25 seconds, so $L = 200 \times 0.25 = 50$ requests in flight on average. A server with only 40 worker slots would queue, and queueing makes latency climb for everyone.
+A dashboard showing "average 109 ms" looks healthy. Yet 2 percent of users waited three seconds. Now the Little's law check, for a different service. Traffic is 200 requests per second and the average request takes 0.25 seconds (W is an average), so $L = 200 \times 0.25 = 50$ requests in flight. A server with only 40 worker slots would queue, and queueing makes latency climb for everyone.
 
 ```mermaid Little law with the worked numbers: 200 arrivals per second at 0.25 seconds each keep 50 requests in flight
 flowchart LR
@@ -500,13 +502,13 @@ flowchart LR
 ```
 
 ## What goes wrong: a healthy average with angry users
-A team alerts on average latency under 200 ms. The graph is flat and green. Support still hears "the app hangs sometimes". The cause is a slow dependency that hits 3 percent of calls. The symptom is that complaints arrive while the dashboard stays green, and heavy users complain most, since they make more calls and meet the tail more often. To confirm, plot p95 and p99 per endpoint and compare slow requests' traces against fast ones. The fix starts with alerting on percentiles, as the Google SRE book recommends, and then fixing or isolating the slow path.
+A team alerts on average latency under 200 ms. The graph is flat and green. Support still hears "the app hangs sometimes". The cause is a slow dependency that hits 3 percent of calls. The symptom is that complaints arrive while the dashboard stays green, and heavy users complain most, since they make more calls and meet the tail more often. To confirm, plot p95 and p99 per endpoint and compare slow requests' traces against fast ones. The fix starts with measuring and alerting on percentiles, since the Google SRE book prefers percentiles to the mean for latency, and then fixing or isolating the slow path.
 
 ## When averages and single numbers are the wrong tool
 Averages are fine for throughput over a long window, or for cost (total seconds of compute). They are wrong for anything a user waits on. Percentiles are also not additive: you cannot add the p99 of two services to get the p99 of the chain. Measure the whole request end to end. With very few requests, a p99 is just the maximum, so do not trust it until you have hundreds or thousands of samples.
 
 ## Common mistake
-Reporting only the average latency, and calling a service fast when 1 in 50 requests takes three seconds.
+Adding the p99 of each service in a chain to get the chain's p99. The symptom is a 300 ms budget that is met on paper and blown in production, because the tails rarely line up and the sum matches no real request. The fix is to time the whole call from the client.
 
 ```resources
 repo | The System Design Primer: Latency vs throughput | https://github.com/donnemartin/system-design-primer#latency-vs-throughput | Donne Martin | The short definitions and the appendix table of numbers this lesson adapts.
@@ -519,6 +521,7 @@ tool | Numbers Every Programmer Should Know By Year | https://colin-scott.github
 99 requests take 10 ms and 1 takes 1,000 ms. What is the mean? | About 10 ms ; About 20 ms ; About 100 ms | 1 | (99 x 10 + 1000) / 100 = 19.9 ms, so the mean is near 20 ms while p99 is still 1,000 ms.
 Each of 20 servers is slow 5 percent of the time. A request needs all of them. Roughly what share of requests is slow? | About 64 percent ; About 5 percent ; About 20 percent | 0 | 1 minus 0.95 to the power 20 is about 0.64.
 A service gets 300 requests per second and each takes 0.2 seconds. How many are in flight on average? | 15 ; 1,500 ; 60 | 2 | Little's law gives 300 x 0.2 = 60.
+Your dashboard shows average latency of 80 ms and it is flat, but users report hangs. What do you check first? | A longer averaging window ; Per-endpoint p95 and p99 ; The server CPU average | 1 | Hangs live in the slowest few percent, which an average hides and a percentile shows.
 ```
 
 ```story
@@ -540,9 +543,9 @@ You cannot choose between designs without a sense of scale. Is the database 10 G
 
 **Seconds in a day** is 24 x 60 x 60 = 86,400. Round it to 100,000, a little high. Dividing by it is easy: 10 million events per day is about 100 per second.
 
-**QPS** (queries per second) is requests divided by seconds. The average hides busy times, so multiply by a **peak factor**, often 2 to 5, depending on how spiky traffic is. Servers must be sized for the peak.
+**QPS** (queries per second) is requests divided by seconds. The average hides busy times, so multiply by a **peak factor**, often 2 to 5, depending on how spiky traffic is. Servers must be sized for the peak. If a launch or feature could push traffic past that range, use a higher factor or plan for it separately.
 
-**Storage** is items per day x size per item x 365 x number of copies. **Bandwidth** is requests per second x bytes per request.
+**Storage** is items per day x size per item x 365 x number of copies. **Bandwidth** is requests per second x bytes per request. Network speeds are quoted in bits, file sizes in bytes, so multiply megabytes per second by 8 to get megabits per second.
 
 ## The method
 1. Write down users and behavior as assumptions: daily active users, actions per user per day.
@@ -579,12 +582,12 @@ Storage:
 4. With three copies for safety: about 6.6 PB per year.
 
 Bandwidth:
-1. Upload at peak: 75 x 2 MB = 150 MB per second, roughly 1.2 Gbit/s.
-2. Downloads, at an average 200 KB per view: 2,000 x 0.2 MB = 400 MB per second on average, or about 3.2 Gbit/s. At peak, three times that, about 9.6 Gbit/s.
+1. Upload at peak: 75 x 2 MB = 150 MB per second x 8 = 1,200 Mbit/s, roughly 1.2 Gbit/s.
+2. Downloads, at an average 200 KB per view: 2,000 x 0.2 MB = 400 MB per second on average, x 8 = 3,200 Mbit/s, or about 3.2 Gbit/s. At peak, three times that, about 9.6 Gbit/s.
 
 Machines: if one app server handles 500 requests per second, peak reads of 6,000 plus 75 uploads need about 13 servers. Add headroom and redundancy and say 20.
 
-What the numbers tell us: the data is huge, so photos belong in object storage, not the main database. Outbound bandwidth is the pressure point, so a [CDN](/sd/docs/scaling/cdn-and-edge) is not optional. The write rate of 75 per second is small, so writes do not need exotic scaling. The estimate chose the architecture. The [sales rank](/sd/docs/practice/sales-rank) and [query cache](/sd/docs/practice/query-cache) practice designs use the same arithmetic.
+What the numbers tell us: the data is huge, so photos belong in object storage, not the main database. Outbound bandwidth is the pressure point, so a [CDN](/sd/docs/scaling/cdn-and-edge) is the natural answer: serving 9.6 Gbit/s from our own servers would cost far more. The write rate of 75 per second is small, so writes do not need exotic scaling. The estimate chose the architecture. The [sales rank](/sd/docs/practice/sales-rank) and [query cache](/sd/docs/practice/query-cache) practice designs use the same arithmetic.
 
 ## What goes wrong: forgetting the peak
 A team sizes servers from average traffic, 2,000 requests per second, with a little headroom. The product gets featured and traffic at 7 p.m. is six times the daily average. Servers saturate, latency climbs, and the load balancer starts returning errors. The symptom is health on dashboards that average over a day, with failures at specific hours. Confirm it by plotting requests per second per minute, not per day, and comparing the busiest minute to the mean.
@@ -612,12 +615,12 @@ tool | Numbers Every Programmer Should Know By Year | https://colin-scott.github
 
 ```quiz
 10 million events happen per day. About how many per second on average? | About 1,000 ; About 100 ; About 10 | 1 | 10,000,000 divided by roughly 100,000 seconds is about 100.
-Which approximation matches 2 to the power 30? | One million ; One trillion ; One billion | 2 | 2 to the 30 is 1,073,741,824, about a billion.
+Average traffic is 2,000 requests per second, the peak factor is 3, and one server handles 500 per second. About how many servers before redundancy? | About 12 ; About 4 ; About 40 | 0 | 2,000 x 3 = 6,000 at peak, divided by 500 per server is 12.
 A feature gets 1 million writes of 5 KB per day, with 3 copies kept. About how much storage per year? | About 0.5 TB ; About 5 TB ; About 50 TB | 1 | 1,000,000 x 5 KB is 5 GB a day, x 365 is about 1.8 TB, x 3 copies is about 5.5 TB.
 ```
 
 ```story
-A founder is told "we will need a big cluster for photos". A ten-minute estimate shows 75 uploads per second, which one modest server handles easily, but 3 Gbit/s of downloads, which one server cannot send. The money goes to a CDN instead of a bigger database, and the launch survives.
+A founder is told "we will need a big cluster for photos". A ten-minute estimate shows 75 uploads per second, which one modest server handles easily, but 3 Gbit/s of downloads on average, and three times that at peak, more than one ordinary server should be asked to send. The money goes to a CDN instead of a bigger database, and the launch survives.
 ```
 
 ```adapted

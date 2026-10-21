@@ -2,14 +2,14 @@
 A vector is a list of numbers. The dot product measures how much two vectors point the same way. A large share of modern AI is this operation repeated.
 
 ## Before you start
-This chapter is the math underneath everything you have used so far: prompts, embeddings, retrieval and agents. You have already seen what these things do. Here you see why they work, using small numbers you can do by hand. Take it one lesson at a time. If a formula gets heavy, read the worked example and the picture first, and come back to the formula later.
+This chapter is the math underneath everything you have used so far: prompts, embeddings (lists of numbers that stand for meaning), retrieval and agents. You have already seen what these things do. Here you see why they work, using small numbers you can do by hand. Take it one lesson at a time. If a formula gets heavy, read the worked example and the picture first, and come back to the formula later.
 
 ## The idea
-Represent a thing as numbers. A word, an image or a sentence becomes a vector such as [0.2, 0.9, -0.1]. The dot product multiplies matching entries and adds them: $a \cdot b = a_1 b_1 + a_2 b_2 + \dots$ Think of each vector as an arrow from the middle of a graph to the point it names, so its direction is where the arrow points. Large and positive means similar direction, near zero means unrelated, negative means opposite.
+Represent a thing as numbers. A word, an image or a sentence becomes a vector such as [0.2, 0.9, -0.1]. The dot product multiplies matching entries and adds them: $a \cdot b = a_1 b_1 + a_2 b_2 + \dots$ Think of each vector as an arrow from the middle of a graph to the point it names, so its direction is where the arrow points. The sign tells you the rough direction: positive means the arrows lean the same way, zero means a right angle, negative means they lean apart. How big the number is also depends on how long the arrows are, so for a fair comparison of direction use cosine, below.
 
 $$a \cdot b = a_1 b_1 + a_2 b_2 + \dots + a_n b_n$$
 
-Cosine similarity divides out the lengths so only direction counts: $\cos(a, b) = \frac{a \cdot b}{|a|\,|b|}$, where |a| is the square root of the sum of squares. It always falls between -1 and 1.
+Cosine similarity divides out the lengths so only direction counts: $\cos(a, b) = \frac{a \cdot b}{|a|\,|b|}$, where |a| is the square root of the sum of squares. For any vector that is not all zeros, it falls between -1 and 1.
 
 $$\cos(a,b) = \frac{a \cdot b}{\lVert a \rVert \, \lVert b \rVert}$$
 
@@ -17,13 +17,13 @@ $$\cos(a,b) = \frac{a \cdot b}{\lVert a \rVert \, \lVert b \rVert}$$
 Take a = [1, 2] and b = [2, 1]. The dot product is 1×2 + 2×1 = 4. The lengths are both √5 ≈ 2.236, and √5 × √5 = 5. So cosine is 4 / 5 = 0.8, quite similar. For a = [1, 0] and c = [0, 1], the dot product is 0, so cosine is 0: unrelated.
 
 ## Where you will see it
-Embedding search ranks documents by cosine similarity to the query. Later you will meet the same operation inside attention and inside every neuron, but you do not need those yet. Learn this one operation well.
+Embedding search typically ranks documents by cosine similarity to the query (or by dot product when the vectors are already scaled to length 1). Later you will meet the same operation inside attention and inside every neuron, but you do not need those yet. Learn this one operation well.
 
 ## Try it
-Drag the two arrows in the demo above and watch the dot product and cosine change.
+Move the two angle sliders in the demo above and watch the dot product and cosine change. The lengths stay fixed, so the cosine depends only on the angle.
 
 ## Worked example: recommending a song
-You: [fast 0.9, acoustic 0.1, sad 0.2]. Song A: [0.8, 0.0, 0.1]. Song B: [0.1, 0.9, 0.9]. Dot with A: 0.9×0.8 + 0.1×0 + 0.2×0.1 = 0.74. Dot with B: 0.9×0.1 + 0.1×0.9 + 0.2×0.9 = 0.36. Song A fits you better. The songs are all about the same size, so the plain dot product is fair here. Search engines, recommendations and chatbots all use this idea at much bigger scale, with hundreds of numbers instead of three.
+You: [fast 0.9, acoustic 0.1, sad 0.2]. Song A: [0.8, 0.0, 0.1]. Song B: [0.1, 0.9, 0.9]. Dot with A: 0.9×0.8 + 0.1×0 + 0.2×0.1 = 0.74. Dot with B: 0.9×0.1 + 0.1×0.9 + 0.2×0.9 = 0.36. Song A fits you better. Song B is a bit longer than Song A (about 1.28 against 0.81), so the plain dot product slightly favours B, and A still wins. Cosine agrees by a wide margin: about 0.99 for A and 0.30 for B. Search engines, recommendations and chatbots all use this idea at much bigger scale, with hundreds of numbers instead of three.
 
 ## How length and direction separate
 Every vector has a length, written |a|. For [3, 4] it is √(3² + 4²) = √25 = 5. Dividing each entry by the length gives [0.6, 0.8], a vector of length 1 that points the same way. Cosine similarity is the dot product of two such length-1 vectors, which is why it ignores size. Doubling a vector, from [1, 2] to [2, 4], doubles its dot products but leaves its cosine with [1, 2] at exactly 1. Flip it to [-1, -2] and the cosine is -1. A vector like [2, -1] gives dot product 0 with [1, 2], so the cosine is 0.
@@ -41,7 +41,7 @@ The table ranks the same two documents both ways for the query a = [1, 1], whose
 The dot product picks Y because it is long, and cosine picks X because it points the same way.
 
 ## What goes wrong
-Embedding vectors (lists of numbers that stand for meaning) are learned from how words are used, not from a dictionary. Words like "hot" and "cold" appear in similar sentences, so they can score a high cosine even though they are opposites. A high score means "used in similar places", not "means the same". You can confirm this by printing the nearest neighbors of a few words and reading them. A second failure is an all-zero vector, whose length is 0, so the cosine divides by zero and returns an error or not-a-number.
+Embedding vectors are learned from how words are used, not from a dictionary. Words like "hot" and "cold" appear in similar sentences, so they can score a high cosine even though they are opposites. A high score means "used in similar places", not "means the same". You can confirm this by printing the nearest neighbors of a few words and reading them. A second failure is an all-zero vector, whose length is 0, so the cosine divides by zero and returns an error or not-a-number.
 
 ## Check it by hand
 Pick a = [3, 4], b = [6, 8] and c = [4, -3]. Work out $a \cdot b$, $a \cdot c$ and the three lengths. You should get $a \cdot b = 50$, $a \cdot c = 0$, lengths 5, 10 and 5. Then the cosine of a and b is 50 / (5 × 10) = 1, and the cosine of a and c is 0. Same direction and a right angle, found with arithmetic alone.
@@ -57,8 +57,8 @@ article | The Illustrated Word2vec | https://jalammar.github.io/illustrated-word
 
 ```quiz
 a = [1, 2] and b = [3, 0]. What is the dot product a · b? | 3 ; 6 ; 5 | 0 | Multiply matching entries and add: 1 × 3 + 2 × 0 = 3.
-Two embeddings have a cosine similarity near 0. What does that mean? | They are nearly the same direction ; They point in opposite directions ; They are unrelated in direction | 2 | Cosine 1 means the same direction, 0 means unrelated and -1 means opposite.
-You compare a short note and a very long article by raw dot product, and the long one always wins. What is going on? | Longer vectors give bigger dot products ; Longer articles are always more relevant ; Dot products ignore vector length entirely | 0 | Length inflates the dot product. Cosine similarity divides the lengths out so only direction counts.
+Query [1, 1]. Document P = [2, 2] and document Q = [1, 0]. Which has the higher cosine with the query? | Q, because its dot product is smaller ; P, because it points exactly the same way ; Q, because it is the shorter vector | 1 | P has cosine 1 (same direction, length ignored). Q has cosine 1 / 1.414 = 0.707, so P wins.
+You compare a short note and a very long article by raw dot product, and the long one always wins. What is going on? | Dot products ignore vector length entirely ; Short notes can never match a long article ; Longer vectors give bigger dot products | 2 | Length inflates the dot product. Cosine similarity divides the lengths out so only direction counts.
 ```
 
 ```story
@@ -69,13 +69,13 @@ A music app wants to suggest songs. It describes you as a list of numbers: how m
 A matrix is a grid of numbers that transforms vectors. A tensor is the same idea with any number of dimensions. Models are mostly matrix multiplication.
 
 ## The idea
-A matrix with 2 rows and 3 columns turns a 3-number vector into a 2-number vector. Each output entry is a dot product of one row with the input. Multiplying a whole batch of vectors by one matrix does many dot products at once, which is what GPUs are built for. A tensor is an array with any number of axes: a vector has 1, a matrix has 2, a batch of images has 4 (batch, channels, height, width).
+A matrix with 2 rows and 3 columns turns a 3-number vector into a 2-number vector. Each output entry is a dot product of one row with the input. Multiplying a whole batch of vectors by one matrix does many dot products at once, which is what GPUs are built for. A tensor is an array with any number of axes: a vector has 1, a matrix has 2, a batch of images has 4 (in PyTorch the order is batch, channels, height, width; some libraries put channels last).
 
 ## Example
-Let M = [[1, 0, 2], [0, 1, 1]] and x = [3, 4, 5]. Row 1 times x gives 3 + 0 + 10 = 13. Row 2 times x gives 0 + 4 + 5 = 9. So M x = [13, 9]. Shapes must match: (2 by 3) times (3) gives (2). When shapes differ in a compatible way, libraries use broadcasting, which stretches the smaller array to fit: adding a bias vector of length 2 to each row of a batch happens without copying it.
+Let M = [[1, 0, 2], [0, 1, 1]] and x = [3, 4, 5]. Row 1 times x gives 3 + 0 + 10 = 13. Row 2 times x gives 0 + 4 + 5 = 9. So M x = [13, 9]. Shapes must match: (2 by 3) times (3) gives (2). When shapes differ in a compatible way, libraries use broadcasting, which stretches the smaller array to fit: adding a bias vector (a small list of learned numbers, one per output) of length 2 to each row of a batch happens without copying it.
 
 ## Why it matters
-A layer of a network is one matrix multiply plus an activation. A language model with billions of parameters is mostly large matrices. Getting shapes right is the most common source of bugs when writing model code.
+A layer of a network is one matrix multiply plus an activation. A language model with billions of parameters is mostly large matrices. Shape mismatches are one of the most frequent bugs in model code.
 
 ## How matrix times matrix works
 Multiplying two matrices is many matrix-times-vector steps, one for each column of the second matrix. Take A = [[1, 0, 2], [0, 1, 1]] (2 by 3) and B = [[1, 1], [2, 0], [0, 3]] (3 by 2). The result is 2 by 2, and entry (row i, column j) is row i of A dotted with column j of B.
@@ -111,7 +111,7 @@ This is the 3 by 3 grid the library returns. Each cell is a column value plus a 
 Let M = [[2, 0], [1, 1], [0, 3]] and x = [4, 5]. M is 3 by 2, so the answer has 3 numbers. Row 1 gives 8, row 2 gives 4 + 5 = 9, and row 3 gives 15. You should get [8, 9, 15]. If you try x = [4, 5, 6], the inner sizes (2 and 3) clash, which is exactly the error you would see in code.
 
 ## Common mistakes
-Shape errors. If the matrix is 2 by 3, the vector must have 3 numbers, and the result has 2. Most beginner bugs in model code are shapes that do not line up. Print the shape of everything while you debug.
+Multiplying in the wrong order. A B and B A can have different shapes, so a result that is 3 by 3 when you expected 2 by 2 usually means the two were swapped. Print the shape of everything while you debug.
 
 ```resources
 video | Matrix multiplication as composition | https://www.youtube.com/watch?v=XkY2DOUCWMU | 3Blue1Brown | Why the rows-by-columns rule is what it is.
@@ -120,20 +120,20 @@ article | Broadcasting semantics | https://numpy.org/doc/stable/user/basics.broa
 ```
 
 ```quiz
-M is a 2 by 3 matrix and x has 3 numbers. How many numbers does M x have? | 3 ; 6 ; 2 | 2 | Each of the 2 rows gives one output number.
-What does broadcasting do? | Sends data from the CPU over to the GPU ; Stretches a small array to fit another ; Deletes any extra axes from an array | 1 | It lets you add a bias vector to a whole batch without copying it.
+A is 2 by 3 and B is 3 by 4. What is the shape of A B? | 3 by 3 ; 2 by 4 ; 3 by 4 | 1 | The outer sizes, 2 and 4, become the result. The inner 3s must match and disappear.
+You add a column [1, 2, 3] (shape 3 by 1) to a row [10, 20, 30] (shape 3). How many numbers come out? | 3 ; 6 ; 9 | 2 | Both arrays stretch, giving a 3 by 3 grid, which is 9 numbers.
 You multiply a 4 by 3 matrix by a 2-number vector and get an error. What is the most likely cause? | The shapes do not match, since 3 is not 2 ; The numbers are too large for the computer ; The matrix must be square before it multiplies | 0 | A matrix times a vector needs the matrix's column count to equal the vector's length.
 ```
 
 ```story
-A photo editor applies a filter to a million pixels. Each new pixel is a weighted mix of the old ones. Written as math, that whole filter is one matrix multiplication. Language models are the same kind of step, repeated billions of times, which is why a graphics card that is good at pictures turned out to be good at AI.
+A photo editor brightens and tints a picture. Treat the colors of one pixel as three numbers; each new color is a weighted mix of the old three, which is a 3 by 3 matrix times a 3-number vector. Do that for a million pixels at once and you have one big batch of matrix multiplication. Language models do the same kind of step billions of times, which is why a graphics card, built for exactly this, turned out to be good at AI.
 ```
 
 # probability-and-logs | Probability and logarithms, a quick refresher | 1 | 12
 Two small ideas sit under almost every AI formula: probabilities that multiply, and logarithms that turn those products into sums.
 
 ## Probability in one minute
-A probability is a number from 0 (never) to 1 (certain). The probabilities of all the possible outcomes add up to 1. If two things are independent, the chance that both happen is the product. A fair coin gives heads with probability 0.5, so two heads in a row is 0.5 × 0.5 = 0.25. A language model gives every possible next token a probability, and those add up to 1. The probability of a whole sentence is the product of the probabilities of its tokens.
+A probability is a number from 0 (never) to 1 (certain). The probabilities of all the possible outcomes add up to 1. If two things are independent, the chance that both happen is the product. A fair coin gives heads with probability 0.5, so two heads in a row is 0.5 × 0.5 = 0.25. A language model gives every possible next token a probability, and those add up to 1. The probability of a whole sentence is the product of the probabilities the model gave each token, where each token's probability is judged given the tokens before it. (Words in a sentence are not independent, but multiplying these "given what came before" numbers still gives the right total.)
 
 ## Logarithms in one minute
 A logarithm answers the question: what power do I raise the base to, to get this number? Since 2³ = 8, log base 2 of 8 is 3. Since 10² = 100, log base 10 of 100 is 2. The natural logarithm, written ln, uses the special number e, about 2.718, as its base. Two facts matter here. The log of a product is the sum of the logs: log(a × b) = log a + log b. And the log of a number between 0 and 1 is negative, more so the smaller the number.
@@ -141,7 +141,7 @@ A logarithm answers the question: what power do I raise the base to, to get this
 $$\log(a \times b) = \log a + \log b$$
 
 ## A worked example: why models use logs
-A five-token sentence gets token probabilities 0.5, 0.4, 0.9, 0.7 and 0.6. The sentence probability is 0.5 × 0.4 × 0.9 × 0.7 × 0.6 = 0.0756. Now imagine 1,000 tokens: the product would be a number with hundreds of zeros after the decimal point, too small for a computer to store. Take logs instead. ln 0.5 = -0.693, ln 0.4 = -0.916, ln 0.9 = -0.105, ln 0.7 = -0.357, ln 0.6 = -0.511. Their sum is -2.582, and e raised to -2.582 is 0.0756, the same answer. Sums of logs stay a comfortable size, so training adds logs instead of multiplying probabilities. The loss you meet later is "minus the log of the probability given to the right token": 0 when the model was certain and right, and large when it gave the right token a tiny chance.
+A five-token sentence gets token probabilities 0.5, 0.4, 0.9, 0.7 and 0.6. These are the probabilities the model gave each token given the tokens before it. The sentence probability is 0.5 × 0.4 × 0.9 × 0.7 × 0.6 = 0.0756. Now imagine 1,000 tokens: the product would be a number with hundreds of zeros after the decimal point, too small for a computer to store. Take logs instead. ln 0.5 = -0.693, ln 0.4 = -0.916, ln 0.9 = -0.105, ln 0.7 = -0.357, ln 0.6 = -0.511. Their sum is -2.582, and e raised to -2.582 is 0.0756, the same answer. Sums of logs stay a comfortable size, so training adds logs instead of multiplying probabilities. The loss you meet later is "minus the log of the probability given to the right token": 0 when the model was certain and right, and large when it gave the right token a tiny chance.
 
 The table builds the sentence one token at a time, once by multiplying and once by adding logs.
 
@@ -156,13 +156,13 @@ The table builds the sentence one token at a time, once by multiplying and once 
 Raising e to the last sum, -2.582, gives 0.0756, the last product.
 
 ## What each step of a log means
-A log counts how many times you scaled something down. Natural logs of small probabilities: ln 0.5 = -0.693, ln 0.1 = -2.303, ln 0.01 = -4.605, ln 0.001 = -6.908. Each time the probability shrinks by a factor of 10, the log drops by 2.303. A number that gets tiny stays a manageable size.
+A log counts how many times you scale by the base. In base 10, 0.001 is three tens divided out, so its log is -3. Natural logs use the base e, so every factor of 10 costs 2.303 instead of 1. Natural logs of small probabilities: ln 0.5 = -0.693, ln 0.1 = -2.303, ln 0.01 = -4.605, ln 0.001 = -6.908. Each time the probability shrinks by a factor of 10, the log drops by 2.303. A number that gets tiny stays a manageable size.
 
 ## A second example: comparing sentences of different length
 Sentence A has 5 tokens with probability 0.0756, from the example above. Sentence B has 10 tokens, each with probability 0.7, so its probability is 0.7¹⁰ = 0.0282. Raw probability says A is "better", but only because it is shorter, since every extra token multiplies in another number below 1. Compare the average log per token instead. A: -2.582 / 5 = -0.516. B: 10 × ln 0.7 = -3.567, and -3.567 / 10 = -0.357. B is closer to 0, so B has the higher per-token confidence. This is why scores for language models are usually averaged per token.
 
 ## When logs are not needed, and what goes wrong
-For short products such as the 5-token sentence, plain multiplication is exact enough, and logs add nothing. They matter when the product is long. A 64-bit decimal number cannot go below about 10⁻³⁰⁸. With 1,000 tokens each at probability 0.1, the product is 10⁻¹⁰⁰⁰, and a computer stores 0.0. The sum of logs is 1,000 × (-2.303) = -2,303, which is fine. The other trap is probability 0: ln 0 has no value (it heads to minus infinity), so a loss of "inf" or "nan" in training often means some token got exactly zero probability. Check by printing the smallest probability in the batch.
+For short products such as the 5-token sentence, plain multiplication is exact enough, and logs add nothing. They matter when the product is long. A standard 64-bit floating point number cannot go below about 10⁻³²⁴ (and 32-bit floats stop near 10⁻⁴⁵). With 1,000 tokens each at probability 0.1, the product is 10⁻¹⁰⁰⁰, and a computer stores 0.0. The sum of logs is 1,000 × (-2.303) = -2,303, which is fine. The other trap is probability 0: ln 0 has no value (it heads to minus infinity), so a loss of "inf" or "nan" in training often means the log of a probability that rounded to zero. Compute the log from the model's raw scores (the log-softmax) instead of taking the log of a probability, and print the smallest probability in the batch to check.
 
 ## Check it by hand
 Take three tokens with probabilities 0.5, 0.25 and 0.125. The product is 0.015625. The logs are -0.693, -1.386 and -2.079, which add to -4.159. Raise e to that power and you get 0.0156 again. Same answer by two routes.
@@ -189,8 +189,8 @@ video | Triangle of Power | https://www.youtube.com/watch?v=sULa9Lc4pck | 3Blue1
 
 ```quiz
 You flip a fair coin three times. What is the probability of three heads? | 0.5 ; 0.125 ; 0.375 | 1 | Independent events multiply: 0.5 × 0.5 × 0.5 = 0.125.
-Why do training programs add logs of probabilities instead of multiplying the probabilities? | Products of tiny numbers round to zero ; Logs turn every probability into exactly 1 ; Neural networks cannot multiply two numbers | 0 | The product underflows. The log of a product is the sum of logs, so the answer is kept safely.
-What is log base 2 of 32? | 16 ; 6 ; 5 | 2 | 2 to the power 5 is 32.
+Why do training programs add logs of probabilities instead of multiplying the probabilities? | Products of tiny numbers round to zero ; Logs make the answer more accurate than multiplying would be ; Adding is the only operation a GPU supports | 0 | The product underflows. The log of a product is the sum of logs, so the answer is kept safely.
+A token gets probability 0.01. Roughly what is its natural log? | -2.0 ; 0.01 ; -4.6 | 2 | ln 0.01 = -4.605, since each factor of 10 costs 2.303.
 ```
 
 ```story
@@ -205,6 +205,8 @@ The model's last layer produces one number per possible next token, called logit
 
 $$p_i = \frac{e^{z_i / T}}{\sum_j e^{z_j / T}}$$
 
+The big sigma (Σ) means add up the expression for every token j, which is the sum you do in the example below.
+
 ## Example
 Logits for three tokens: [2.0, 1.0, 0.1]. At T = 1, e² = 7.39, e¹ = 2.72, e^0.1 = 1.11. The sum is 11.21. Probabilities are 0.66, 0.24, 0.10. At T = 0.5 the logits double to [4, 2, 0.2], giving e⁴ = 54.6, e² = 7.39, e^0.2 = 1.22, sum 63.2, so probabilities 0.86, 0.12, 0.02. Lower temperature sharpens the choice. At T = 2 the logits halve to [1, 0.5, 0.05] and the picks flatten to about 0.50, 0.30, 0.19.
 
@@ -212,7 +214,7 @@ Logits for three tokens: [2.0, 1.0, 0.1]. At T = 1, e² = 7.39, e¹ = 2.72, e^0.
 The same function turns attention scores into weights and a classifier's scores into class probabilities. Temperature and top-p are knobs on this distribution.
 
 ## Try it
-Move the sliders in the demo. Watch how temperature reshapes the bars, then sample ten tokens and see how often the top one wins.
+Move the temperature slider in the demo. The three tokens use the scores from the example above (2.0, 1.0 and 0.1), so at 1.0 the bars match 0.66, 0.24 and 0.10. Slide it down to 0.5 and then up to 2 and compare with the numbers above. Then press Sample 20 at a low and at a high temperature and count how often the top token wins.
 
 ## Why the exponential
 Raw scores can be negative or huge. The exponential e^x makes every score positive and makes bigger scores stand out more. Dividing by the total then makes them add to 1. A score of 2.0 versus 1.0 becomes 7.4 versus 2.7, so the leader gets a clearly bigger share.
@@ -234,16 +236,16 @@ The table shows the three steps for the logits 1, 2 and 3.
 | Total | | 30.193 | 1.000 |
 
 ## A second example: why code subtracts the biggest score
-Real code first subtracts the largest logit from every logit. The answer does not change, because the same factor cancels on top and bottom. Take logits [1000, 999]. Computing e¹⁰⁰⁰ overflows, meaning the number is too big to store, and the program returns infinity. After subtracting 1000 the scores are [0, -1], so e⁰ = 1 and e⁻¹ = 0.368. The probabilities are 1 / 1.368 = 0.731 and 0.269, the same as for [1, 0]. If you ever see nan from your own softmax, this is the first thing to check.
+Real code first subtracts the largest logit from every logit. The answer does not change, because the same factor cancels on top and bottom. Take logits [1000, 999]. Computing e¹⁰⁰⁰ overflows, meaning the number is too big to store, and the program gets infinity. Then it divides infinity by infinity, which has no answer, so the result is nan (not a number). After subtracting 1000 the scores are [0, -1], so e⁰ = 1 and e⁻¹ = 0.368. The probabilities are 1 / 1.368 = 0.731 and 0.269, the same as for [1, 0]. If you ever see nan from your own softmax, this is the first thing to check.
 
 ## Trade-offs of temperature and top-p
-Lower temperature gives repeatable text but can loop and repeat itself. Higher temperature gives variety but more odd words. At T = 0 the formula would divide by zero, so tools treat it as "always pick the top token". Top-p sampling cuts the tail instead: keep the smallest group of top tokens whose probabilities add to at least p. With [0.66, 0.24, 0.10] and p = 0.8, the first two add to 0.90, so the third is dropped. Re-dividing by 0.90 gives 0.73 and 0.27. Temperature reshapes every probability, while top-p removes unlikely tokens.
+Lower temperature gives more predictable text, but it can loop and repeat itself. Only T = 0 is fully repeatable. Higher temperature gives variety but more odd words. At T = 0 the formula would divide by zero, so tools treat it as "always pick the top token". Top-p sampling cuts the tail instead: keep the smallest group of top tokens whose probabilities add to at least p. With [0.66, 0.24, 0.10] and p = 0.8, the first two add to 0.90, so the third is dropped. Re-dividing by 0.90 gives 0.73 and 0.27. Temperature reshapes every probability, while top-p removes unlikely tokens.
 
 ## Check it by hand
 Predict before you calculate: for logits [0, 0, 1], which token wins and by how much? Then compute e⁰ = 1, 1 and e¹ = 2.718, with total 4.718. The probabilities are 0.212, 0.212 and 0.576. The top token wins, but it does not take everything, because a gap of 1 is small.
 
 ## Common mistake
-Thinking temperature 0 gives the "correct" answer. It gives the most likely answer, which can still be wrong. Low temperature gives consistency, not truth.
+Thinking temperature 0 gives the "correct" answer. It gives the most likely answer, which can still be wrong. Low temperature gives more predictable text, not truth.
 
 ```resources
 video | ArgMax and SoftMax | https://www.youtube.com/watch?v=KpKog-L9veg | StatQuest | Step-by-step with numbers.
@@ -252,7 +254,7 @@ article | Softmax function | https://en.wikipedia.org/wiki/Softmax_function | Wi
 
 ```quiz
 What does lowering the temperature do to the output distribution? | It flattens it so tokens look alike ; It sharpens it toward the top token ; It removes unlikely tokens completely | 1 | Dividing the scores by a small T makes the differences bigger, so the leader dominates.
-Softmax outputs always do which of these? | Be whole numbers only ; Stay between -1 and 1 ; Add up to exactly one | 2 | That is what lets them be read as probabilities.
+Logits are [2, 2, 2]. What does softmax give at any temperature? | 1, 1, 1 ; One third each ; 0.5, 0.5, 0 | 1 | Equal scores give equal shares, and the shares must add to 1, so each is one third.
 Scores are [2, 1, 0.1] at T = 1 and give 66 percent for the first token. At T = 2, what happens to that 66 percent? | It rises to about 86 percent ; It stays at exactly 66 percent ; It falls to about 50 percent | 2 | Higher temperature flattens the distribution. The worked example gives about 50, 30 and 19 percent.
 ```
 
@@ -267,18 +269,20 @@ A derivative says how much the output changes when you nudge an input. A gradien
 For f(x) = x², the derivative is 2x. At x = 3 the slope is 6: increase x by a tiny 0.01 and f goes up by about 0.06. A function with several inputs, like f(a, b) = a² + 3b, has a partial derivative for each: 2a with respect to a, and 3 with respect to b. Stack them and you get the gradient [2a, 3]. It points in the direction of steepest increase. To reduce the function, step the opposite way.
 
 ## Common rules
-Power: the derivative of xⁿ is $n x^{n-1}$. Sum: derivatives add. Constant multiple: the constant stays. Chain: the derivative of f(g(x)) is $f'(g(x)) \cdot g'(x)$. Those four are enough to differentiate every operation in a network by hand.
+Power: the derivative of xⁿ is $n x^{n-1}$. Sum: derivatives add. Constant multiple: the constant stays. Chain: the derivative of f(g(x)) is $f'(g(x)) \cdot g'(x)$. Those four, plus the derivatives of exp and log and a rule for ReLU (slope 1 for positive input, 0 for negative), are enough to differentiate every operation in a network by hand.
 
 $$\frac{d}{dx}\, x^n = n x^{n-1}, \qquad \frac{d}{dx}\, f(g(x)) = f'(g(x)) \, g'(x)$$
 
 ## Example
-f(a, b) = a² + 3b at (a, b) = (2, 1) gives f = 7. Gradient = [4, 3]. Moving a by +0.1 raises f by about 0.4. Moving b by +0.1 raises it by 0.3. To lower f, move a and b in the negative direction, with a bigger step on a.
+f(a, b) = a² + 3b at (a, b) = (2, 1) gives f = 7. Gradient = [4, 3]. Moving a by +0.1 raises f by about 0.4. Moving b by +0.1 raises it by 0.3. To lower f, move a and b in the negative direction, with a bigger step on a. Take one step of size 0.1 against the gradient: a = 2 - 0.1 × 4 = 1.6 and b = 1 - 0.1 × 3 = 0.7. Now f = 1.6² + 3 × 0.7 = 2.56 + 2.1 = 4.66, down from 7. The 0.1 is the step size, called the learning rate.
 
 ## Check numerically
 You can estimate a derivative as (f(x + h) - f(x)) / h for a tiny h like 0.0001. This numerical check is how people test that a hand-derived gradient is right.
 
 ## Worked example: a tiny slope
 f(x) = x². At x = 3, f is 9. Nudge x to 3.01 and f becomes 9.0601. The change is 0.0601 for a nudge of 0.01, a ratio of about 6. The derivative 2x gives 6 exactly. The slope tells you that increasing x makes f grow quickly there, so to reduce f you should decrease x.
+
+The tangent line is the straight line that touches the curve at one point and tilts at the same slope as the curve there. The slope is how steeply the curve rises for each step to the right, and it is the derivative.
 
 ```mermaid Near x = 3 the tangent line (slope 6) hugs the curve x squared, so the slope predicts small changes well
 xychart-beta
@@ -292,7 +296,7 @@ xychart-beta
 A model has billions of weights. The gradient has one slope per weight: for each, "if I nudge this weight up, does the error go up or down, and how fast?" One pass computes all of them at once, which is the trick behind backpropagation.
 
 ## How the chain rule traces through
-Take f(x) = (3x + 1)² at x = 2. Think of two steps: g = 3x + 1, then f = g². At x = 2, g = 7 and f = 49. The outer slope is 2g = 14. The inner slope is 3. Multiply: 14 × 3 = 42. Numerical check: at x = 2.001, g = 7.003, f = 49.042, so the change is 0.042 for a nudge of 0.001, a ratio of about 42. This multiply-the-slopes habit is all that backpropagation does.
+Take f(x) = (3x + 1)² at x = 2. Think of two steps: g = 3x + 1, then f = g². At x = 2, g = 7 and f = 49. The outer slope is 2g = 14. The inner slope is 3. Multiply: 14 × 3 = 42. Numerical check: at x = 2.001, g = 7.003, f = 49.042, so the change is 0.042 for a nudge of 0.001, a ratio of about 42. Multiplying slopes along the chain is the core of backpropagation.
 
 ```mermaid Slopes along the chain are multiplied: 14 times 3 gives 42
 flowchart LR
@@ -301,7 +305,7 @@ flowchart LR
 ```
 
 ## A second example: where the slope is zero
-At x = 0, f(x) = x² has slope 0, and that is the bottom of the bowl, so no step is needed. But zero slope is not always a good sign. f(x) = x³ also has slope 0 at x = 0, yet it is not a bottom. Values to the left are lower and values to the right are higher, so the slope is zero only for a moment and the curve keeps climbing. In a network, a ReLU neuron with a negative input has slope 0, so no gradient flows through it and its weights stop learning. Flat does not always mean finished.
+At x = 0, f(x) = x² has slope 0, and that is the bottom of the bowl, so no step is needed. But zero slope is not always a good sign. f(x) = x³ also has slope 0 at x = 0, yet it is not a bottom. Values to the left are lower and values to the right are higher, so the slope is zero only for a moment and the curve keeps climbing. In a network, a ReLU neuron with a negative input has slope 0, so no gradient flows through it for that input. If it stays negative for every input, its weights stop learning. Flat does not always mean finished.
 
 ## What goes wrong: slopes that multiply
 By the chain rule, the slope through a deep stack is a product of one slope per layer. Invented numbers: if each of 10 layers contributes 0.25, the product is 0.25¹⁰ = 0.00000095. The early layers barely get a signal, called a vanishing gradient. If each contributes 2, the product is 2¹⁰ = 1,024, an exploding gradient. Symptoms: loss that does not move, or loss that suddenly becomes nan. Confirm by printing the gradient size for each layer and looking for a steady drop or rise toward the start of the network.
@@ -330,17 +334,18 @@ course | Essence of calculus | https://www.3blue1brown.com/topics/calculus | 3Bl
 ```
 
 ```quiz
-What is the derivative of f(x) = x² at x = 3? | 6 ; 9 ; 3 | 0 | The derivative is 2x, so at x = 3 it is 6.
-In which direction does the gradient point? | Toward the steepest decrease ; Toward the nearest minimum ; Toward the steepest increase | 2 | You step against it to reduce a function, which is what training does.
+f(x) = (2x + 1)² at x = 1. What is the slope? | 6 ; 12 ; 4 | 1 | The inner slope is 2, the outer slope is 2 × 3 = 6, and 6 × 2 = 12.
+In which direction does the gradient point? | Toward the steepest decrease ; Toward the nearest minimum ; Toward the steepest increase | 2 | Uphill is where f grows fastest, so training subtracts the gradient.
 f(a, b) = a² + 3b at (2, 1). Which nudge raises f the most per unit step? | Increasing a, since its slope is 4 versus 3 ; Increasing b, since b has the larger multiplier ; Both raise f by exactly the same amount | 0 | The gradient is [2a, 3] = [4, 3], so a changes f faster here.
+Each of 5 layers contributes slope 0.5. What reaches the first layer? | 2.5 ; 0.03125 ; 0.5 | 1 | 0.5 to the 5th is 0.03125.
 ```
 
 ```story
-You are standing on a foggy hill and want to get down. You cannot see the valley, but you can feel which way the ground slopes under your feet. You take a step downhill, feel again, and repeat. The slope under your feet is the derivative. With many directions at once, the list of slopes is the gradient. Training an AI model is exactly this walk.
+You are standing on a foggy hill and want to get down. You cannot see the valley, but you can feel which way the ground slopes under your feet. You take a step downhill, feel again, and repeat. The slope under your feet is the derivative. With many directions at once, the list of slopes is the gradient. Training an AI model is this same walk, repeated millions of times.
 ```
 
 # neurons-and-networks | Neurons and networks | 1 | 15
-A neuron is a weighted sum plus a bend. A network is many neurons in layers. Stacking them lets the model represent curved, complex functions.
+A neuron is a weighted sum plus a bend. A network is many neurons in layers. Stacking them lets the model represent bendy, complex functions: many straight pieces joined at bends, which can approximate almost any shape.
 
 ## The idea
 A neuron takes inputs x, multiplies each by a weight w, adds a bias b, and passes the sum through an activation function f: $y = f(w \cdot x + b)$. ReLU is the common choice: f(z) = max(0, z). Without the bend, stacking layers would still be one straight-line function. With it, layers compose into something far more expressive.
@@ -363,7 +368,7 @@ Inputs x = [1, 2], weights w = [0.5, -1], bias b = 0.5. The weighted sum is 0.5�
 A layer is many neurons reading the same inputs, which is a matrix multiplication followed by an activation. A network passes the output of one layer to the next. A modern language model is the same pieces at huge scale, arranged as transformer blocks, with billions of weights.
 
 ## Try it
-Change the weights and bias in the demo and watch the output and the decision line change.
+Move the sliders and watch the sum line and the shaded grid change. The grid shows the neuron's output for every pair of inputs: dark where it is silent (output 0), brighter where it fires. Try setting the bias to -3 and see the grid go almost entirely dark.
 
 ## A second example: why one neuron is not enough
 Take the XOR task: output 1 when exactly one of two inputs is 1. The four cases are (0,0) gives 0, (0,1) gives 1, (1,0) gives 1 and (1,1) gives 0. A single neuron draws one straight line to separate its answers, and no line can do this. Two layers can. Let h1 = ReLU(x1 + x2) and h2 = ReLU(x1 + x2 - 1), then output h1 - 2×h2. Case (1,1): h1 = 2, h2 = 1, output 2 - 2 = 0. Case (1,0): h1 = 1, h2 = 0, output 1. Case (0,0): both 0, output 0. All four cases come out right, using 9 learned numbers (6 weights and 3 biases).
@@ -390,7 +395,7 @@ flowchart LR
 Remove the activation and a second layer does nothing new. If layer one multiplies by 3 and layer two multiplies by 2, together they multiply by 6, which one layer could do. With ReLU in between, the layers cannot merge, and each adds new shapes. That is the mechanism.
 
 ## What goes wrong: dead neurons
-If a neuron's sum is negative for every input, ReLU outputs 0 and its slope is 0 too, so training cannot repair it. This is a dead neuron. Typical cause: a learning rate so large that one update pushed the bias far below zero. Symptom: many hidden values that are exactly 0 for every example. To confirm, run a batch through and count how often each neuron is above 0. A neuron stuck at 0% is dead.
+If a neuron's sum is negative for every input, ReLU outputs 0 and its slope is 0 too, so training cannot repair it. This is a dead neuron. Common causes: a learning rate so large that one update pushed the bias far below zero, or unlucky starting weights. Symptom: many hidden values that are exactly 0 for every example. To confirm, run a batch through and count how often each neuron is above 0. A neuron stuck at 0% is dead.
 
 ## Check it by hand
 Use x = [2, -1], w = [1, 3] and bias b = 1. The sum is 2 - 3 + 1 = 0, so the output is 0 and the neuron is silent. Which bias makes the output 2? Solve 2 - 3 + b = 2 to get b = 3. Check: 2 - 3 + 3 = 2, and ReLU keeps it.
@@ -405,17 +410,17 @@ course | Neural Networks and Deep Learning | http://neuralnetworksanddeeplearnin
 ```
 
 ```quiz
-Why does a network need an activation function? | It lets training use less memory overall ; Without it, stacked layers act as one layer ; It converts words into numbers for the model | 1 | The bend is what lets deep networks represent complex functions.
+Why does a network need an activation function? | It lets training use less memory overall ; Without it, stacked layers act as one layer ; It keeps the weights from growing during training | 1 | Without the activation every layer is a weighted sum, and a weighted sum of weighted sums is still one weighted sum, so extra layers add nothing.
 x = [1, 2], w = [1, 1], b = -4 and a ReLU. What is the output? | -1 ; 3 ; 0 | 2 | The sum is 1 + 2 - 4 = -1, and ReLU clips negatives to 0.
-A neuron fires for cats using whiskers (+2), ears (+1) and barking (-3), with bias -1. A barking animal with whiskers and ears gives what? | Fires strongly: the sum is 3, so output is 3 ; Silent: the sum is -1, so output is 0 ; Fires weakly: the sum is 1, so output is 1 | 1 | 2 + 1 - 3 - 1 = -1, and ReLU turns a negative sum into 0.
+A neuron fires for cats using whiskers (+2), ears (+1) and barking (-3), with bias -1. A barking animal that also shows whiskers and ears (each input is 1) gives what? | Fires strongly: the sum is 3, so output is 3 ; Silent: the sum is -1, so output is 0 ; Fires weakly: the sum is 1, so output is 1 | 1 | 2 + 1 - 3 - 1 = -1, and ReLU turns a negative sum into 0.
 ```
 
 ```story
-Think of a neuron as a bouncer at a club with a checklist. Each fact about a guest is multiplied by how much the bouncer cares about it, the total is added up, and if the total clears a bar the guest gets in. A network is thousands of such bouncers in rows, each row deciding based on what the previous row let through.
+Think of a neuron as a bouncer at a club with a checklist. Each fact about a guest is multiplied by how much the bouncer cares about it, the total is added up, and if the total clears a bar the guest gets in. The bouncer does not just say yes or no. He reports how far over the bar the guest was, or says nothing if they fell short. The bar is the bias. A network is thousands of such bouncers in rows, each row deciding based on what the previous row let through.
 ```
 
 # loss-and-gradient-descent | Loss and gradient descent | 1 | 15
-Training means measuring how wrong the model is, then nudging every weight in the direction that reduces the error. Repeat a few trillion times.
+Training means measuring how wrong the model is, then nudging every weight in the direction that reduces the error. Repeat for hundreds of thousands of steps or more, each one on a small batch of examples.
 
 ## The idea
 Loss is a number that says how far the output is from the target. For one example with prediction p and target t, squared error is L = (p - t)². Training adjusts the weights w to make L small. The gradient dL/dw says how L changes if w increases. Gradient descent moves against it: $w \leftarrow w - \eta \cdot \frac{dL}{dw}$, where η is the learning rate.
@@ -430,13 +435,13 @@ $$L = -\ln p(\text{correct token})$$
 Minimize L(w) = (w - 3)². The gradient is 2(w - 3). Start at w = 0 with η = 0.1: gradient is -6, so w becomes 0 + 0.6 = 0.6. Next, gradient -4.8, w = 1.08. Then 1.46, 1.77, and so on toward 3. With η = 1.1 it overshoots and diverges. With η = 0.001 it barely moves. The learning rate is a core hyperparameter.
 
 ## At scale
-The same loop runs on billions of weights using mini-batches of data. Optimizers like Adam adapt each step. Backpropagation is how the gradients for all layers are computed efficiently.
+The same loop runs on billions of weights using mini-batches, small random samples of the data, one per step. Optimizers like Adam adapt each step. Backpropagation is how the gradients for all layers are computed efficiently.
 
 ```mermaid Training is one loop: predict, measure the loss, find the gradients, step against them
 flowchart TD
-  W[Current weights] --> F[Forward pass gives a prediction]
+  W[Current weights] --> F[Forward pass: compute the prediction]
   F --> L[Loss]
-  L --> B[Backward pass gives gradients]
+  L --> B[Backward pass: compute the gradients]
   B --> U[Step against the gradient]
   U -.->|Repeat| W
   class L focus
@@ -478,25 +483,25 @@ Real training does not use the whole dataset per step. It averages the gradient 
 Three failures, each with a symptom.
 1. Loss becomes nan or shoots upward: the learning rate is too big. Confirm by halving it and rerunning.
 2. Loss barely moves: the rate is too small, or the gradients are zero because of a bug. Confirm by checking whether weights change after a step.
-3. Training loss falls while held-out loss rises: memorizing. Confirm by plotting both curves.
+3. Training loss falls while loss on held-out data (examples kept out of training) rises: memorizing. Confirm by plotting both curves.
 Falling loss only proves the model fits its training numbers, not that it is useful.
 
 ## Check it by hand
-Run the lesson's example with η = 0.25 on paper, from w = 0. The gradient 2(w - 3) is -6, so w = 0 + 1.5 = 1.5. Next the gradient is -3, so w = 2.25. Next -1.5, so w = 2.625. The distance to 3 halves each step: 3, 1.5, 0.75, 0.375.
+Try a different target on paper: L(w) = (w - 10)², starting at w = 0 with η = 0.3. Slope at 0 is -20, so w moves to 6. Slope at 6 is -8, so w moves to 8.4. Slope at 8.4 is -3.2, so w moves to 9.36. Now compare with the shortcut from the section above: 1 - 2(0.3) = 0.4, and 10 times 0.4 is 4, then 1.6, then 0.64. Those match 10 - 6, 10 - 8.4 and 10 - 9.36.
 
 ## Common mistake
 Changing the learning rate and the data in the same run. When the loss improves you cannot tell which change helped, so alter one thing per run.
 
 ```resources
 video | Gradient descent, how neural networks learn | https://www.youtube.com/watch?v=IHZwWFHWa-w | 3Blue1Brown | Visual explanation of loss and descent.
-video | The spelled-out intro to neural networks and backpropagation: building micrograd | https://www.youtube.com/watch?v=VMj-3S1tku0 | Andrej Karpathy | Builds autodiff from scratch in about two hours.
+video | The spelled-out intro to neural networks and backpropagation: building micrograd | https://www.youtube.com/watch?v=VMj-3S1tku0 | Andrej Karpathy | Builds autodiff from scratch in about two and a half hours.
 repo | micrograd | https://github.com/karpathy/micrograd | Andrej Karpathy | A tiny autograd engine in about 100 lines.
 ```
 
 ```quiz
 Minimize (w - 3)² starting at w = 0 with learning rate 0.1. What is w after one step? | 0.6 ; 3 ; -0.6 | 0 | The gradient is 2(0 - 3) = -6, so w = 0 - 0.1 × (-6) = 0.6.
-What happens if the learning rate is far too large? | The steps overshoot and the loss may grow ; Training finishes faster with a better result ; Nothing changes, only the speed differs | 0 | Big steps jump past the minimum and can get bigger each time.
-Training loss keeps falling but loss on held-out data starts rising. What should you suspect? | The learning rate is too small to matter ; The model is memorizing its training data ; The held-out set is larger than the training set | 1 | Rising held-out loss with falling training loss is the sign of overfitting.
+Minimize (w - 3)² from w = 0 with learning rate 0.5. What happens after one step? | w is 0.5 ; w jumps to 6 and bounces ; w lands exactly on 3 | 2 | The gradient is -6, so w = 0 + 0.5 × 6 = 3. The shrink factor 1 - 2η is 0, so the gap closes at once.
+Training loss keeps falling but loss on held-out data starts rising. What should you suspect? | The learning rate is too small to matter ; The model is memorizing its training data ; The held-out set is larger than the training set | 1 | Training loss measures fit to examples the model has seen. Held-out loss measures examples it has not. When the first falls and the second rises, the model is storing the training examples instead of learning a pattern that carries over.
 ```
 
 ```story
@@ -517,23 +522,20 @@ Let $a = w \cdot x$, then p = a + b, and L = (p - t)². With x = 2, w = 1, b = 0
 ```mermaid The forward pass computes the loss, then the backward pass multiplies local slopes in reverse
 flowchart TD
   subgraph Forward[Forward pass]
-    F1[a = 2] --> F2[p = 2] --> F3[L = 9]
+    F0[w = 1 and x = 2] --> F1[a = 2] --> F2[p = 2] --> F3[L = 9]
   end
   subgraph Backward[Backward pass]
-    B1[Slope at p is -6] --> B2[Slope at a is -6] --> B3[Slope at w is -12]
+    B1[Slope at p is -6] -->|times 1| B2[Slope at a is -6] -->|times 2| B3[Slope at w is -12]
   end
   F3 --> B1
   class B3 focus
 ```
 
 ## Why it matters
-The cost of the backward pass is about the same as the forward pass, no matter how many weights there are. That is what makes training billions of parameters feasible. Frameworks like PyTorch compute it automatically, so you rarely write it, but knowing what it does explains memory use and why training is far more expensive than inference.
-
-## Why it is fast
-Computing each weight's blame separately would take billions of passes. Backprop reuses work: the blame at a later layer is passed backward and combined with each earlier layer's local slope. One forward pass and one backward pass give every gradient. That is why training a huge model is possible at all.
+Without backprop you could find each weight's gradient (how much it contributes to the loss) by nudging that weight and re-running the network, one pass per weight. With a billion weights that is a billion passes. Backprop reuses each partial result: the slope at a later layer is passed backward and combined with each earlier layer's local slope, so one forward and one backward pass give every gradient. The backward pass costs about the same as the forward pass, no matter how many weights there are, which is why training billions of parameters is feasible. Frameworks like PyTorch compute it automatically, so you rarely write it, but knowing what it does explains memory use and why training is far more expensive than inference.
 
 ## A second step of the same example
-Continue from the example: after the first update w = 2.2. Forward: a = 2.2 × 2 = 4.4, p = 4.4, L = (4.4 - 5)² = 0.36. Backward: dL/dp = 2(4.4 - 5) = -1.2, and dL/dw = -1.2 × 2 = -2.4. Update: w = 2.2 + 0.1 × 2.4 = 2.44. Forward again: a = 4.88 and L = 0.0144. The same backward pass also gives the bias its gradient: dL/db = dL/dp × dp/db, and dp/db = 1, so it is -6 on the first step. The numbers above update only w and keep b = 0. If you updated b as well (b = 0.6), the next prediction would be 5.0 and the loss 0. One backward walk serves every parameter.
+Continue from the example: after the first update w = 2.2. Forward: a = 2.2 × 2 = 4.4, p = 4.4, L = (4.4 - 5)² = 0.36. Backward: dL/dp = 2(4.4 - 5) = -1.2, and dL/dw = -1.2 × 2 = -2.4. Update: w = 2.2 + 0.1 × 2.4 = 2.44. Forward again: a = 4.88 and L = 0.0144. The same backward pass also gives the bias its gradient: dL/db = dL/dp × dp/db, and dp/db = 1, so it is -6 on the first step. Now update b too on the first step: b = 0 + 0.1 × 6 = 0.6, while w becomes 2.2 as before. The next prediction is p = 4.4 + 0.6 = 5.0, so the loss is 0 after one step. The rest of this section keeps b = 0 so the numbers stay simple. One backward walk serves every parameter.
 
 The table repeats the update, changing only w and keeping b at 0.
 
@@ -547,7 +549,7 @@ The table repeats the update, changing only w and keeping b at 0.
 Each step makes the loss exactly 25 times smaller here, because the gap to the target shrinks by a factor of 5.
 
 ## When one weight is used twice
-If a weight appears in two places, its gradient is the sum of the gradients along each path. Take p = w×x1 + w×x2 with x1 = 2, x2 = 3, target t = 10 and w = 1. Then p = 5 and L = 25. dL/dp = 2(5 - 10) = -10. The path through x1 contributes -10 × 2 = -20, and the path through x2 contributes -10 × 3 = -30. So dL/dw = -50. With η = 0.01, w = 1.5, p = 7.5 and L = 6.25. This summing is how one filter reused across a whole image, or one weight matrix reused across a whole sentence, gets a single gradient.
+If a weight appears in two places, its gradient is the sum of the gradients along each path. Take p = w×x1 + w×x2 with x1 = 2, x2 = 3, target t = 10 and w = 1. Then p = 5 and L = 25. dL/dp = 2(5 - 10) = -10. The path through x1 contributes -10 × 2 = -20, and the path through x2 contributes -10 × 3 = -30. So dL/dw = -50. With η = 0.01, w = 1.5, p = 7.5 and L = 6.25. This summing is how one shared weight, such as a small image detector slid across every part of a picture, or one matrix applied to every word of a sentence, still ends up with a single gradient: the contributions from every place it was used are added.
 
 ## Trade-offs: memory and cost
 The backward pass needs numbers from the forward pass. In the example, da/dw = x, so x must be kept. A real network keeps these stored values for every layer until the backward pass reaches them. That is a large part of why training needs much more memory than running the model. A common trick is to throw some away and recompute them later, trading extra compute for less memory.
@@ -618,7 +620,7 @@ xychart-beta
 ```
 
 ## A second example: the direction matters
-Use p = [0.5, 0.5] and q = [0.9, 0.1]. KL(p ‖ q) = 0.5 × log₂(0.5/0.9) + 0.5 × log₂(0.5/0.1) = 0.5 × (-0.848) + 0.5 × 2.322 = 0.737 bits. Swap them: KL(q ‖ p) = 0.9 × log₂(0.9/0.5) + 0.1 × log₂(0.1/0.5) = 0.9 × 0.848 + 0.1 × (-2.322) = 0.531 bits. Two different numbers. The first asks what it costs to use q when reality is p, the second the reverse. In RLHF, which direction is penalized changes the behavior.
+Use p = [0.5, 0.5] and q = [0.9, 0.1]. KL(p ‖ q) = 0.5 × log₂(0.5/0.9) + 0.5 × log₂(0.5/0.1) = 0.5 × (-0.848) + 0.5 × 2.322 = 0.737 bits. Swap them: KL(q ‖ p) = 0.9 × log₂(0.9/0.5) + 0.1 × log₂(0.1/0.5) = 0.9 × 0.848 + 0.1 × (-2.322) = 0.531 bits. Two different numbers. The first asks what it costs to use q when reality is p, the second the reverse. In RLHF the penalty is usually KL(fine-tuned model ‖ base model), so it is measured under the fine-tuned model's own probabilities. Swapping the two would weigh the mistakes differently, and the tuned model would drift in a different way.
 
 The table lays out the two KL sums term by term, in bits.
 
@@ -628,13 +630,13 @@ The table lays out the two KL sums term by term, in bits.
 | KL(q ‖ p) | 0.9 × log2(0.9 / 0.5) = 0.763 | 0.1 × log2(0.1 / 0.5) = -0.232 | 0.531 |
 
 ## What perplexity means
-Perplexity is 2 raised to the entropy, and reads as "how many equally likely choices the model is torn between". A model choosing among 4 equal options has entropy 2 bits and perplexity 2² = 4. A model that always puts all its probability on the right token has perplexity 1. Numbers from different tokenizers are not comparable, because the model predicts different pieces.
+Perplexity is 2 raised to the cross-entropy of the model on real text, and reads as "how many equally likely choices the model is torn between". A model that splits its probability evenly over 4 options at every step has a cross-entropy of 2 bits and perplexity 2² = 4. A model that always puts all its probability on the right token has perplexity 1. Numbers from different tokenizers are not comparable, because the model predicts different pieces.
 
 ## What goes wrong
 If reality allows an outcome but the model gives it probability 0, the surprise is infinite, and so are cross-entropy and KL. A training log showing inf at one batch often points to this. The symptom is a single huge spike rather than a slow rise. Another trap is mixing units: 0.105 nats and 0.152 bits are the same quantity, so compare numbers only in one unit.
 
 ## Common mistake
-Thinking KL divergence is a distance like on a map. It is not symmetric: KL(p, q) and KL(q, p) are different numbers.
+Thinking KL divergence is a distance like on a map. It is not symmetric: for the coin example, KL(p ‖ q) is 0.737 bits and KL(q ‖ p) is 0.531 bits.
 
 ```resources
 video | A Short Introduction to Entropy, Cross-Entropy and KL-Divergence | https://www.youtube.com/watch?v=ErfnhcEV1O8 | Aurélien Géron | Ten minutes, with the coin and weather examples.
@@ -645,7 +647,7 @@ article | Kullback-Leibler divergence | https://en.wikipedia.org/wiki/Kullback%E
 ```quiz
 How much entropy does a fair coin have? | 0 bits ; 1 bit ; 2 bits | 1 | Each flip carries one bit of surprise on average.
 What is the KL divergence between two identical distributions? | 1 ; Infinite ; 0 | 2 | There is no gap when q equals p.
-A model gives the real next word 90 percent in one run and 5 percent in another. Which run has the larger loss? | The 90 percent run, since it was more certain ; Both are the same, since the word is right ; The 5 percent run, as the surprise is larger | 2 | Loss is minus the log of the probability given to the right word, so a small probability means a big loss.
+KL(p ‖ q) is 0.737 bits for one pair of distributions. What can you say about KL(q ‖ p) for the same pair? | It must also be exactly 0.737 bits ; It is usually a different number ; It must be a negative number | 1 | KL is not symmetric. The same pair gave 0.737 one way and 0.531 the other.
 ```
 
 ```story
@@ -656,12 +658,12 @@ You have a coin. If it always lands heads, the next flip tells you nothing, so t
 Raw gradients are noisy. Smoothing them with a moving average makes training steadier. Adam adds a per-weight step size.
 
 ## Exponential moving average
-An EMA blends the old average with the new value: $m \leftarrow \beta m + (1 - \beta) g$, where β is near 1, such as 0.9. Recent values weigh more, old values fade. With β = 0.9 and gradients 1, 1, 1, starting from m = 0: m = 0.1, 0.19, 0.271. It starts low, a bias that Adam corrects by dividing by (1 - βᵗ). At step 1 the average is 0.1 and the correction divides by 1 - 0.9 = 0.1, giving 1.0, the true gradient. At step 2 it is 0.19 / 0.19 = 1.0 again.
+An EMA blends the old average with the new value: $m \leftarrow \beta m + (1 - \beta) g$, where β is near 1, such as 0.9. Recent values weigh more, old values fade. With β = 0.9 and gradients 1, 1, 1, starting from m = 0: m = 0.1, 0.19, 0.271. It starts low because it starts at zero (statisticians call this a bias, not the same thing as a neuron's bias), and Adam corrects it by dividing by (1 - βᵗ). The squared average v gets the same fix with its own β. At step 1 the average is 0.1 and the correction divides by 1 - 0.9 = 0.1, giving 1.0, the true gradient. At step 2 it is 0.19 / 0.19 = 1.0 again.
 
 $$m_t = \beta \, m_{t-1} + (1 - \beta)\, g_t, \qquad \hat{m}_t = \frac{m_t}{1 - \beta^t}$$
 
 ## Adam
-Adam keeps two EMAs per weight: the average of gradients (momentum, direction) and the average of squared gradients (scale). The step is learning rate × momentum / (square root of scale + a tiny constant). Weights with consistently large gradients take smaller steps and weights with small gradients take relatively bigger ones. It is the default optimizer for transformers, usually with weight decay (AdamW), which gently shrinks weights toward zero.
+Adam keeps two EMAs per weight: the average of gradients (momentum, direction) and the average of squared gradients (scale). The step is learning rate × momentum / (square root of scale + a tiny constant). Adam divides by the size of each weight's recent gradients, so a weight whose gradients are huge is not pushed harder than one whose gradients are tiny. Both take steps of roughly the learning rate. A weight whose gradient keeps flipping sign takes small steps, because its average cancels out while its squared average stays large. It is the default optimizer for transformers, usually with weight decay (AdamW), which gently shrinks weights toward zero.
 
 ```mermaid Adam keeps two averages per weight, corrects their early bias, then scales the step
 flowchart TD
@@ -688,7 +690,7 @@ xychart-beta
 Daily gradients for one weight: 1.0, -0.8, 1.2, 0.9. A raw update would zigzag. With beta 0.9, momentum builds as 0.1×1.0 = 0.10, then 0.9×0.10 + 0.1×(-0.8) = 0.01, then 0.9×0.01 + 0.1×1.2 = 0.129, then 0.9×0.129 + 0.1×0.9 = 0.206. The smoothed value changes gently. It starts low because it begins at zero, so real optimizers divide by a correction factor (here 1 − 0.9^4 = 0.344, giving 0.206 / 0.344 = 0.60, close to the plain average of 0.575).
 
 ## Why Adam is the default
-Different weights need different step sizes. Adam divides each step by how large that weight's recent gradients have been, so noisy weights move carefully and quiet ones move more. It works well out of the box, which is why most transformers use it.
+Different weights need different step sizes. Adam divides each step by how large that weight's recent gradients have been, so the step size no longer depends on how large a weight's gradients happen to be, and weights with erratic gradients move carefully. It works well out of the box, which is why most transformers use it.
 
 ## How one Adam step is built
 Adam tracks two averages per weight, m for gradients and v for squared gradients. A typical choice is β₁ = 0.9 for m and β₂ = 0.999 for v. After bias correction on step 1, m̂ equals the gradient g and v̂ equals g², so the step is the learning rate × g / (|g| + a tiny number). That is about plus or minus the learning rate, whatever g was. Check: with g = 0.5, 50 and 0.001 the ratio g / |g| is 1 in all three cases. The first steps all have about the same size, even when gradient scales differ by a factor of 50,000. That is the "per-weight step size" idea in action.
@@ -706,7 +708,7 @@ The table follows the bias-corrected average for a steady gradient and for a zig
 | 4 | 1 | 0.3439 | 1.0 | -1 | -0.0181 | -0.053 |
 
 ## Trade-offs
-Adam stores two extra numbers for every weight. Invented size: a model with 1 billion weights stored in 32 bits (4 bytes each) needs 4 GB for the weights, 4 GB for gradients and 8 GB for the two Adam averages, 16 GB in total before any activations. Plain gradient descent with no memory needs only 8 GB for weights plus gradients. This extra cost is one reason people use lower-precision storage and other tricks. Adam is also not always best: it needs less tuning, but a well-tuned simpler method can generalize as well on some tasks.
+Adam stores two extra numbers for every weight. Invented size: a model with 1 billion weights stored in 32 bits (4 bytes each) needs 4 GB for the weights, 4 GB for gradients and 8 GB for the two Adam averages, 16 GB in total before any activations. Plain gradient descent with no memory needs only 8 GB for weights plus gradients. This extra cost is one reason people use lower-precision storage and other tricks. Adam is also not always best: it needs less tuning, but some studies found a well-tuned plain method with momentum generalizes as well or better on some tasks (Wilson et al., 2017, "The Marginal Value of Adaptive Gradient Methods in Machine Learning").
 
 The memory for the 1 billion weight example, item by item, in 32-bit storage.
 
@@ -721,7 +723,7 @@ The memory for the 1 billion weight example, item by item, in 32-bit storage.
 Symptom: the loss spikes up and recovers, or turns to nan, usually early. Likely cause: learning rate too high for the model size, so try a longer warmup. Another symptom: loss falls fast then plateaus above where it should be, often a rate that decayed too early. To confirm, log the learning rate next to the loss and see whether the spike lines up with the rate peak.
 
 ## Common mistake
-Using a high learning rate from step one on a large model. Warmup, starting low and rising, prevents early blow-ups.
+Using a high learning rate from step one on a large model. Warmup, starting low and rising, makes early blow-ups much less likely.
 
 ```resources
 article | Why Momentum Really Works | https://distill.pub/2017/momentum/ | Gabriel Goh | An interactive explanation of momentum.
@@ -731,7 +733,7 @@ video | Optimization for Deep Learning (Momentum, RMSprop, AdaGrad, Adam) | http
 
 ```quiz
 In an exponential moving average with beta 0.9, which values count the most? | The oldest values ; The newest values ; All values equally | 1 | Older values fade geometrically, so recent values weigh more.
-Why do large models use learning-rate warmup? | It saves memory during the first steps ; It forces the loss to start at zero ; Big early steps can wreck training | 2 | The rate rises slowly until training is stable.
+Your loss turns to nan in the first 50 steps of training a large model. Which change is most likely to help? | Add more layers to the model ; Remove the average of gradients ; Use a longer learning-rate warmup | 2 | Early on the weights are random and a high rate can throw them somewhere training cannot recover from. A longer warmup keeps early steps small.
 Gradients for one weight bounce between +1 and -1 every step. What does Adam's moving average do with this? | Doubles the step size each time ; Smooths them so the weight barely moves ; Locks that weight and stops its training | 1 | Averaging noisy gradients cancels the swings, so the update follows the overall trend.
 ```
 
@@ -743,7 +745,7 @@ When you check your weight every morning, the number jumps around by a pound or 
 Attention is dot products, a softmax and a weighted average. Here it is with a two-token example.
 
 ## The formula
-Each token has a query q, a key k and a value v, all vectors. For one query, the score against each key is a dot product scaled by the square root of the key size d: score = $q \cdot k / \sqrt{d}$. Softmax turns the scores into weights. The output is the weighted sum of the values: out = Σ weight × v. In matrix form: softmax(Q Kᵀ / √d) V.
+Each token has a query q, a key k and a value v, all vectors. The model makes them from the token's embedding by multiplying it by three weight matrices, one each for q, k and v. Those matrices are learned during training, which is how the model learns what to look for and what to offer. For one query, the score against each key is a dot product scaled by the square root of the key size d: score = $q \cdot k / \sqrt{d}$. Softmax turns the scores into weights. The output is the weighted sum of the values: out = Σ weight × v. In matrix form: softmax(Q Kᵀ / √d) V.
 
 ```mermaid Scores from queries and keys become weights, and the weights blend the values
 flowchart TD
@@ -763,7 +765,7 @@ Let d = 2, with q = [1, 0]. Two keys: k₁ = [1, 0] and k₂ = [0, 1]. Values: v
 Dot products grow with vector size, which would push softmax into near one-hot outputs with tiny gradients. Scaling keeps the scores in a useful range.
 
 ## In a real model
-A causal mask blocks each token from seeing later tokens. Many attention heads run in parallel, each learning a different pattern, and their outputs are concatenated. The key and value vectors of earlier tokens are cached during generation, which is the KV cache behind fast decoding and prompt caching.
+A causal mask blocks each token from seeing later tokens. Many attention heads run in parallel, each learning a different pattern, and their outputs are concatenated. The key and value vectors of earlier tokens are cached during generation, which is the KV cache. It is why a model can generate each new word quickly, and why providers can offer cheaper repeat prompts (prompt caching).
 
 ## In plain words
 Each word makes three vectors. The query says "what am I looking for?". The key says "what do I contain?". The value says "what do I give if you pick me?". A word compares its query with everyone's keys, turns the scores into percentages with softmax, and takes a weighted mix of the values.
@@ -780,7 +782,7 @@ The table shows token 2's weights with and without the mask.
 | 3 | 3 | 0.665 | 0 |
 
 ## Why the scaling matters, in numbers
-Suppose each entry of q and k is a random number with spread about 1. A dot product adds d such products, so its typical size grows like √d. With d = 64 that is about 8. Unscaled scores of [8, -8] give weights 1 / (1 + e⁻¹⁶) = 0.9999999. The softmax is nearly saturated: its slope, p × (1 - p), is about 0.0000001, so training learns almost nothing. Divide by √64 = 8 and the scores become [1, -1]. The weights are 0.881 and 0.119, and the slope is 0.105, about a million times larger.
+Suppose each entry of q and k is a random number with spread about 1 (spread means how far numbers usually sit from zero). A dot product adds d such products, so its typical size grows like √d. With d = 64 that is about 8. Say two keys give typical-sized scores of 8 and -8. Unscaled scores of [8, -8] give weights 1 / (1 + e⁻¹⁶) = 0.9999999. The softmax is nearly saturated: its slope, p × (1 - p), is about 0.0000001, so the gradient through this softmax is almost zero and training barely adjusts it. Divide by √64 = 8 and the scores become [1, -1]. The weights are 0.881 and 0.119, and the slope is 0.105, about a million times larger.
 
 The table compares the two score pairs from the scaling example.
 
@@ -790,13 +792,13 @@ The table compares the two score pairs from the scaling example.
 | Divided by 8 | 1 and -1 | 0.881 | 0.105 |
 
 ## Trade-offs: cost grows with the square
-Every token scores against every earlier token, so n tokens give about n² scores per head. At 1,000 tokens that is 1,000,000. At 2,000 tokens it is 4,000,000: double the text, four times the scores. This is why long prompts get slower and costly, and why much research targets cheaper attention. The KV cache avoids recomputing old keys and values, but it grows linearly with length and takes memory.
+Every token scores against every earlier token, so with the causal mask n tokens give about n² / 2 scores per head, which still grows with the square. At 1,000 tokens that is about 500,000. At 2,000 tokens it is about 2,000,000: double the text, four times the scores. This is why long prompts get slower and costly, and why much research targets cheaper attention. The KV cache avoids recomputing old keys and values, but it grows linearly with length and takes memory.
 
 ```mermaid Scores per attention head grow with the square of the text length, so doubling the text quadruples them
 xychart-beta
   x-axis "tokens" [1000, 2000, 4000, 8000]
-  y-axis "scores in millions" 0 --> 70
-  bar [1, 4, 16, 64]
+  y-axis "scores in millions" 0 --> 35
+  bar [0.5, 2, 8, 32]
 ```
 
 ## Check it by hand
@@ -812,7 +814,7 @@ article | The Illustrated Transformer | https://jalammar.github.io/illustrated-t
 ```
 
 ```quiz
-What produces the attention weights? | The value vectors, simply added together ; A softmax over query-key dot products ; The positional signal added to inputs | 1 | The weights come from how well the query matches each key.
+What produces the attention weights? | A softmax over the value vectors ; A softmax over query-key dot products ; A dot product of each query with each value | 1 | Scores come from comparing the query with each key. Softmax makes them add up to 1. The values are only blended afterwards.
 Why divide by the square root of d? | To save GPU memory during training ; To turn the output into a probability ; To keep softmax from saturating | 2 | Large unscaled scores push softmax toward one-hot with tiny gradients.
 A query matches key 1 much better than key 2. Which description of the output is right? | A blend leaning heavily toward value 1 ; Exactly value 1 and nothing from value 2 ; An even split between both values | 0 | Softmax gives a high but not total weight to the better match, so the output is a weighted blend.
 ```

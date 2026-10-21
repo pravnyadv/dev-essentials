@@ -1,4 +1,6 @@
 # algorithms/uncategorized/knight-tour | before Code
+How the search works: put the knight on the top left square and mark it visited. Try its moves in a fixed order. For the first legal square, mark it and repeat from there. If a square has no legal unvisited move and the board is not full, unmark the last square (this is the backtracking step) and try the next move from the square before it. Stop when all squares are marked. On a 3 by 3 board the center square can never be reached by any knight move, so every branch fails, after 15 calls.
+
 The tour the code on this page finds on a 5 by 5 board. It starts at the top left corner, and each number is the move on which the knight lands on that square (row by row from the top).
 
 | 1 | 4 | 11 | 16 | 25 |
@@ -8,7 +10,7 @@ The tour the code on this page finds on a 5 by 5 board. It starts at the top lef
 | 18 | 13 | 22 | 9 | 6 |
 | 21 | 8 | 19 | 14 | 23 |
 
-The code tries the knight's moves in a fixed order and undoes a move when it gets stuck. These counts are the recursive calls the code makes for each board size, starting at the top left corner.
+The counts below come from that move order. These counts are the recursive calls the code makes for each board size, starting at the top left corner.
 
 | Board | Tour found? | Recursive calls |
 | :-- | :-- | :-- |
@@ -52,6 +54,12 @@ The picks have 5, 4, 3 and 2 options, so 5 * 4 * 3 * 2 = 120 equally likely path
 | C A B | 4 | 1 |
 | C B A | 4 | 1 |
 
+# algorithms/sets/cartesian-product | after Code
+One edge case: the product of any set with an empty set is the empty set, because there is no pair to make. This code returns `null` for that case instead of an empty array, so check for `null` before looping over the result.
+
+# algorithms/sets/fisher-yates | after Code
+A permutation is one ordering of the items. The tempting wrong version looks almost the same: `for (let i = 0; i < array.length; i += 1) { const j = Math.floor(Math.random() * array.length); [array[i], array[j]] = [array[j], array[i]]; }`. The only change is that j can be any index, so each step has 3 options for 3 items, 27 paths in total, which cannot divide evenly over 6 orderings.
+
 # algorithms/statistics/weighted-random | after The Algorithm
 The cumulative-weights method on the same items, with the lesson's example `randomNumber = 8`. Each item owns a slice of the numbers 1 to 11 as wide as its weight, and the first cumulative weight that is at least the random number wins.
 
@@ -63,6 +71,16 @@ The cumulative-weights method on the same items, with the lesson's example `rand
 
 For 8, the first cumulative weight that is 8 or more is 10, so the pick is the apple.
 
+The code's random number is a decimal such as 3.5, not a whole number. Banana wins for 0 up to 3, apple for anything above 3 up to 10, carrot for anything above 10 up to 11. The ranges are 3, 7 and 1 wide, which is why the chances are 3/11, 7/11 and 1/11.
+
+# algorithms/ml/k-means | before Code Examples
+Step 6 means: keep repeating steps 3 to 5 until a full pass changes nothing. The code checks this by watching the labels. If no point switches cluster, the next centroids would be the same as the last ones, so the loop can stop.
+
+The centroid of a cluster is the average of its points, taken one coordinate at a time. For (1.5, 2) and (3, 4) it is (2.25, 3).
+
+# algorithms/ml/k-means | after Code Examples
+The Wikipedia article linked under References is titled "k-means clustering".
+
 # algorithms/ml/k-means | before Code
 ```mermaid The k-means loop: assign points to the nearest center, move each center to the middle of its points, and stop when no point changes cluster
 flowchart TD
@@ -73,7 +91,7 @@ flowchart TD
   C -->|no| D[Done]
   class D good
 ```
-The code of this page on 7 two-dimensional points with `k = 2`. Points are P1 (1, 1), P2 (1.5, 2), P3 (3, 4), P4 (5, 7), P5 (3.5, 5), P6 (4.5, 5) and P7 (3.5, 4.5). The first centers are P1 and P2. Centers are rounded to 2 decimals, as in the code.
+Here is the code of this page run on 7 two-dimensional points with `k = 2`. Points are P1 (1, 1), P2 (1.5, 2), P3 (3, 4), P4 (5, 7), P5 (3.5, 5), P6 (4.5, 5) and P7 (3.5, 4.5). The first centers are P1 and P2. Centers are rounded to 2 decimals, as in the code.
 
 | Round | Cluster of P1 to P7 | New center 0 | New center 1 | Any change? |
 | :-- | :-- | :-- | :-- | :-- |
@@ -84,6 +102,8 @@ The code of this page on 7 two-dimensional points with `k = 2`. Points are P1 (1
 The loop stops in round 3 because the assignments match round 2. The first two points end up in cluster 0 and the other five in cluster 1.
 
 # algorithms/ml/knn | before Code
+Distance from (3, 3) to (5, 4) is the square root of (5-3)^2 + (4-3)^2 = 4 + 1 = 5, so about 2.24.
+
 A query point `(3, 3)` and 7 labelled points, sorted by distance as the code does it (distances rounded to 2 decimals, as in the code).
 
 | Rank | Point | Label | Distance |
@@ -105,7 +125,7 @@ The answer depends on how many neighbours vote.
 | 5 | B, A, A, B, B | B |
 | 7 | B, A, A, B, B, A, A | A |
 
-The winner flips as k grows, which is why k is tuned and kept odd to avoid ties.
+The winner flips as k grows, so k is a setting you tune, not a constant. With two classes an odd k cannot tie. With three or more classes it can (k = 3 and one vote each). This code then returns whichever class reached the top count first while counting, which is the one nearest the query.
 
 # algorithms/cryptography/caesar-cipher | after Example
 The code with a shift of 3 on `hello`, then on `xyz` to show the wrap-around. The letter number is its position in the alphabet starting at 0, and `% 26` brings it back to the start of the alphabet.
@@ -123,6 +143,13 @@ The code with a shift of 3 on `hello`, then on `xyz` to show the wrap-around. Th
 
 Decrypting uses the shift -3 through the same table, which is why the code builds one cipher map from either sign.
 
+Direction matters. The text example (T becomes Q) shifts left by 3, which the code calls a shift of -3. The table with `hello` shifts right by 3, a shift of 3 (so h becomes k). Decrypting a shift of 3 is the same as encrypting with -3.
+
+This code lowercases the message first, so capitals are lost. Characters outside a to z, such as spaces, are copied unchanged.
+
+# algorithms/cryptography/caesar-cipher | top
+Here n is the number of characters in the message: each character is looked up once. The cipher map has 26 entries whatever the message, so it adds no growth.
+
 # algorithms/cryptography/hill-cipher | before Encryption
 ```mermaid Hill encryption of ACT with the lesson's key: letters become numbers, the key matrix mixes them, and the result is taken modulo 26
 flowchart TD
@@ -134,9 +161,23 @@ flowchart TD
 ```
 
 # algorithms/cryptography/hill-cipher | after Defining the encrypting matrix
+Over ordinary numbers a matrix has an inverse when its determinant is not zero. Modulo 26 the test is stricter: the determinant must share no factor with 26, so it must be odd and not a multiple of 13.
+
 The lesson's 3 by 3 key has determinant 441, which is not zero and has no factor of 2 or 13 (441 is 3 * 3 * 7 * 7), so it is a valid key. Among all 456976 possible 2 by 2 matrices with entries from 0 to 25, only 157248 (about 34 percent) pass this check.
 
+# algorithms/cryptography/hill-cipher | before References
+Use capital letters only. The code accepts a to z too, but it turns a letter into a number as (character code) % 65, which gives 0 to 25 for capitals but 32 to 57 for lowercase. Encrypting `act` with the lesson's key returns `TOH` instead of `POH`. Convert the message and the key to uppercase first.
+
+The code on this page only encrypts. Its decrypt function throws an error, and it does not check that the key is invertible, so a key that fails the determinant test will encrypt but can never be decrypted.
+
+# algorithms/cryptography/rail-fence-cipher | top
+A transposition cipher hides a message by shuffling its letters into a new order. No letter is changed, so the ciphertext has exactly the same letters as the message.
+
 # algorithms/cryptography/rail-fence-cipher | before Code
+A note on the drawing above: the sentence is the classic Wikipedia example in its older wording. Wikipedia's current page uses `RUN AT ONCE` and gets `WECRUO ERDSOEERNTNE AIVDAC`. Spaces and punctuation are dropped in the drawing, so only the 25 letters are placed.
+
+The code below assumes at least 2 rails (with 1 rail there is no zigzag, and the ciphertext is just the message) and it recurses once per character, so it fails on messages of a few thousand letters. It is written to be read, not to be fast.
+
 Encoding `HELLOWORLD` on 3 rails. The rail number bounces 0, 1, 2, 1, 0, 1, 2, 1, 0, 1 as the message is written along the fence.
 
 | Position | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
@@ -145,6 +186,9 @@ Encoding `HELLOWORLD` on 3 rails. The rail number bounces 0, 1, 2, 1, 0, 1, 2, 1
 | Rail | 0 | 1 | 2 | 1 | 0 | 1 | 2 | 1 | 0 | 1 |
 
 Reading the rails from top to bottom gives rail 0 = `HOL`, rail 1 = `ELWRD`, rail 2 = `LO`, so the ciphertext is `HOLELWRDLO`. To decode, walk the same bounce pattern to learn that the rails hold 3, 5 and 2 letters, cut the ciphertext into those pieces, and read the letters back in zigzag order.
+
+# algorithms/image-processing/seam-carving | top
+This page teaches seam carving, a way to shrink an image's width without squashing the objects in it. The idea: score every pixel by how much it stands out, find the top-to-bottom path of least important pixels, delete it, and repeat. Finding that path quickly is a dynamic programming problem, meaning we solve it by saving the answer to each smaller piece so we never compute the same piece twice. The interactive resizer mentioned below is on the author's site (linked); here you get the pictures, the reasoning and the code.
 
 # algorithms/image-processing/seam-carving | before Implementation in TypeScript
 ```mermaid Shrinking an image by one column at a time: measure energy, find the cheapest top-to-bottom seam, delete it, repeat
@@ -158,7 +202,12 @@ flowchart TD
   class O good
 ```
 
+# algorithms/image-processing/seam-carving | after How Seam Carving algorithms works
+Correction to the energy range above: the biggest energy happens when both neighbors differ from the middle pixel by 255 in every color channel. That gives the square root of 2 * 3 * 255 * 255 = 390150, which is about 624.6, so the range is 0 to 625 when rounded, not 626. Real pixels are far below that.
+
 # algorithms/image-processing/seam-carving | before Objects removal
+About the naive search under the dynamic programming approach: the naive search grows by a factor of 3 for every extra row, so even a 100-row image has more than 10^47 paths to try per starting column (3^100 is about 5.15 * 10^47). Keep the width in the formula, w * 3^h, as the chart below does. Pixels on the left and right edges have 2 choices instead of 3, so 3^h is an upper bound.
+
 A small energy map, filled in with the dynamic programming rule from this page. Each cell of the second table holds the cheapest seam energy that ends there: its own energy plus the smallest value among the three cells above it.
 
 | Energy map | Col 0 | Col 1 | Col 2 | Col 3 |

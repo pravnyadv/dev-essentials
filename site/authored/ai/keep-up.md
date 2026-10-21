@@ -5,10 +5,10 @@ New releases arrive weekly. A short list of reliable sources beats a feed of eve
 Pick three to five sources and ignore the rest. Prefer people who build and show evidence over accounts that repost excitement. Treat viral threads as pointers: find the primary source (the paper, the docs, the repo) and read that. Check the date, since advice from a year ago may be outdated. When something claims a big win, ask what was measured and on what.
 
 ## A starter set
-Lab engineering blogs for how things are built. A practitioner blog with daily links and notes. One weekly newsletter for research. One paper aggregator. A community for local models.
+Start with these: Anthropic Engineering for how things are built (a lab blog), Simon Willison's Weblog for daily notes from a practitioner, one newsletter such as Import AI or Ahead of AI for research, and Hugging Face Papers to see which papers people are reading. The rest of the list is there to swap in later. If you run models on your own machine, add a local-models community such as r/LocalLLaMA.
 
 ## A worked example: a weekly routine
-Monday, 20 minutes: skim one newsletter for the week's research. Wednesday, 10 minutes: read one engineering blog post fully. Friday, 15 minutes: check the model release tracker and the radar page here. Total under an hour. Anything bigger gets a deeper read, from the primary source.
+Monday, 20 minutes: skim one newsletter for the week's research. Wednesday, 10 minutes: read one engineering blog post fully. Friday, 15 minutes: open the Model atlas and the News radar on this site to see what shipped this week. Total under an hour. Anything bigger gets a deeper read, from the primary source.
 
 ## Tracing a claim to its source
 A thread says: "New model beats the old one by 20 percent." Follow these steps.
@@ -28,12 +28,12 @@ flowchart TD
 3. Check who ran it: the lab itself, or an independent group.
 4. Check the date, in case the claim describes an older version.
 
-Suppose the table shows 10 points before and 12 points after. That is a 20 percent relative gain, since 2 divided by 10 is 0.2. It is only a 2 point absolute gain. Both numbers are true, and only the first makes a good headline.
+Suppose the table shows a score of 10 out of 100 before and 12 out of 100 after. The absolute gain is 2 points (12 minus 10). The relative gain is that 2 divided by the starting 10, which is 0.2, or 20 percent. Both numbers are true, and only the relative one makes a good headline.
 
 ## What goes wrong: five sources that are really one
 Your five newsletters all report the same new result in nearly the same words, with the same number. It feels like strong confirmation. It is often five summaries of one post.
 
-To confirm, follow each link backward. If all of them end at the same page, you have one source, repeated. Count independent sources, not mentions. The lesson is to read the page they all point to.
+To check, follow each link backward. If all of them end at the same page, you have one source, repeated. Count independent sources, not mentions. That page is now the thing to read and test: look for the table and who ran it (steps 2 and 3 above). A newsletter that gives no link counts for nothing until you find its source.
 
 ```mermaid Five newsletters can all point to one post, which is one source repeated
 flowchart LR
@@ -67,9 +67,9 @@ tool | Hugging Face Papers | https://huggingface.co/papers | Hugging Face | Dail
 ```
 
 ```quiz
-A viral thread claims a huge result. Best next step? | Share it, since many others already have ; Find the original source and check the claim ; Wait for a famous account to confirm it | 1 | Threads are pointers. The paper or docs hold the evidence.
-How many sources should you follow closely? | One source, to avoid conflicting views ; Every source you can find on the topic ; A few sources you trust and read well | 2 | Depth on a few beats skimming everything.
-A post says "this changes everything" but links nothing. What does that suggest? | Treat it as a lead and look for evidence ; The author must be an expert in the field ; It is probably true, so act on it right away | 0 | A claim without a source is a lead, not evidence.
+A viral thread claims a huge result. Best next step? | Share it, since many others already have ; Trace it to the original source ; Wait for a famous account to confirm it | 1 | Threads are pointers. The paper or docs hold the evidence.
+A score goes from 40 to 50 on a test. Which headline is accurate? | Up 10 points, or 25 percent relative ; Up 50 percent relative to the start ; Up 10 percent on the same test, overall | 0 | 10 divided by the starting 40 is 0.25; the gain is 10 points on the test.
+Five newsletters report the same result with the same number. How many independent sources do you have? | Five, since five different outlets agree ; None, because newsletters are never sources ; Probably one, if all link to one post | 2 | Count where the links end, not how many outlets mention it.
 ```
 
 ```story
@@ -80,15 +80,15 @@ A viral post says a new model is "insane". A careful practitioner posts a test t
 Other people have already organized this field. Use their lists as a map and check what is current.
 
 ## How to use a list
-Other people have already sorted this field into lists. A good list saves you weeks. A bad one is a pile of bookmarks. Judge a list in a minute with four checks:
+A good list saves you weeks. A bad one is a pile of bookmarks. Judge a list in a minute with four checks:
 
-When was the last update? A list untouched for a year is probably stale.
-Does each entry say why it is worth reading, or is it just a link?
-Is it maintained by one person or many?
-Are paid items marked?
+1. When was the last update? A list untouched for a year is probably stale.
+2. Does each entry say why it is worth reading, or is it just a link?
+3. Is it maintained by one person or many? One person's list dies when they lose interest.
+4. Are paid items marked? A list that hides which courses cost money is selling to you.
 
 ## A worked example: judging a list
-Open the repository and look at the commit history. If the last change was eleven months ago, treat the links as hints and check each one. Look at ten entries. If seven of them have a sentence about what you will learn, the list is curated. If none do, it is a dump. Pick the best two or three entries in the section you need and ignore the rest.
+Open the repository and look at the commit history. If the last change was eleven months ago, treat the links as hints and check each one. Look at ten entries. If seven of them have a sentence about what you will learn, the list is curated. If none do, it is a dump. Pick the best two or three entries in the section you need and ignore the rest. The first list below marks paid items with a money-bag icon, so you can skip them if you want free material only.
 
 ```mermaid Judge a list in a minute: check the last update, then whether entries say why, then pick a few
 flowchart TD
@@ -138,9 +138,9 @@ tool | roadmap.sh AI Engineer | https://roadmap.sh/ai-engineer | roadmap.sh | Co
 ```
 
 ```quiz
-What makes a list entry more useful? | A catchy title and a link only ; Why it matters and a date ; A long list of tags per entry | 1 | Context tells you whether to read it.
-What does a list of 500 links give you? | A guarantee of quality ; A ready-made study plan ; A reference to dip into | 2 | A curated order is what turns links into a path.
-A list was last updated 14 months ago. What should you do? | Treat the links as hints and check each one ; Throw it away and never trust lists again ; Trust it fully since it is so popular | 0 | Lists age quickly in this field, so check recency.
+What makes a list entry more useful? | A catchy title and a bare link only ; A line on why it is worth reading ; A long list of tags on every entry | 1 | A sentence on why tells you whether to spend time on it. A bare link makes you open it to find out.
+You found a list with 500 links and no notes on any entry. What is the best first move? | Read all 500 entries from top to bottom ; Skip lists and search at random instead ; Pick a goal, take about five entries | 2 | Without notes or order, a long list only helps once you bring a goal to narrow it.
+A list was last updated 14 months ago. What should you do? | Treat links as hints and check them ; Throw it away and never trust lists again ; Trust it fully since it is so popular | 0 | Lists age quickly in this field, so check recency.
 ```
 
 ```story
@@ -167,10 +167,10 @@ flowchart TD
   class R warn
 ```
 
-## How the noise estimate works
-A score on n questions is a sample. The typical sampling error is sqrt(p(1 - p) / n). For p = 0.87 and n = 500 that is sqrt(0.87 × 0.13 / 500), about 0.015, or 1.5 points.
+### How the noise estimate works
+A score on n questions is a sample. Here p is the share of questions the model got right written as a fraction (87 percent is 0.87) and n is the number of questions. The typical sampling error (how far the score tends to land from the true score by luck of which questions were picked) is sqrt(p(1 - p) / n). For p = 0.87 and n = 500 that is sqrt(0.87 × 0.13 / 500), about 0.015, or 1.5 points.
 
-A gap between two scores is noisier than either score alone, because both carry error. Treating them as independent, the gap error is about 1.5 times the square root of 2, or about 2.1 points. About 95 percent of the time the true gap sits within roughly twice that. A 0.4 gap is far inside it. Models tested on the same questions have a tighter gap in practice, but 0.4 still tells you very little.
+A gap between two scores is noisier than either score alone, because both carry error. Treating them as independent, the gap error is about 1.5 times the square root of 2, or about 2.1 points. About 95 percent of the time (if you repeated the test many times with fresh questions, the true gap would fall inside the band about 19 times in 20) the true gap sits within roughly twice that. A 0.4 gap is far inside it. Models tested on the same questions have a tighter gap in practice, but 0.4 still tells you very little.
 
 ```mermaid At a score near 87 percent, the typical error of the gap is still larger than 0.4 points at 5,000 questions
 xychart-beta
@@ -183,7 +183,7 @@ xychart-beta
 ## What goes wrong: a model that has seen the test
 Contamination means test questions appeared in the training data. The symptom is a high public score that does not carry over. A model scores 90 on a famous test, then does much worse on questions you wrote in the same style.
 
-To check, write 20 fresh questions of the same type and compare. A large drop suggests memorization. It does not prove it, since your questions may also be harder.
+To check, write 20 fresh questions of the same type and compare. A large drop suggests memorization. It does not prove it, since your questions may also be harder. With only 20 questions your own score is uncertain by 5 to 7 points, so a drop of 3 points means nothing, while a drop of 20 points is worth taking seriously.
 
 ## When a public benchmark is the wrong tool
 You summarize legal contracts. A coding leaderboard tells you almost nothing about that. Build your own test:
@@ -192,18 +192,18 @@ flowchart TD
   A[30 real inputs] --> B[Write the answer or a rubric for each]
   B --> C[Run each model 3 times on all 30]
   C --> D[Record the average and the spread]
-  D --> E{Spread bigger than the gap?}
-  E -->|yes| F[Add more examples]
-  E -->|no| G[Pick the better model]
+  D --> E{Gap bigger than the noise?}
+  E -->|no| F[Add more examples]
+  E -->|yes| G[Pick the better model]
   class E focus
 ```
 
 1. Collect 30 real inputs from your work.
 2. Write the answer you want for each, or a short rubric (a checklist for grading).
 3. Run each candidate model three times on all 30.
-4. Record the average and the spread between runs.
+4. Record the average and the spread between runs (the gap between the best and worst of the three).
 
-If a model's three runs vary by more than the gap between models, you cannot separate them yet. Add more examples.
+Your 30 questions are a small sample too. At 30 questions, one score carries about 7 points of sampling error and a gap between two models about 10 points, so only a gap larger than that means much. Running each model three times shows how much its own answers wobble, but that spread is the smallest noise, not the whole of it. If the gap is smaller than about 10 points, add more examples or try both models on live traffic.
 
 ## Common mistake
 Quoting a single number without its context.
@@ -213,12 +213,12 @@ tool | LMArena | https://lmarena.ai/ | LMArena | Human preference rankings.
 tool | Artificial Analysis | https://artificialanalysis.ai/ | Artificial Analysis | Independent quality, speed and price.
 tool | SWE-bench | https://www.swebench.com/ | Princeton NLP | Coding agent benchmark.
 tool | Epoch AI Benchmarking Hub | https://epoch.ai/benchmarks | Epoch AI | Independent runs across many benchmarks.
-article | AI Snake Oil | https://www.aisnakeoil.com/ | Narayanan and Kapoor | Critical reading of AI claims.
+article | AI as Normal Technology | https://www.normaltech.ai/ | Narayanan and Kapoor | Newsletter by the authors of the book AI Snake Oil, on separating real AI progress from hype.
 ```
 
 ```quiz
 All top models score 97 to 99 percent. What does that tell you? | Pick the one with the highest score ; The test no longer tells them apart ; They were all trained on the same data | 1 | Small differences near the ceiling are mostly noise.
-An agent benchmark score reflects what? | Only how hard the test is ; Only the model's weights ; Model plus its harness | 2 | Harness choices change results significantly.
+A team gets 70 percent on a coding-agent benchmark. Another team runs the same model with different tools and prompts and gets 58. Likeliest reason? | The second team's model weights differ ; The harness differs, so the score is model plus harness ; The benchmark is contaminated | 1 | Harness choices change results significantly.
 Model A scores 87.3 and B scores 86.9 on 500 questions. Which conclusion is fair? | The gap is small noise, so call it a tie ; B is worse, since it lost on 500 questions ; A is better, since 87.3 is higher than 86.9 | 0 | With 500 questions, a 0.4 gap is smaller than typical sampling error.
 ```
 

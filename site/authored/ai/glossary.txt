@@ -16,7 +16,7 @@ embedding [embeddings] | A list of numbers that represents the meaning of a piec
 vector [vectors] | An ordered list of numbers. Embeddings and model activations are vectors.
 matrix [matrices] | A grid of numbers. Multiplying a vector by a matrix transforms it. Model layers are mostly matrices.
 tensor [tensors] | A multi-dimensional array of numbers. The basic data type of deep learning libraries.
-dot product | Multiply matching entries of two vectors and add them up. Large when they point the same way.
+dot product | Multiply matching entries and add. Positive when the arrows lean the same way, zero at a right angle, negative when they lean apart; the size also grows with vector length.
 cosine similarity | A score from -1 to 1 for how much two vectors point the same way, ignoring their length.
 softmax | A function that turns a list of scores into probabilities that add up to 1.
 logits | The raw scores a model produces for each possible next token, before softmax.
@@ -35,7 +35,7 @@ loss | A number measuring how wrong the model's output is. Training tries to red
 cross-entropy | The standard loss for next-token prediction: minus the log of the probability given to the correct token.
 gradient [gradients] | The direction and rate at which the loss changes when each parameter changes. Training steps against it.
 gradient descent | Repeatedly nudging parameters opposite to the gradient to reduce the loss.
-learning rate | How big each gradient descent step is.
+learning rate | How big each gradient descent step is. In Q-learning it is the share of the gap to the new estimate closed per update.
 backpropagation [backprop] | The method that computes the gradient for every parameter by applying the chain rule backward through the network.
 optimizer | The algorithm that turns gradients into parameter updates, such as SGD or Adam.
 Adam [AdamW] | The most common optimizer. It smooths gradients and adapts the step size for each parameter.
@@ -149,7 +149,7 @@ word error rate [WER] | Speech recognition accuracy: substitutions, deletions an
 sim-to-real | The gap between a robot trained in simulation and the same robot in the real world.
 data drift | Real-world inputs slowly changing from what a system was tested on, so quality falls with no code change.
 ROI | Return on investment: what a project gains compared with what it costs.
-baseline | A simple method, such as "same as last week", that any model must beat to be worth its cost.
+baseline | A simple method, such as "same as last week", that any model must beat to be worth its cost. In regression testing, the baseline is the pass rate and saved outputs of the last version you accepted, which every change is compared against.
 shadow mode | Running a new system beside people on real cases without acting on its output, so you can compare it with their decisions at no risk.
 A/B test | Showing two versions to different groups of real users and comparing a measured result, such as clicks or sales.
 object detection | A vision task that finds each object in an image and draws a box around it.
@@ -164,3 +164,102 @@ leakage [data leakage] | When a feature or test example contains information tha
 metadata | Extra labels stored with a document or chunk, such as its title, date or country, which let you filter results.
 vocabulary | The full list of pieces (tokens) a model knows how to read and write.
 stop token | A special marker the model writes to say its answer is finished.
+diff | The list of lines a change added and removed, shown against the old version.
+deterministic | Giving the same output every time for the same input.
+LLM judge [judge, calibrated judge] | A second model prompt that grades an answer against a rubric. Calibrated means you checked its grades against your own on a sample.
+smoke test | A few quick checks right after a deploy that prove the app starts and answers.
+SQL injection [injection] | An attack where a value pasted into a database command is treated as part of the command and runs, instead of being treated as plain data.
+parameterized query [parameterized queries] | A database command sent separately from its values, so the values are only ever treated as data and can never change the command.
+test set | A fixed batch of example inputs, each with a known good answer, that you run every change against.
+classifier | A model or program that puts an input into one of a fixed list of categories, such as "safe" or "harassment".
+context anxiety | A habit of some models to rush and wrap up as they near the context limit.
+feedback loop | When a system's output changes the data it learns from next, such as a recommender that only shows past clicks and so only collects clicks on those items.
+standard error [standard errors] | How much a measured number, such as a click rate difference or a pass rate, would wobble by pure chance if you repeated the test. A gap smaller than about two standard errors could easily be luck, and with 30 test cases a pass rate near 73 percent can easily move by about 8 points.
+trend | A steady rise or fall in a series over time.
+season [seasonal] | A shape in a series that repeats on a schedule, such as busy weekends.
+threshold | The score above which a case is flagged.
+streaming [stream, streams] | Sending partial results onward as soon as they exist instead of waiting for the whole result.
+bias | Systematic unfairness in a model's results, usually learned from skewed or one-sided data. In a layer, bias is also one extra learned number added to each output after the matrix multiply, which shifts the result up or down.
+proxy [proxies, stand-in] | An innocent-looking input, such as a postcode, that tracks a protected group closely enough to carry the same information.
+ImageNet | A benchmark of over a million labelled photos sorted into 1,000 categories, used to compare image recognition models.
+GAN [GANs, generative adversarial network, generative adversarial networks] | A pair of networks trained against each other: a generator makes fakes and a discriminator tries to spot them.
+discriminator | The network in a GAN that judges whether an image is real or generated.
+provenance | A record of where an image came from and how it was made, and whether you have the right to use it.
+Q-learning | A reinforcement learning method that keeps a score for each action in each situation and nudges it toward reward plus the best score of the next situation.
+CASP [CASP14] | A blind contest run every two years where teams predict protein structures that labs have solved but not yet published.
+amino acid [amino acids] | One of the small building blocks that are chained together to make a protein.
+log-softmax | The logarithm of the softmax output, computed directly from the model's raw scores so tiny probabilities never round to zero.
+floating point number [float] | The way computers store decimal numbers in a fixed number of bits, which limits how small or large a number can be.
+derivative | How much a function's output changes when you nudge its input a tiny bit, which is also the slope of its curve at that point.
+slope | How steeply a curve rises for each step to the right at a given point. The slope of a function at a point is its derivative.
+vanishing gradient | When the slopes multiplied through many layers shrink toward zero, so early layers get almost no learning signal.
+mini-batch [mini-batches, minibatch] | A small random sample of the training data used for one step of training, instead of the whole dataset.
+held-out [held-out data, held-out loss, held-out group] | Examples kept out of training and tuning and used only to check whether the model works on data it has not seen.
+prompt caching [prompt cache] | A provider feature that reuses the already-processed start of a prompt when the next request begins with the same text, so repeated long inputs cost less and return faster.
+modality | The kind of input or output a model handles, such as text, images or audio.
+server-sent events [SSE] | A plain HTTP connection the server keeps open and writes small named events to, used to stream a model's answer piece by piece.
+rate limit [rate limits, 429] | A cap on how many requests or tokens you can send per minute. Going over it returns a 429 error, and the fix is to wait and retry.
+pin | To lock a server to one exact version so an update cannot change it unseen.
+exfiltration | Sending stolen data out to an attacker.
+seed | A number that fixes the random starting noise, so the same prompt and seed give the same image.
+alt text | A short description of an image for people who cannot see it, read by screen readers.
+pull request [PR, pull requests] | A proposed set of code changes that teammates can review before it is merged.
+memory file [memory files] | A text file in your repo, such as CLAUDE.md, that a coding agent reads at the start of every session.
+exit code | A small number a script ends with. 0 means it worked and anything else means a problem. Claude Code treats 2 from a before-the-action hook as a signal to block the action.
+remotion | A framework for writing video as code: you write React components and it draws one picture per frame number.
+react | A JavaScript library where a component is a function that returns a picture of the interface.
+still [stills] | A single frame of a video saved as an image.
+easing | A curve that makes motion speed up or slow down instead of moving at a constant rate.
+regression | Predicting a number, such as a price. In testing, a regression is a change that breaks something that used to work, such as a provider updating a model so a previously passing test case now fails.
+pass^k [pass-hat-k] | The chance that an agent passes every one of k runs of a task; it falls quickly as k grows even when a single run usually passes.
+jailbreaking | Typing tricks into a chat yourself to make a model do something it should not.
+protected attribute [protected attributes] | A trait such as gender, age or ethnicity that people should not be treated worse for.
+moderation | An automatic check that flags text containing harmful content, such as hate, self-harm or violence, so you can block it or send it to a person.
+red-team [red-teaming] | Deliberately attacking your own system, with people and scripts, to find the ways it breaks before real users do.
+copyright | The legal right to control who can copy and sell a piece of work.
+reverse image search | Uploading a picture to a search engine such as Google Lens or TinEye to list other places the same image appears.
+delimiter [delimiters] | A marker such as ### or triple quotes that fences off one part of a prompt, like pasted data, from the instructions.
+orchestration [orchestrate] | Coordinating several agents or models so each handles part of a task, including which one runs when and how work is handed between them. It is code that decides which prompt, tool or model call happens next and keeps state between steps.
+probabilistic | Giving possibly different outputs for the same input, because the result is sampled from likelihoods instead of computed by fixed rules.
+staged files [staged] | In git, the files you have marked to be included in the next commit.
+self-supervised learning | A kind of supervised learning where the answers come from the data itself, such as the next token in a text, so no human labeling is needed.
+regularization | A penalty or constraint that stops a model from fitting every wiggle of the training data, so it generalizes better.
+feature [features] | One input measurement the model reads, such as a house's area.
+classification | Predicting a category, such as spam or not spam.
+power law | A relationship where multiplying one quantity by a fixed factor multiplies another by a fixed factor, such as loss falling 15 percent for every 10 times more parameters.
+post-training | Training done after the main text-prediction run, to shape how the model behaves, for example following instructions or preferring answers people rate well.
+test-time compute [thinking tokens] | Extra work a model spends while answering (for example writing out reasoning steps) instead of during training, trading time and cost for accuracy on hard problems.
+reward model | A separate network trained on human choices between two answers, used to score how much a person would like a model's answer.
+sycophancy | A habit of agreeing with the user even when the user is wrong, often learned because agreeable answers get rated well.
+non-deterministic | Giving different outputs for the same input. Run a model twice on one prompt and you may get two different answers.
+feed-forward [feed-forward network] | A small neural network applied to each token's vector on its own, after attention has mixed in information from other tokens.
+model card | A short document a lab publishes with a model, listing what it was trained for, how it was tested and its known limits.
+head [heads, attention head] | One of several attention calculations that run side by side in a layer, each free to look for a different pattern in the text.
+bigram [bigram model] | A model that predicts the next character using only the one before it, so it is just a table of counts.
+rank | How many independent directions a change to a layer can move along. A rank-8 LoRA update can move the layer along 8 directions.
+advantage | A score for how much better an answer was than the reference, such as the group's average reward. Positive means reinforce it, negative means discourage it.
+value model [critic] | A second model that PPO trains to guess how good a situation is, so advantages can be computed. GRPO removes it by using the group's average reward instead.
+perplexity | A score for how surprised a model is by real text. Lower is better, so a jump up after quantizing means damage.
+memory bandwidth | How many gigabytes per second a card can read from its own memory.
+continuous batching | A serving trick where a new request joins a batch that is already running instead of waiting for the whole batch to finish.
+paged attention [PagedAttention] | A way to store the KV cache in small fixed blocks so memory is not wasted on gaps.
+speculative decoding | A small, fast model guesses the next few tokens and the large model checks all of them in one pass, keeping the ones it agrees with.
+GGUF | A file format for running quantized models locally, used by llama.cpp.
+AWQ [GPTQ] | Quantization methods aimed at serving models on GPUs.
+context cache | Extra memory a model uses to remember the text so far, so it grows as the prompt and conversation get longer.
+swap | Disk space the system uses as overflow memory when RAM is full, far slower than RAM.
+migration | A scripted change to a database's tables or columns, run when you deploy new code that needs a different shape of data.
+staging | A private copy of your app, with its own keys and spend cap, where you test a release before it reaches real users.
+Agent Skills | A folder holding a SKILL.md file with instructions, plus optional scripts, that an agent loads only when a task needs it.
+agent card | A short description an A2A agent publishes about what it can do, which is how other agents discover it.
+effort [thinking effort, reasoning effort] | A setting such as low, medium or high that hints how long a reasoning model should think before answering. It is guidance, not a hard limit.
+thinking budget [budget] | A ceiling on how many thinking tokens a reasoning model may use for one answer.
+handoff [handoffs] | A short written note that carries the goal, what is done, what was tried and what is next into a fresh context, or the act of one agent passing the task to another agent better suited to the next part.
+reset | Starting a fresh context that holds only a written handoff note, clearing out accumulated clutter and confusion.
+normalize [normalizing, normalized] | Divide a vector by its own length so the new length is 1. For example [3, 4] has length 5, so it becomes [0.6, 0.8].
+text layer | The characters stored inside a PDF along with their positions on the page. A scan has no text layer, only an image of the page.
+sharding [shard, sharded] | Splitting a large set of data across several machines so each one holds only a part.
+base URL | The web address your client sends API requests to. Changing it points the same code at a different provider.
+router | A service such as OpenRouter that offers one API for many models from different providers, with fallback when one goes down.
+agent loop | The cycle of calling the model, running any tool it asks for, adding the result and repeating until it gives a final answer.
+checkpoint | A saved copy of an agent's state after a step, so a restart can resume from it instead of starting over.
