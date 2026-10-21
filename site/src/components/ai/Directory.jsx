@@ -4,7 +4,8 @@ import { Check } from 'lucide-react'
 import Chip from '../shared/Chip.jsx'
 import PageContainer from '../shared/PageContainer.jsx'
 import Panel from '../shared/Panel.jsx'
-import { LEVELS, Pill } from '../shared/ui.jsx'
+import { Pill } from '../shared/ui.jsx'
+import { ARTICLE_TOPICS, LEVELS } from '../../lib/vocab.mjs'
 import SectionHeading from '../shared/SectionHeading.jsx'
 import { ListRow, RowList } from '../shared/RowList.jsx'
 import { SearchBox } from '../shared/Reference.jsx'
@@ -83,8 +84,6 @@ export function ModelAtlas({ atlas }) {
   )
 }
 
-const TOPICS = { 'how-llms-work': 'How LLMs work', prompting: 'Prompting', agents: 'Agents', retrieval: 'Retrieval', evals: 'Evals', safety: 'Safety', building: 'Building', coding: 'Coding with AI', history: 'History', critical: 'Critical views' }
-
 // Hand-picked free reading, one lesson each. Filter by topic or search.
 export function Articles({ articles }) {
   const [topic, setTopic] = useState(null)
@@ -101,7 +100,7 @@ export function Articles({ articles }) {
       <SearchBox value={q} onChange={setQ} placeholder="Search title, author or topic" label="Search articles" className="max-w-md" />
       <div className="flex flex-wrap gap-2">
         <Chip on={!topic} onClick={() => setTopic(null)}>All {articles.length}</Chip>
-        {Object.entries(TOPICS).filter(([t]) => count(t)).map(([t, label]) => <Chip key={t} on={topic === t} onClick={() => setTopic(t)}>{label} {count(t)}</Chip>)}
+        {Object.entries(ARTICLE_TOPICS).filter(([t]) => count(t)).map(([t, label]) => <Chip key={t} on={topic === t} onClick={() => setTopic(t)}>{label} {count(t)}</Chip>)}
       </div>
       <p className="text-sm text-fd-muted-foreground" aria-live="polite">Showing {shown.length} of {articles.length}</p>
       <RowList>
@@ -113,7 +112,7 @@ export function Articles({ articles }) {
             </div>
             <p className="text-fd-muted-foreground">{a.why}</p>
             <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-fd-muted-foreground">
-              <Pill tone="outline">{TOPICS[a.topic]}</Pill>
+              <Pill tone="outline">{ARTICLE_TOPICS[a.topic]}</Pill>
               <Pill tone="outline">{LEVELS[a.level]}</Pill>
               Pairs with <Pill href={a.lessonUrl} className="max-md:inline-flex max-md:min-h-11 max-md:items-center">{a.lessonTitle}</Pill>
             </p>

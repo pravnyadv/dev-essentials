@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import * as curation from './ai-curation.mjs'
 import { importGuide } from './import-guide.mjs'
 import { loadTrack } from './lib-authored.mjs'
+import { ARTICLE_TOPICS } from '../src/lib/vocab.mjs'
 
 const track = loadTrack('ai', curation, { imported: importGuide })
 const { errors, data, slugs, urlOf, titleOf } = track
@@ -15,11 +16,10 @@ for (const m of models.groups.flatMap(g => g.models)) if (m.topic) m.topicUrl = 
 for (const r of radar) if (r.topic) { r.topicUrl = urlOf[r.topic]; r.topicTitle = titleOf[r.topic] }
 
 // Hand-picked free reading list (data/articles.json). Each entry pairs with one lesson.
-const ARTICLE_TOPICS = ['how-llms-work', 'prompting', 'agents', 'retrieval', 'evals', 'safety', 'building', 'coding', 'history', 'critical']
 const articles = existsSync(new URL('../authored/ai/data/articles.json', import.meta.url)) ? data('articles.json') : []
 const seenArticle = new Set()
 for (const a of articles) {
-  if (!ARTICLE_TOPICS.includes(a.topic)) errors.push(`article ${a.title}: bad topic ${a.topic}`)
+  if (!Object.hasOwn(ARTICLE_TOPICS, a.topic)) errors.push(`article ${a.title}: bad topic ${a.topic}`)
   if (![1, 2, 3].includes(a.level)) errors.push(`article ${a.title}: bad level ${a.level}`)
   if (!slugs.includes(a.lesson)) errors.push(`article ${a.title}: unknown lesson ${a.lesson}`)
   if (seenArticle.has(a.url)) errors.push(`duplicate article url: ${a.url}`)

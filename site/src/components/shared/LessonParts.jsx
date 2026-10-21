@@ -6,19 +6,19 @@ import { ListRow, RowList } from './RowList.jsx'
 import SectionHeading from './SectionHeading.jsx'
 import Quiz from './Quiz.jsx'
 import { buttonClass, Pill } from './ui.jsx'
+import { RESOURCE_KINDS } from '../../lib/vocab.mjs'
 
-const KIND = { article: 'Article', video: 'Video', course: 'Course', repo: 'Repo', paper: 'Paper', docs: 'Docs', tool: 'Tool', book: 'Book' }
 const compact = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : n)
 
 export function ResourceRow({ r, showTopics }) {
   const external = !r.url.startsWith('/')
   return (
     <ListRow className="flex gap-4">
-      <span className="w-16 shrink-0 pt-1.5 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground max-md:hidden">{KIND[r.kind]}</span>
+      <span className="w-16 shrink-0 pt-1.5 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground max-md:hidden">{RESOURCE_KINDS[r.kind]}</span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
           <a href={r.url} target={external ? '_blank' : undefined} rel="noreferrer" className="inline-block py-1 font-semibold hover:underline max-md:py-3">{r.title}</a>
-          <span className="text-xs text-fd-muted-foreground md:hidden">{KIND[r.kind]}</span>
+          <span className="text-xs text-fd-muted-foreground md:hidden">{RESOURCE_KINDS[r.kind]}</span>
           {r.stars && <span className="text-xs text-fd-muted-foreground" title="GitHub stars">★ {compact(r.stars)}</span>}
         </div>
         <p className="text-fd-muted-foreground">{r.by && <span className="text-fd-foreground">{r.by} · </span>}{r.why}</p>

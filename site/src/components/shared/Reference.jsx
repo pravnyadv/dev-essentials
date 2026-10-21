@@ -8,6 +8,7 @@ import { buttonClass } from './ui.jsx'
 import SectionHeading from './SectionHeading.jsx'
 import { RowList } from './RowList.jsx'
 import { ResourceRow } from './LessonParts.jsx'
+import { RESOURCE_KINDS } from '../../lib/vocab.mjs'
 
 // Reference pages every authored track has: the resource library and the glossary.
 
@@ -21,7 +22,7 @@ export function SearchBox({ value, onChange, placeholder, label, className = '' 
   )
 }
 
-const KINDS = ['article', 'video', 'course', 'repo', 'paper', 'docs', 'tool', 'book']
+const KINDS = Object.keys(RESOURCE_KINDS)
 const PAGE = 40
 const chapterOf = r => r.topics.map(t => t.url.split('/')[3])
 

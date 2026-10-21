@@ -1,4 +1,5 @@
 'use client'
+import { demoRegistry } from '../shared/demoRegistry.jsx'
 import ClockDemo from './ClockDemo.jsx'
 import { FanoutDemo, QuorumDemo } from './DataDemos.jsx'
 import { BucketDemo, CacheDemo, PercentilesDemo, RingDemo } from './Demos.jsx'
@@ -13,7 +14,4 @@ const DEMOS = {
   shardkey: ShardKeyDemo, clocks: ClockDemo, isolation: IsolationDemo,
 }
 
-export default function Explainer({ name }) {
-  const Demo = DEMOS[name]
-  return Demo ? <Demo /> : null
-}
+export default demoRegistry(DEMOS)

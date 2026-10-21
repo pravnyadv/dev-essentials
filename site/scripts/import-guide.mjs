@@ -102,7 +102,7 @@ const rotate = quiz => quiz.map(q => {
   return { ...q, options, answer: to }
 })
 
-export function importGuide(chapter, termsIn) {
+export function importGuide(termsIn) {
   turn = 0
   if (!existsSync(join(repo, 'pages/techniques'))) throw new Error('vendor/prompt-engineering-guide missing: run scripts/ensure-source.mjs')
   return PAGES.map(([file, level]) => {
@@ -114,8 +114,8 @@ export function importGuide(chapter, termsIn) {
     const summary = body.split('\n\n').find(p => p.length > 80 && /^[A-Z]/.test(p) && !p.startsWith('Image')) ?? title
     const url = `${SITE}/techniques/${file}`
     return {
-      id: `ai/${chapter.id}/${slug}`, slug, title, level, minutes: Math.max(3, Math.round(body.split(/\s+/).length / 180)), summary: summary.replace(/\s+/g, ' ').slice(0, 280),
-      kind: 'Reference', chapter: chapter.title, url: `/ai/docs/${chapter.id}/${slug}`,
+      slug, title, level, minutes: Math.max(3, Math.round(body.split(/\s+/).length / 180)), summary: summary.replace(/\s+/g, ' ').slice(0, 280),
+      kind: 'Reference',
       resources: [{ kind: 'docs', title: `${title} on promptingguide.ai`, url, by: 'DAIR.AI', why: 'The original page, with the latest edits and translations.' }],
       quiz: rotate(EXTRAS[file].quiz), story: EXTRAS[file].story, terms: termsIn(body), body,
       source: { name: 'DAIR.AI Prompt Engineering Guide', url: `${GITHUB}/blob/main/pages/techniques/${file}.en.mdx`, license: 'MIT' },
