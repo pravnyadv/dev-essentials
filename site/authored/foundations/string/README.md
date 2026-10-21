@@ -9,7 +9,7 @@ A string is a sequence of characters. In JavaScript it is **immutable**: you nev
 | `s[i]`, `s.at(i)`, `s.charAt(i)` | O(1) | |
 | `s.length` | O(1) | |
 | `s + t`, `s.concat(t)` | O(n) | Creates a new string |
-| `s.slice(a, b)`, `s.substring(a, b)` | O(n) | Copy of the range |
+| `s.slice(a, b)`, `s.substring(a, b)` | O(n) | Copy of the range (in the simple model; engines may share storage, but plan for O(n)) |
 | `s.indexOf(t)`, `s.includes(t)` | O(n × m) worst | n text, m pattern |
 | `s.split('')`, `[...s]` | O(n) | |
 | `a === b` | O(n) | Compares characters |
@@ -52,6 +52,7 @@ for (const ch of word) counts[ch.charCodeAt(0) - 97]++;
 
 ## Common mistakes
 
-- Comparing with `==` or forgetting strings are immutable (`s[0] = 'x'` silently does nothing).
+- Trying to change a string in place. `s[0] = 'x'` does nothing in a plain script and throws a TypeError in a module or strict code; build a new string instead (`'x' + s.slice(1)`).
+- Using `==` when you meant `===` (it converts types: `'1' == 1` is true).
 - Using `+=` in a hot loop over a huge input.
 - Forgetting case or whitespace rules in the problem statement.

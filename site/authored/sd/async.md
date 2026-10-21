@@ -27,7 +27,7 @@ sequenceDiagram
 3. The consumer does the job.
 4. The consumer sends an acknowledgement, or ack, which tells the broker the job is done. The broker deletes the message.
 
-Step 2 matters. If the consumer crashes before step 4, no ack ever arrives, so the message must not be lost. In Amazon SQS the hiding time is called the visibility timeout. It defaults to 30 seconds. If the message is not deleted before it runs out, the message becomes visible again and another consumer gets it. RabbitMQ gets the same effect differently: it requeues a message when the consumer's connection closes without an ack. Either way, the queue prefers to deliver a job twice over losing it. That choice has consequences, covered in [delivery guarantees](/sd/docs/async/delivery-guarantees).
+Step 2 matters. If the consumer crashes before step 4, no ack ever arrives, so the message must not be lost. In Amazon SQS the ack is a delete call: the consumer deletes the message when the job is done, and the hiding time is called the visibility timeout. It defaults to 30 seconds. If the message is not deleted before it runs out, the message becomes visible again and another consumer gets it. RabbitMQ gets the same effect differently: it requeues a message when the consumer's connection closes without an ack. Either way, the queue prefers to deliver a job twice over losing it. That choice has consequences, covered in [delivery guarantees](/sd/docs/async/delivery-guarantees).
 
 Many consumers can read one queue at once, which is how you add capacity. The [Competing Consumers and Queue-Based Load Leveling](/sd/docs/cloud-messaging/competing-consumers) lesson shows how workers share a queue, and how a queue evens out bursts in front of a slow service.
 
@@ -64,13 +64,13 @@ Assuming a queue makes work happen exactly once. It makes work survive crashes, 
 article | System Design Primer: Asynchronism | https://github.com/donnemartin/system-design-primer#asynchronism | Donne Martin | The short treatment of message queues, task queues and back pressure this lesson builds on.
 docs | Amazon SQS visibility timeout | https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html | AWS | Explains the 30 second default, redelivery after expiry, heartbeats and dead-letter queues.
 docs | RabbitMQ consumer acknowledgements and publisher confirms | https://www.rabbitmq.com/docs/confirms | RabbitMQ | Shows how acks tell the broker a delivery was processed, and how unacked messages are requeued.
-article | Avoiding insurmountable queue backlogs | https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/ | Amazon Builders Library | Describes how a backlog builds up and why recovering from it takes extra capacity for as long as the outage lasted.
+article | Avoiding insurmountable queue backlogs | https://builder.aws.com/content/3EuRcgkTP1MI0c7zM8W6HL3WIqA/avoiding-insurmountable-queue-backlogs | AWS Builder Center, formerly the Amazon Builders Library | Describes how a backlog builds up and why recovering from it takes extra capacity for as long as the outage lasted.
 ```
 
 ```quiz
 What does a worker do after finishing a job so the broker can delete the message? | Sends an acknowledgement ; Restarts the visibility timeout ; Publishes a new message | 0 | The ack tells the broker the delivery was processed, so it can remove the message.
 Capacity is 400 jobs per minute and 300 arrive per minute after a burst leaves 9,200 queued. About how long to drain? | About 23 minutes ; About 92 minutes ; About 31 minutes | 1 | The queue drains at 400 minus 300, which is 100 per minute, and 9,200 divided by 100 is 92.
-Why is a task that takes 90 seconds with a 30 second visibility timeout a problem? | The broker deletes it after 30 seconds ; The queue refuses messages that are too slow ; Another worker may pick it up while it runs | 2 | The message becomes visible again at 30 seconds, so a second worker can start the same job.
+A job takes 90 seconds, the visibility timeout is 30, and three workers' logs show the same message id. Most likely cause? | The producer sent the message three times ; The broker lost the ack and deleted it ; The timeout is shorter than the job | 2 | The message became visible again at 30 seconds and again at 60, so other workers started the same job.
 ```
 
 ```story
@@ -129,7 +129,7 @@ The three delivery models compared.
 | Best for | Jobs shared by workers | Telling several services about one event | Several readers, order per key, replay |
 
 ## Partitions, offsets and consumer groups
-One log on one machine cannot grow forever. Kafka splits a topic into partitions, each its own log, spread over different servers. A producer picks a partition for each event, usually by hashing a key such as the customer id. Events with the same key land in the same partition, and Kafka guarantees a reader sees one partition's events in the order they were written. There is no ordering guarantee between partitions. Kreps names this lack of global order as a limitation.
+One log on one machine cannot grow forever. Kafka splits a topic into partitions, each its own log, spread over different servers. A producer picks a partition for each event, usually by hashing a key such as the customer id. Events with the same key land in the same partition, and Kafka guarantees a reader sees one partition's events in the order they were written. There is no ordering guarantee between partitions. Kreps notes that there is no global ordering between partitions.
 
 A consumer group is a set of consumers that share a topic. Each partition is read by one consumer in the group, so more consumers means more parallelism, up to the number of partitions. A second group, say analytics, reads the same topic independently with its own offsets. So a consumer group acts like a work queue inside, and separate groups act like pub/sub.
 
@@ -152,9 +152,10 @@ flowchart LR
   P1 --> C1[Consumer 1]
   P2 --> C2[Consumer 2]
   class P0 bad
+  classDef bad fill:#fdd,stroke:#c33
 ```
 
-Suppose one customer produces 40 percent of all events. Their key hashes to a single partition, so one consumer gets 40 percent of the traffic while the others idle. The symptom is one partition with a growing lag (how far the consumer's offset is behind the end of the log) while the rest sit near zero. Confirm it by listing lag per partition. Fixes include adding a random suffix to the key for that customer, which gives up ordering for them, or splitting the topic.
+Suppose one customer produces 40 percent of all events. Their key hashes to a single partition, so one consumer gets 40 percent of the traffic while the others idle. The symptom is one partition with growing consumer lag (how far the consumer's offset is behind the end of the log) while the rest sit near zero. Confirm it by listing lag per partition. Fixes include adding a random suffix to the key for that customer, which gives up ordering for them, or splitting the topic.
 
 ```mermaid One key with 40 percent of 6,000 events per second overloads its partition while the other eleven sit well below one consumer's limit (12 partitions, invented numbers)
 xychart-beta
@@ -165,7 +166,7 @@ xychart-beta
 ```
 
 ## When a log is the wrong tool
-For plain background jobs with retries and per-job delays, a task queue is simpler to run. A log forces you to think about partitions, offsets and rebalancing. Kafka also adds an extra system for a small team to operate. If you have one producer, one consumer and modest volume, a managed queue is likely enough. Choose a log when several consumers need the same events, when order per key matters, or when replay is valuable.
+For plain background jobs with retries and per-job delays, a task queue is simpler to run. A log forces you to think about partitions, offsets and rebalancing (the pause while Kafka reassigns partitions among consumers when one joins or leaves a group). Kafka also adds an extra system for a small team to operate. If you have one producer, one consumer and modest volume, a managed queue is likely enough. Choose a log when several consumers need the same events, when order per key matters, or when replay is valuable.
 
 ## Common mistake
 Expecting ordering across a whole topic. Order exists only inside one partition, so put events that must stay ordered under the same key.
@@ -201,7 +202,7 @@ The three guarantees on the same questions.
 | Guarantee | Can a message be lost? | Can it repeat? | How it works | Fits |
 | --- | --- | --- | --- | --- |
 | At-most-once | Yes | Never | Send once, never retry | A metrics ping |
-| At-least-once | Never | Yes | Retry until acked | Most brokers by default, with safe-to-repeat work |
+| At-least-once | Not while retries continue | Yes | Retry until acked | Most brokers by default, with safe-to-repeat work |
 | Effectively-once | No | Delivered more than once, effect happens once | At-least-once plus an idempotency key | Payments |
 
 ## Where duplicates come from
@@ -235,7 +236,7 @@ Avoid when | The operation is naturally idempotent, such as setting a value, or 
 An operation is idempotent if doing it many times has the same effect as doing it once. "Set the status to shipped" is idempotent. "Add 10 dollars to the balance" is not. For the second kind, attach an idempotency key: a unique id made by the producer for one logical operation. The consumer keeps a table of keys it has handled, with a unique constraint. It runs the work and records the key in the same database transaction. A repeat violates the constraint, so the work is skipped and the stored result is returned. Stripe's API works this way, with an Idempotency-Key header on mutating requests.
 
 ## The outbox pattern
-A service often must update its database and also publish an event. Doing both is risky. Publish first and the database write may fail. Commit first and the service may crash before publishing. A distributed transaction across both is often unavailable or unwanted. The transactional outbox pattern, described by Chris Richardson, stores the event in an outbox table in the same transaction as the business change. A separate relay reads the table and publishes. The event is sent if and only if the transaction commits. The relay can crash after publishing, so it may publish twice, which is why consumers must be idempotent anyway.
+A service often must update its database and also publish an event. Doing both is risky. Publish first and the database write may fail. Commit first and the service may crash before publishing. A distributed transaction across both is often unavailable or unwanted. The transactional outbox pattern, described by Chris Richardson, stores the event in an outbox table in the same transaction as the business change. A separate relay reads the table and publishes. The event is saved if and only if the transaction commits, and the relay then publishes it at least once. The relay can crash after publishing, so it may publish twice, which is why consumers must be idempotent anyway.
 
 ## A worked example: charged twice
 A payment consumer reads "charge order 981 for 40 dollars" from a queue. It calls the card processor, which charges the card. Then the consumer crashes, before it acks.
@@ -244,20 +245,22 @@ A payment consumer reads "charge order 981 for 40 dollars" from a queue. It call
 2. Another consumer receives it and calls the processor again.
 3. The customer is charged 80 dollars.
 
-The fix has two layers. The consumer sends the order id "981-charge" as the processor's idempotency key. The second call returns the first result and charges nothing. The consumer also keeps its own table with a unique key on message id, so even a processor without keys is protected.
+The fix has two layers. The consumer sends the order id "981-charge" as the processor's idempotency key. The second call returns the first result and charges nothing. The consumer also keeps its own table with a unique key on message id. That stops the same message from being recorded twice in our database, but it cannot undo a charge the processor already made, so the processor's key is the layer that protects the card. These are two different keys: the processor key identifies the charge for the card processor, and the message id identifies the delivery in our own table.
 
 ```python
 def handle(msg):  # pseudocode
     try:
+        charge_id = processor.charge(order=msg.order, amount=msg.amount,
+                                     idempotency_key=msg.order + "-charge")
         with db.transaction():
             db.insert("processed", key=msg.id)   # unique constraint
-            db.insert("payments", order=msg.order, amount=msg.amount)
+            db.insert("payments", order=msg.order, charge=charge_id)
     except UniqueViolation:
         pass                                      # duplicate, already done
     ack(msg)
 ```
 
-Note the order: the work and the key commit together, and the ack comes last, also for a duplicate, so the broker stops redelivering it. A crash after commit but before the ack only causes a harmless repeat.
+Note the order: the charge goes out with its own key, then the local record and the message key commit together, and the ack comes last, also for a duplicate, so the broker stops redelivering it. A crash after commit but before the ack only causes a harmless repeat.
 
 The same message 981 delivered twice, step by step.
 
@@ -289,6 +292,7 @@ article | System Design 101: Top 6 cases to apply idempotency | https://bytebyte
 A consumer charges a card, then crashes before acking. What happens next with at-least-once delivery? | The message is redelivered and may charge again ; The broker detects the charge and skips it ; The message is dropped because it failed | 0 | Without an ack the broker redelivers, so the charge repeats unless the work is idempotent.
 Which operation is naturally idempotent? | Add 10 dollars to a balance ; Send a welcome email ; Set an order status to shipped | 2 | Setting a value gives the same result however many times you repeat it.
 Why store the processed key in the same transaction as the work? | It makes the broker deliver faster ; A crash cannot leave work done without its key ; It lets the consumer skip acknowledging | 1 | If both commit together, a repeat sees the key and a crash leaves neither.
+Two copies of message 981 arrive at the same moment. Both read "seen 981?", get no, and charge twice. What fixes it? | Raise the visibility timeout a lot ; Move the id check earlier in the function ; Insert the key under a unique constraint | 2 | The database lets only one insert of a unique key succeed, so the other copy fails and skips the work.
 ```
 
 ```story
@@ -299,14 +303,14 @@ A subscription app retries failed charges. One night the card processor is slow,
 A queue that grows without limit only hides an overload until it becomes an outage. Back pressure means pushing the problem back toward the sender, so that waiting stays short and overload is visible.
 
 ## What back pressure is
-If work arrives faster than workers finish it, the queue grows. The System Design Primer notes that once a queue outgrows memory, it causes cache misses and disk reads, and performance drops. Back pressure is the fix: you bound the queue, and when it is full, new requests are refused. A web service returns HTTP 503 (server busy) or 429 (too many requests), and clients retry later, ideally with exponential backoff (waiting longer after each failure).
+If work arrives faster than workers finish it, the queue grows. The System Design Primer notes that once a queue outgrows memory, it causes cache misses and disk reads, and performance drops. Back pressure is the fix: you bound the queue, so a full queue makes the sender slow down or stop. Over HTTP the usual form is refusal: a web service returns HTTP 503 (server busy) or 429 (too many requests), and clients retry later, ideally with exponential backoff (waiting longer after each failure). Use 503 when the whole service is overloaded and 429 when one client is sending too much, and add a Retry-After header saying how long to wait.
 
 The alternative is buffering forever. That feels kind, since nothing is rejected, but it means users wait hours for work that may no longer matter. Amazon's Builders' Library article on queue backlogs says many of its systems start rejecting work in the producer when a backlog gets unreasonable. It also says some systems, like order processing, prefer to keep accepting orders and prioritize behind the scenes. Both are valid. Decide which per workload.
 
 ```mermaid A bounded queue refuses new work at the limit, so the wait for accepted work stays flat
 flowchart LR
   P[Producers] -->|accepted| Q[Bounded queue]
-  P -.->|queue full: 429| X[Rejected]
+  P -.->|queue full: 503| X[Rejected]
   Q --> W[Workers]
   class X bad
   class Q warn
@@ -315,7 +319,7 @@ flowchart LR
 ## Sizing with Little's law
 How many workers do you need, and how long will a job wait? [Little's law](/sd/docs/foundations/latency-and-throughput) answers both, and that lesson has the full explanation. Applied here, the number of jobs in progress equals the arrival rate times the time one job takes. If 80 jobs arrive per second and each takes 0.5 seconds, 40 are in progress at any moment, so you need at least 40 workers, and more for bursts.
 
-The same relation gives the wait. A queue of $Q$ jobs served at $\mu$ jobs per second makes a new job wait about $Q / \mu$ seconds. This is why a bound on queue length is also a bound on latency.
+The same relation gives the wait. A backed-up queue empties at the service rate, so a queue of $Q$ jobs served at $\mu$ jobs per second makes a new job wait about $Q / \mu$ seconds: 1,000 jobs at 100 per second is 10 seconds. This is why a bound on queue length is also a bound on latency.
 
 Little's law applied to workers, for jobs that take 0.5 seconds.
 
@@ -338,17 +342,17 @@ The longest wait for an accepted job, with workers serving 100 jobs per second.
 ## Your options when arrivals exceed service
 When the arrival rate stays above the service rate, only a few things can happen. Pick on purpose.
 
-1. Reject at the edge. Bound the queue and return 429 or 503. Latency for accepted work stays flat.
+1. Reject at the edge. Bound the queue and return 503 (or 429 for one noisy client). Latency for accepted work stays flat.
 2. Shed the least useful work. Drop old, low-priority or duplicate items first, and keep the rest.
 3. Add capacity. More workers raise the service rate. This helps only if the bottleneck is the workers, not a shared database behind them.
-4. Slow the producer. Let consumers pull work at their own pace, or make producers wait for a free slot. Streams and pull-based queues do this naturally.
+4. Make the producer wait. Let consumers pull work at their own pace, or make producers wait for a free slot. Streams and pull-based queues do this naturally. Options 1 and 4 are both forms of back pressure.
 
 ## A worked example: when arrivals exceed service
 Invented numbers. 50 workers each finish a job in 0.5 seconds, so the system serves 100 jobs per second. Arrivals rise to 120 per second. Try these numbers in the demo above.
 
 The queue grows by 120 - 100 = 20 jobs per second. After 10 minutes (600 seconds) that is 12,000 jobs. A job arriving then waits 12,000 / 100 = 120 seconds before it starts, and the wait keeps growing. Nothing has crashed, yet users already see the system as down.
 
-Now bound the queue at 1,000 jobs. A new job waits at most 1,000 / 100 = 10 seconds. The 20 jobs per second that do not fit are rejected with 429, and clients retry later. Latency for accepted work stays flat. The cost is that 1 in 6 requests is refused, which is visible but honest.
+Now bound the queue at 1,000 jobs. A new job waits at most 1,000 / 100 = 10 seconds. The 20 jobs per second that do not fit are rejected with 503, and clients retry later. Latency for accepted work stays flat. The cost is that 1 in 6 requests is refused, which is visible but honest.
 
 ```mermaid The same overload, unbounded versus bounded: only the bounded queue keeps waits short
 sequenceDiagram
@@ -358,16 +362,16 @@ sequenceDiagram
   C->>Q: job, queue holds 12,000
   Note over Q,W: wait is 120 s and growing
   C->>Q: job, queue holds 1,000
-  Q-->>C: 429 too many requests
+  Q-->>C: 503 server busy
   Note over C: waits, retries with backoff
   Q->>W: accepted job, wait at most 10 s
 ```
 
 ## What goes wrong: the backlog nobody saw
-A downstream API is slow for an hour. Workers time out and retry, and the queue fills. The dashboard shows workers busy and no errors, so no one is paged. By morning the queue holds a day of work. The symptom is complaints about stale results while every health check is green. Confirm it by checking queue depth and the age of the oldest message. Age is the better alarm, because depth alone cannot say whether a backlog is 10,000 small jobs or one hour old. Amazon's article also notes that a one-hour outage needs double capacity for another hour to recover, so recovery is slow.
+A downstream API is slow for an hour. Workers time out and retry, and the queue fills. The dashboard shows workers busy and no errors, so no one is paged. By morning the queue holds a day of work. The symptom is complaints about stale results while every health check is green. Confirm it by checking queue depth and the age of the oldest message. Age is the better alarm, because depth alone cannot say whether a backlog is 10,000 small jobs or one hour old. Amazon's article also notes that after a one-hour outage you need double your normal capacity for another hour to catch up, though elastic services with spare capacity can recover faster.
 
 ## When back pressure is the wrong tool
-If dropping work is unacceptable and the queue is durable, such as orders, bound by priority instead of refusing everything. If the load is a short, known burst, a deeper queue and extra workers can be cheaper than rejecting users. Back pressure also needs well-behaved clients. A client that retries instantly with no backoff turns your 429 into more load.
+If dropping work is unacceptable and the queue is durable, such as orders, bound by priority instead of refusing everything. If the load is a short, known burst, a deeper queue and extra workers can be cheaper than rejecting users. Back pressure also needs well-behaved clients. A client that retries instantly with no backoff turns your 503 into more load.
 
 ## Common mistake
 Alarming on queue depth only. Alarm on the age of the oldest message too, since age is what users feel.
@@ -381,8 +385,9 @@ docs | Little's law | https://en.wikipedia.org/wiki/Little%27s_law | Wikipedia |
 
 ```quiz
 Jobs arrive at 60 per second and each takes 0.5 seconds. How many are in progress on average? | 120 jobs ; 30 jobs ; 60 jobs | 1 | Little's law gives 60 times 0.5, which is 30 jobs in progress.
-Arrivals are 120 per second and service is 100 per second. How fast does the queue grow? | 20 jobs per second ; 100 jobs per second ; 120 jobs per second | 0 | The queue grows by arrivals minus service, which is 20 per second.
-A queue is bounded at 1,000 jobs and served at 100 per second. What is the longest wait for an accepted job? | About 10 seconds ; About 100 seconds ; About 1 second | 0 | The wait is queue length divided by service rate, 1,000 divided by 100, which is 10 seconds.
+Arrivals are 90 per second and service is 75 per second. How fast does the queue grow? | 75 jobs per second ; 90 jobs per second ; 15 jobs per second | 2 | The queue grows by arrivals minus service, which is 15 per second.
+A queue is bounded at 600 jobs and served at 50 per second. What is the longest wait for an accepted job? | About 12 seconds ; About 50 seconds ; About 600 seconds | 0 | The wait is queue length divided by service rate, 600 divided by 50, which is 12 seconds.
+A queue holds 8,000 jobs but all health checks are green. Which single number best tells you if users wait too long? | The number of workers running ; The age of the oldest message ; The CPU use of the queue server | 1 | Depth alone cannot say whether the backlog is 8,000 tiny jobs or one hour old, but the age of the oldest message is what a user feels.
 ```
 
 ```story
@@ -429,6 +434,8 @@ sequenceDiagram
   W-->>Q: failed
   Q->>W: job, attempt 3 after backoff
   W-->>Q: failed
+  Q->>W: job, attempt 4 after backoff
+  W-->>Q: failed
   Q->>D: move job, limit reached
 ```
 
@@ -436,10 +443,10 @@ sequenceDiagram
 Queues deliver at least once, and schedulers and retries add repeats of their own. So a job should give the same result when run twice. Write "set the status to shipped" instead of "add one to the counter", or record an idempotency key with the work in one transaction. The full treatment is in [delivery guarantees and idempotency](/sd/docs/async/delivery-guarantees). A job that can also be stopped halfway and restarted cleanly, for example by writing progress checkpoints, survives crashes and redeploys.
 
 ## Returning results
-Ideally a job is fire and forget. If the caller does need the outcome, you have three options. First, a status record: the caller gets a job ID, polls a status URL, and later fetches the result. Second, a callback: the caller gives a webhook URL and the job calls it when done. Third, a reply queue: the job posts a message the caller listens for. Polling is simple and a callback is prompt but fails if the receiver is down, so keep the status record as the source of truth. The details of the first option are in [Asynchronous Request-Reply](/sd/docs/cloud-messaging/claim-check-and-async-reply).
+Ideally a job is fire and forget. If the caller does need the outcome, you have three options. First, a status record: the caller gets a job ID, polls a status URL, and later fetches the result. The server answers the first request with HTTP 202 Accepted and a Location header that holds the status URL. A later poll returns the result, or redirects to it. Second, a callback: the caller gives a webhook URL and the job calls it when done. Third, a reply queue: the job posts a message the caller listens for. Polling is simple and a callback is prompt but fails if the receiver is down, so keep the status record as the source of truth. The details of the first option are in [Asynchronous Request-Reply](/sd/docs/cloud-messaging/claim-check-and-async-reply).
 
 ## A worked example: the poison job
-Invented numbers. A queue gets 10,000 jobs an hour, and 2 percent have bad input that always fails. That is 200 poison jobs. Each failure wastes 5 seconds of a worker, and there are 20 workers.
+Invented numbers. A poison job is one that always fails, such as a job with bad input. A queue gets 10,000 jobs an hour, and 2 percent are poison jobs. That is 200. Each failure wastes 5 seconds of a worker, and there are 20 workers.
 
 With no attempt limit, every poison job comes back again and again. One pass over them costs 200 x 5 = 1,000 worker-seconds. The 20 workers supply 20 worker-seconds each second, so one pass takes 1,000 / 20 = 50 seconds, and a new pass starts straight away. The workers spend all their time on jobs that cannot succeed, and healthy jobs starve.
 
@@ -466,17 +473,18 @@ Retrying every failure the same way. Temporary errors deserve a few retries with
 article | Best practices for background jobs | https://learn.microsoft.com/en-us/azure/architecture/best-practices/background-jobs | Microsoft Azure Architecture Center | Covers event-driven and schedule-driven triggers, overlapping scheduler runs, and ways to return results such as status endpoints, reply queues and webhooks.
 docs | Amazon SQS dead-letter queues | https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html | AWS | Describes DLQs as the place source queues send messages that could not be processed, for later inspection.
 article | Timeouts, retries and backoff with jitter | https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/ | Amazon Builders Library | Says retries are selfish and that jitter spreads retry bursts over time.
+article | Avoiding insurmountable queue backlogs | https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/ | Amazon Builders Library | Says to alarm on dead-letter queue volumes, but that DLQ counts alone arrive too late to detect problems.
 article | Asynchronous Request-Reply pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/asynchronous-request-reply | Microsoft Azure Architecture Center | Shows the 202 Accepted, status endpoint and 303 redirect flow for returning a job's result.
 ```
 
 ```quiz
 A queue has 200 poison jobs, 5 seconds wasted per attempt and 20 workers. With 4 attempts each, how long do the workers spend on them? | About 50 seconds ; About 200 seconds ; About 800 seconds | 1 | 200 jobs x 4 attempts x 5 seconds is 4,000 worker-seconds, and 20 workers clear that in 200 seconds.
-A nightly job is scheduled on each of three servers. What is the most likely result? | Three copies start at once ; The first server blocks the others ; The job runs once at random | 0 | Each server's timer fires on its own, so without a lock all three run.
+A nightly job is scheduled by cron on each of three servers, with no lock. What happens at 02:00? | Three copies start at once ; The first server blocks the others ; The job runs once at random | 0 | Each server's timer fires on its own, so without a lock all three run.
 What does a service return when it accepts a long job and the caller must poll? | 200 with the full result ; 202 with a status location ; 204 with an empty body | 1 | HTTP 202 Accepted with a Location header points the caller at a status endpoint.
 ```
 
 ```story
-A shop sends a receipt email from a background job. One customer typed an address with a stray space, and the job fails every time. With no attempt limit it cycles all day, and by afternoon receipts for everyone else are an hour late. A cap of four attempts and a dead-letter queue would have parked that one job and paged someone.
+A shop sends a receipt email from a background job. A bad batch of sign-ups has addresses with a stray space, so a few hundred jobs fail every time. With no attempt limit they cycle all day and take the workers, so by afternoon receipts for everyone else are an hour late. Sending each one to a dead-letter queue after a bad-address error, or after four attempts, would have parked them and paged someone.
 ```
 
 ```adapted

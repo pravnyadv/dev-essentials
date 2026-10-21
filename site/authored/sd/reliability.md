@@ -56,7 +56,9 @@ A single point of failure (SPOF) is any part whose loss takes the whole service 
 
 With active-passive fail-over, only the active server handles traffic. The two servers exchange heartbeats, which are small "I am alive" messages. If the heartbeats stop, the passive server takes over the active one's IP address and carries on. Downtime depends on whether the spare is already running (hot standby) or has to boot first (cold standby). You may also see this called master-slave fail-over.
 
-With active-active, both servers take traffic and share the load. If the servers are public, DNS must list both public IPs. If they are internal, the calling code must know about both. You may also see it called master-master. Fail-over adds hardware and complexity, and if the active system dies before its newest writes reach the passive one, those writes are lost. The data side of this is covered in [replication](/sd/docs/data/replication). The traffic side is covered in [load balancers](/sd/docs/scaling/load-balancing), and note that a single load balancer is itself a SPOF.
+With active-active, both servers take traffic and share the load. If the servers are public, DNS must list both public IPs. If they are internal, the calling code must know about both. You may also see it called master-master. The data side of this is covered in [replication](/sd/docs/data/replication). The traffic side is covered in [load balancers](/sd/docs/scaling/load-balancing), and note that a single load balancer is itself a SPOF.
+
+Both patterns have a cost. Fail-over adds hardware and complexity. And if the server that died had accepted writes that had not yet been copied to its partner, those writes are lost.
 
 ## Zones and regions
 A server dies, a rack loses power, a whole data centre floods. Cloud providers group data centres into availability zones (one or more data centres with separate infrastructure, within one area) and regions (separate areas). Spreading copies across zones survives a building failure. Spreading across regions survives a regional outage, but costs more and makes data replication slower.
@@ -65,9 +67,11 @@ A server dies, a rack loses power, a whole data centre floods. Cloud providers g
 Invented numbers. A shop has one load balancer (99.99 percent), one app server (99.9 percent) and one database (99.9 percent), all in sequence.
 
 1. Multiply: $0.9999 \times 0.999 \times 0.999 = 0.9979$, so 99.79 percent.
-2. Downtime per year is $0.0021 \times 525{,}960$ minutes, about 1,100 minutes or 18 hours. That is not even three nines.
+2. Downtime per year is $0.0021 \times 525{,}600$ minutes, about 1,100 minutes or 18 hours. That is not even three nines.
 3. Add a second app server and a database replica. Each pair is in parallel: $1 - 0.001^2 = 0.999999$.
-4. Now the chain is $0.9999 \times 0.999999 \times 0.999999 = 0.999898$, about 99.99 percent, or roughly 54 minutes a year.
+4. Now the chain is $0.9999 \times 0.999999 \times 0.999999 = 0.999898$, which is 99.9898 percent. That is about 54 minutes a year, just short of four nines (52.6 minutes). Three nines are easy now, and four nines are one small step away.
+
+These are upper bounds. The formula assumes the spare takes over at once, loses no data and can carry the whole load alone. A slow or failing switch-over costs you some of the nines you just calculated.
 
 The load balancer is now the weakest link, so it needs a spare next. Try these numbers in the demo above.
 
@@ -106,19 +110,19 @@ Every call over a network can hang or fail, so each one needs a timeout and a ca
 ## Why every remote call needs a timeout
 A call to another service can take longer than expected, or never finish. While the caller waits, it holds a thread, a connection and memory. The AWS Builders' Library says a client should set a timeout on any remote call, covering both the time to connect and the time to get a response. Without it, a slow dependency slowly uses up every thread you have, and your service goes down with it.
 
-Choosing the value is the hard part. AWS suggests starting from the downstream service's latency numbers. Pick a rate of false timeouts you can live with, such as 0.1 percent, and use the matching percentile, here p99.9 (the time that 99.9 percent of requests beat). See [latency and throughput](/sd/docs/foundations/latency-and-throughput) for percentiles. Too high and you waste resources while waiting. Too low and healthy calls time out, get retried, and add traffic. Pad the number when p99.9 sits close to the median, or when the client is far away across the internet.
+Choosing the value is the hard part. AWS suggests starting from the downstream service's latency numbers. Pick a rate of false timeouts (healthy calls that take longer than the limit and are cut off) you can live with, such as 0.1 percent, and use the matching percentile, here p99.9 (the time that 99.9 percent of requests beat). See [latency and throughput](/sd/docs/foundations/latency-and-throughput) for percentiles. Too high and you waste resources while waiting. Too low and healthy calls time out, get retried, and add traffic. Pad the number when p99.9 sits close to the median, or when the client is far away across the internet.
 
 ## Retries
 ```card Retry
 Problem | A call to another service fails for a moment because of a network blip, a restart or a short overload.
 Solution | Send the same request again after a delay that grows with each try, with a cap on tries and a random jitter added to the wait.
 Use when | The failure is transient, the call is idempotent and only one layer of the stack retries.
-Avoid when | The error is permanent (a 400 or 404), the call has side effects without an idempotency key, or the server has signalled overload and the work is optional.
+Avoid when | The error is permanent (a 400 or 404, not a 429), the call has side effects without an idempotency key, or the server has signalled overload and the work is optional.
 ```
 
 Many failures are partial (some requests fail) or transient (they fail for a moment). Sending the same request again often works. But the AWS article calls retries selfish: the client spends more of the server's time to raise its own chance of success. When the server is overloaded, that extra load can delay recovery long after the original fault is gone.
 
-Retries across layers multiply. If the web tier, the API tier and the service tier each make up to 3 tries, one user click can reach the bottom with $3 \times 3 \times 3 = 27$ calls. AWS describes a five-deep stack with three tries per layer, which gives 243 times the load on the database. The usual advice is to retry at one place in the stack, and to let the other layers fail fast.
+Retries across layers multiply. If the web tier, the API tier and the service tier each make up to 3 tries, one user click can reach the bottom with $3 \times 3 \times 3 = 27$ calls. A try is any attempt, including the first, so three tries per layer means two retries. AWS's example of a five-deep stack, which counts three tries per layer, gives 243 times the load on the database. The usual advice is to retry at one place in the stack, and to let the other layers fail fast.
 
 ## Backoff and jitter
 Backoff means waiting between tries, with the wait growing exponentially: 100 ms, 200 ms, 400 ms and so on, up to a cap. That alone is not enough. If 1,000 clients fail together, they all wait the same time and all come back together. The AWS Architecture Blog shows that jitter, a random delay, spreads those calls out. In its simulation of 100 contending clients, adding jitter cut the number of calls by more than half and finished sooner than plain backoff.
@@ -159,10 +163,10 @@ sequenceDiagram
   B->>S: try 1 at 0 s
   S-->>A: error
   S-->>B: error
-  Note over A,B: A picks 0.3 s, B picks 0.8 s
-  A->>S: retry at 0.3 s
+  Note over A,B: A picks 0.03 s, B picks 0.08 s
+  A->>S: retry at 0.03 s
   S-->>A: ok
-  B->>S: retry at 0.8 s
+  B->>S: retry at 0.08 s
   S-->>B: ok
 ```
 
@@ -172,12 +176,13 @@ A retry budget caps retries as a share of traffic, for example 10 percent, using
 Retrying a call with side effects is only safe if it is idempotent, meaning doing it twice has the same effect as once. A timeout does not tell you whether the work happened. Payment APIs fix this with an idempotency key: the client sends a unique id, and the server returns the stored result for a repeated id. See [delivery guarantees](/sd/docs/async/delivery-guarantees).
 
 ## A worked example: 27 calls from one click
-Invented numbers. A database can handle 1,000 queries per second and normally gets 400. A slow disk makes it reject half its queries.
+Invented numbers. A database can handle 1,000 queries per second and normally gets 400 from other traffic. A slow disk makes it reject half its queries.
 
 1. Each of 3 layers tries up to 3 times, so one failing click causes up to 27 queries.
-2. Under the fault, many clicks fail all the way down. If 100 clicks per second hit the failing path, the database sees up to 2,700 queries per second.
-3. That is far above its 1,000 limit, so more queries fail and more retries happen.
-4. With retries only in the top layer, the same 100 clicks cause at most 300 queries. The database can recover.
+2. Under the fault, many clicks fail all the way down. If 100 clicks per second hit the failing path, the failing path adds up to 2,700 queries per second on top of the 400 normal ones, about 3,100 against a limit of 1,000.
+3. That is far above its limit, so more queries fail and more retries happen.
+4. With retries only in the top layer, the same 100 clicks add at most 300, so the database sees about 700, under its limit, and it can recover.
+5. The top layer is not free: a retry there repeats work the lower layers already did. Pick one layer, and make the others fail fast.
 
 ```mermaid Calls reaching the bottom service from one failing request when every layer tries 3 times
 xychart-beta
@@ -187,7 +192,7 @@ xychart-beta
 ```
 
 ## What goes wrong: the retry storm
-A dependency has a 30 second blip. Every client retries after exactly 1 second, then 2, then 4. The dependency recovers, but is hit by thousands of clients in the same instant, falls over again, and repeats. The symptom is request spikes at regular intervals, visible on a per-second graph. Confirm it by looking at call counts per second to the dependency, and check whether they sit at powers of two after the incident started. Fix it with jitter, one retry layer and a budget. The [Retry Storm antipattern](/sd/docs/antipatterns/retry-storm-and-no-caching) lesson shows the same collapse in code, with the measurements that expose it.
+A dependency has a 30 second blip. Every client waits 1 second, then 2, then 4 between tries, so the spikes land 1, 3, 7 and 15 seconds after the first failure (the waits add up). The dependency recovers, but is hit by thousands of clients in the same instant, falls over again, and repeats. The symptom is request spikes at regular intervals, visible on a per-second graph. Confirm it by looking at call counts per second to the dependency: spikes at those times (always one less than a power of two) point to clients retrying in lockstep. Fix it with jitter, one retry layer and a budget. The [Retry Storm antipattern](/sd/docs/antipatterns/retry-storm-and-no-caching) lesson shows the same collapse in code, with the measurements that expose it.
 
 ```mermaid Without jitter, every client retries at the same instant and the recovering service is hit again
 sequenceDiagram
@@ -205,7 +210,7 @@ sequenceDiagram
 ```
 
 ## When retries are the wrong tool
-Do not retry client errors such as 400 or 404, because the same request will fail the same way. Do not retry non-idempotent calls without an idempotency key. Do not retry when the server says it is overloaded and the work is optional. For failures that last minutes, a [circuit breaker](/sd/docs/reliability/circuit-breakers) or a queue is better.
+Do not retry errors that mean the request itself is wrong, such as 400 or 404, because the same request will fail the same way. A 429 means slow down, so retry only after the wait the server asks for. Do not retry non-idempotent calls without an idempotency key. Do not retry when the server says it is overloaded and the work is optional. For failures that last minutes, a [circuit breaker](/sd/docs/reliability/circuit-breakers) or a queue is better.
 
 ## Common mistake
 Adding retries to every layer of the stack and a fixed sleep, without jitter, a cap or a budget.
@@ -218,7 +223,7 @@ article | Retry Strategies for System Failures | https://bytebytego.com/guides/h
 
 ```quiz
 Three layers each try a call up to 3 times. How many calls can the bottom service see per user request? | 9 calls ; 27 calls ; 243 calls | 1 | Retries multiply across layers: 3 times 3 times 3 is 27.
-Why add jitter to exponential backoff? | It makes every wait time shorter ; It lets the client skip the timeout ; It spreads retries out in time | 2 | Random delays spread the retries out so they do not arrive as one spike.
+1,000 clients fail at once and all retry after exactly 2 s, then 4 s. What goes wrong? | The waits grow too slowly ; They all hit the service at the same moments again ; The timeout fires too early | 1 | With identical waits the clients stay in lockstep, so every retry wave lands together. Jitter breaks that up.
 A payment call timed out. Which makes a retry safe? | An idempotency key on the request ; A longer timeout on the next try ; Retrying right away without any delay | 0 | The key lets the server spot a repeat and not charge twice.
 ```
 
@@ -311,7 +316,7 @@ Invented numbers. Capacity 5 tokens, refill 2 tokens per second, bucket starts f
 3. After 10 quiet seconds, the bucket refills to 5 (the cap), not 20.
 4. Over any long period the client averages 2 requests per second, with bursts of up to 5.
 
-Compare a fixed window of 100 per minute. A client sends 100 requests at 0:59 and 100 more at 1:00. Both windows allow it, yet the server saw 200 in two seconds. For a sliding window counter, Cloudflare's example with a limit of 50 per minute: 42 requests last minute, 18 so far this minute, 15 seconds in. Estimated rate is $42 \times 0.75 + 18 = 49.5$. One more request in the next second pushes the estimate to about 50 and the limiter starts rejecting.
+Compare a fixed window of 100 per minute. A client sends 100 requests at 0:59 and 100 more at 1:00. Both windows allow it, yet the server saw 200 in two seconds. For a sliding window counter, Cloudflare's example with a limit of 50 per minute: 42 requests last minute, 18 so far this minute, 15 seconds in. The estimate is the previous minute's count, scaled by how much of that minute still overlaps the last 60 seconds, plus this minute's count so far. 15 seconds in, 45 of the previous 60 seconds still overlap, so the weight is 45/60 = 0.75. The estimate is $42 \times 0.75 + 18 = 49.5$. At 30 seconds in, the weight would be 0.5 and the estimate $42 \times 0.5 + 18 = 39$. One more request in the next second pushes the estimate to about 50 and the limiter starts rejecting.
 
 The same two bursts through a fixed window and a token bucket, both set to 100 per minute (the bucket holds 100, starts full at 0:59 and refills about 1.67 per second).
 
@@ -322,13 +327,13 @@ The same two bursts through a fixed window and a token bucket, both set to 100 p
 | Total passed | 200 | 200 | 101 |
 
 ## What goes wrong: the limiter takes the API down
-A new limiter reads counters from Redis on every request. Redis slows down and each API call now waits on it, so the limiter becomes the outage. Another case: a bug sets limits too low and rejects paying customers. Symptoms are a spike in 429s or latency matching Redis latency. Stripe's advice maps to the fixes: catch errors so the limiter fails open, keep a kill switch, track how often each limiter triggers, and dark launch it first so you can see what it would block.
+A new limiter reads counters from Redis on every request. Redis slows down and each API call now waits on it, so the limiter becomes the outage. Another case: a bug sets limits too low and rejects paying customers. Symptoms are a spike in 429s or latency matching Redis latency. Stripe's advice maps to the fixes: catch errors so the limiter fails open, and give the Redis call a short timeout (a few milliseconds) so slowness counts as an error too. Keep a kill switch, a flag that turns the limiter off without a deploy, track how often each limiter triggers, and dark launch it first so you can see what it would block.
 
 ## When rate limiting is the wrong tool
-A limiter treats each client by its own rate, so it cannot see overall health. If the whole system is overloaded, you need [load shedding](/sd/docs/reliability/circuit-breakers) that looks at server state. A limiter is also useless for traffic that cannot be spread out, such as a live flash-sale event, where you need capacity or a queue. And it is no defence against a large distributed attack, where each source stays under the limit.
+A limiter treats each client by its own rate, so it cannot see overall health. If the whole system is overloaded, you need [load shedding](/sd/docs/reliability/circuit-breakers) that looks at server state. A per-client limiter does little for traffic that cannot be spread out, such as a flash sale where every customer arrives at once. A token bucket with a larger capacity absorbs a short burst, but a sustained surge needs more capacity or a queue. A per-client limit also does not stop a large distributed attack where each source stays under the limit, so you add a limit on total load for the endpoint.
 
 ## Common mistake
-Limiting by IP address only, which blocks a whole office behind one shared address while a bot with thousands of addresses sails through.
+Limiting by IP address only, which blocks a whole office behind one shared address while a bot with thousands of addresses sails through. Key the limit on who is calling (an API key or user id) when you know it, and fall back to the IP address only for anonymous traffic.
 
 ```resources
 article | Scaling your API with rate limiters | https://stripe.com/blog/rate-limiters | Stripe | Four limiter types, token bucket on Redis, and the rollout advice: fail open, kill switch, dark launch.
@@ -339,7 +344,7 @@ article | Rate Limiting (karanpratapsingh system-design) | https://github.com/ka
 ```quiz
 A token bucket holds 5 tokens and refills 2 per second. It is full and 6 requests arrive at once. How many pass? | All six of them ; Two of them ; Five of them | 2 | The bucket holds 5 tokens, so five requests take one each and the sixth is rejected.
 Which algorithm lets a client send double the limit around a window boundary? | Fixed window ; Token bucket ; Sliding window log | 0 | A fixed window resets its count at the edge, so full use at the end plus full use at the start doubles it.
-Two servers read the shared counter at the same moment and both allow the last request. What fixes this? | Adding more Redis replicas ; One atomic check and update ; Sending a longer Retry-After value | 1 | An atomic operation stops two servers from both seeing the same remaining token.
+A limiter runs `if get(key) < 100: set(key, get(key) + 1); allow`. Two servers run it at once when the count is 99. What can happen? | Redis rejects the second write ; Both allow, and the count ends at 100 instead of 101 ; Both reject the request | 1 | Both read 99 before either writes, so both pass the check and both write 100. Two requests got through for one slot. An atomic increment closes that gap.
 ```
 
 ```story
@@ -350,7 +355,7 @@ A customer's script has a bug and loops, sending 5,000 requests per second to a 
 When a dependency gets slow, callers pile up waiting and the failure spreads. Circuit breakers, bulkheads and load shedding stop that spread by failing fast.
 
 ## How a failure spreads
-Google's SRE book defines a cascading failure as one that grows over time through positive feedback. One replica fails from overload, so the others take more load and fail too, like dominoes. Slow calls are the usual trigger. A caller waiting on a slow dependency holds a thread for the whole wait. By Little's law (threads in use equals request rate times time per request), 100 requests per second at 50 ms uses 5 threads. If the dependency hangs and calls wait 2 seconds, the same traffic needs 200 threads. The pool runs out, and the caller cannot serve even the requests that do not need that dependency.
+Google's SRE book defines a cascading failure as one that grows over time through positive feedback. One replica fails from overload, so the others take more load and fail too, like dominoes. Slow calls are a common trigger. A caller waiting on a slow dependency holds a thread for the whole wait. By Little's law (threads in use equals request rate times time per request), 100 requests per second at 50 ms uses 5 threads. If the dependency hangs and calls wait 2 seconds, the same traffic needs 200 threads. The pool runs out, and the caller cannot serve even the requests that do not need that dependency.
 
 The AWS Builders' Library adds the key idea: when latency passes the client timeout, a latency problem becomes an availability problem. It separates throughput (all requests arriving) from goodput (the part answered on time and usable). An overloaded server keeps working on requests whose clients already gave up. That wasted work, plus client retries, feeds the overload.
 
@@ -359,7 +364,7 @@ The AWS Builders' Library adds the key idea: when latency passes the client time
 Problem | A dependency that is slow or down makes every caller wait, so threads pile up and the failure spreads to healthy features.
 Solution | Wrap the call in a breaker that counts failures. After a threshold it opens and fails calls at once, then lets one trial call through after a wait.
 Use when | A remote call can fail on its own, and you have a fallback such as a default value or a clear error.
-Avoid when | The call is in-process, or it is a primary database with no fallback, where failing fast gains nothing.
+Avoid when | The call is in-process, or it is a primary database with no fallback. A breaker still frees threads there, but users get an error either way, so a timeout and a bulkhead often give most of the benefit with less to tune.
 ```
 
 Martin Fowler describes the pattern, popularised by Michael Nygard's book Release It. You wrap the remote call in a breaker object that watches for failures. It has three states.
@@ -379,7 +384,7 @@ stateDiagram-v2
   class Closed good
 ```
 
-Fowler notes that not every error should trip it, since some are normal business failures. Real breakers often trip on an error rate such as 50 percent rather than a raw count. Fowler says every change in breaker state should be logged, and a trip should raise an alert. AWS also warns that breakers add modal behaviour that is hard to test, and can slow recovery, which is why it prefers local retry limits.
+Fowler notes that not every error should trip it, since some are normal business failures. Real breakers often trip on an error rate such as 50 percent rather than a raw count. Fowler says every change in breaker state should be logged, and a trip should raise an alert. A different AWS Builders' Library article, on timeouts and retries, warns that breakers add modal behaviour (they act differently in each state) that is hard to test and can slow recovery, and prefers limiting retries locally with a token bucket.
 
 ## Bulkheads, shedding and degrading
 A bulkhead splits resources so one failure cannot drain them all, like the sealed sections of a ship. Give each dependency its own thread pool or connection limit. If the payments pool of 20 threads is full, the other 80 threads still serve search.
@@ -417,10 +422,10 @@ xychart-beta
 ```
 
 ## What goes wrong: the breaker that flaps
-A breaker is set with a 1 second open period. The dependency needs 30 seconds to recover, so each half-open trial fails and the breaker reopens, while real users keep hitting errors. Or the threshold is so sensitive that two slow calls trip it for everyone. Symptoms are error rates that rise and fall in a regular rhythm. Confirm it by graphing breaker state changes next to dependency latency. Tune the thresholds, wait longer, or allow only a trickle of trial calls.
+A breaker is set with a 1 second open period. The dependency needs 30 seconds to recover, so each half-open trial fails and the breaker reopens. Each trial is a real user request, so that user gets an error, and real users keep hitting errors. Or the threshold is so sensitive that two slow calls trip it for everyone. Symptoms are error rates that rise and fall in a regular rhythm. Confirm it by graphing breaker state changes next to dependency latency. Tune the thresholds, wait longer before each trial, or use a backoff so the wait grows after each failed trial.
 
 ## When a breaker is the wrong tool
-Breakers guard remote calls that can fail independently. Skip them for in-process code and for calls where failing fast has no better outcome, such as a primary database with no fallback. In those cases, rate limits, [back pressure](/sd/docs/async/back-pressure) and queues may fit better. Shedding also needs load tests: AWS says that if you have not tested far past the break point, assume it will fail in the worst way.
+Breakers guard remote calls that can fail independently. Skip them for in-process code and for calls where failing fast only turns a slow error into a quick error, such as a primary database with no fallback. In those cases, rate limits, [back pressure](/sd/docs/async/back-pressure) and queues may fit better. Shedding also needs load tests: AWS says that if you have not tested far past the break point, assume it will fail in the worst way.
 
 ## Common mistake
 Adding a breaker with no fallback and no alert, so the dependency is cut off silently and nobody notices for days.
@@ -428,14 +433,15 @@ Adding a breaker with no fallback and no alert, so the dependency is cut off sil
 ```resources
 article | Using load shedding to avoid overload | https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/ | Amazon Builders' Library | Explains goodput versus throughput, wasted work and how shedding keeps accepted requests fast.
 article | Addressing Cascading Failures (Google SRE book) | https://sre.google/sre-book/addressing-cascading-failures/ | Google SRE | Describes how overload, retries and slow starts spiral and lists load shedding and degradation as defences.
+article | Timeouts, retries, and backoff with jitter | https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/ | Amazon Builders' Library | Warns that circuit breakers add modal behaviour that is hard to test and prefers local retry limits.
 article | CircuitBreaker | https://martinfowler.com/bliki/CircuitBreaker.html | Martin Fowler | A short walk through closed, open and half-open states with working code.
 article | Scaling your API with rate limiters | https://stripe.com/blog/rate-limiters | Stripe | Shows fleet and worker load shedders that protect critical traffic first.
 ```
 
 ```quiz
 A circuit breaker has tripped and its wait time is over. What does it do next? | Lets one trial call decide ; Closes at once and sends all traffic ; Stays open until someone resets it | 0 | Half-open lets a trial call through, closing on success and reopening on failure.
-Why does a hung dependency exhaust a thread pool so fast? | Threads are lost whenever calls fail quickly ; Busy threads equal rate times wait ; The pool shrinks when a dependency is slow | 1 | By Little's law, 100 per second at 2 seconds needs 200 threads.
-What is the point of a bulkhead? | Making every call retry much faster than before ; Encrypting calls between internal services ; Capping what one dependency can use | 2 | Separate limits per dependency confine the damage to one pool.
+Why does a hung dependency exhaust a thread pool so fast? | Threads are lost whenever calls fail quickly ; Busy threads equal rate times wait ; The pool shrinks when a dependency is slow | 1 | Each request holds a thread for its whole wait, so a longer wait multiplies the threads in use even though the request rate has not changed.
+What is the point of a bulkhead? | Retrying a failed call on a second pool ; Rejecting requests from one noisy client ; Capping the threads one dependency can use | 2 | Separate limits per dependency confine the damage to one pool.
 ```
 
 ```story
@@ -475,7 +481,7 @@ A service level indicator (SLI) is a measurement of how the service is doing, su
 
 $$ \text{error budget} = (1 - \text{SLO}) \times \text{period} $$
 
-For 99.9 percent over 30 days: $0.001 \times 43{,}200 \text{ minutes} = 43.2$ minutes, about 43.
+For 99.9 percent over 30 days: $0.001 \times 43{,}200 \text{ minutes} = 43.2$ minutes, about 43. That is 43.2 minutes if the service is completely down, or the same share of failed requests if it is only partly failing.
 
 ## Alerting and tracing across services
 The SRE book says to page a human only for something that matters, since noisy pages train people to ignore them. Alert on symptoms users feel, such as high error rate or slow responses, and use causes like CPU as dashboards for diagnosis.
@@ -504,9 +510,9 @@ Invented numbers. SLO: 99.9 percent of requests succeed over 30 days. Traffic is
 1. Budget: 0.1 percent of 43.2 million is 43,200 failed requests.
 2. A bad deploy fails 20 percent of requests for 15 minutes. That is $1{,}000 \times 0.20 \times 15 = 3{,}000$ failures.
 3. That used about 7 percent of the monthly budget.
-4. If instead 10 percent of requests fail steadily, that is 100 times the allowed rate of 0.1 percent. The whole month's budget (720 hours) would last about 7.2 hours. That is worth a page.
+4. If instead 10 percent of requests fail steadily, that is 100 times the allowed rate of 0.1 percent. The whole month's budget is used up 100 times faster than planned, so it is gone in 720 / 100 = 7.2 hours. That is worth a page.
 
-```mermaid How long a 99.9 percent monthly error budget lasts at a steady failure rate (720 hour budget)
+```mermaid How long a 99.9 percent monthly error budget lasts at a steady failure rate (30 day window of 720 hours)
 xychart-beta
   x-axis [0.5 percent fail, 1 percent fail, 5 percent fail, 10 percent fail]
   y-axis "hours until the budget is gone" 0 --> 150
@@ -514,10 +520,10 @@ xychart-beta
 ```
 
 ## What goes wrong: the dashboard that says all is well
-The graph shows average latency of 120 ms and green status, while users complain. Behind it, 2 percent of requests take 8 seconds, from one slow database shard. The average hides them. You confirm it with a latency histogram split by shard, and by pulling a slow trace to see the wait. Fix it by alerting on p99 and on the SLO, not on the mean, and by adding the trace ID to error logs so complaints can be matched to requests.
+The graph shows average latency of 120 ms and green status, while users complain. Behind it, 2 percent of requests take 2 seconds, from one slow database shard, and the other 98 percent take about 80 ms. The average is 0.02 x 2,000 + 0.98 x 80, about 118 ms, so it looks fine, but p99 is 2 seconds. The average hides them. You confirm it with a latency histogram split by shard, and by pulling a slow trace to see the wait. Fix it by alerting on p99 and on the SLO, not on the mean, and by adding the trace ID to error logs so complaints can be matched to requests.
 
 ## When heavy observability is the wrong tool
-A small internal tool does not need distributed tracing and a 99.95 percent SLO. A few logs and an uptime check are enough, and every extra signal costs money and attention. Beware also of metrics with unbounded labels, such as a user ID on every series, which blow up storage. Add tracing when you have several services and cannot tell where requests slow down.
+A small internal tool does not need distributed tracing and a 99.95 percent SLO. A few logs and an uptime check are enough, and every extra signal costs money and attention. Beware also of putting a user ID on a metric. A metric is stored once for every different value of its tags (such as endpoint or user ID), so a million users means a million stored time series. Tag by things with a handful of values, such as endpoint or region, and put user IDs in logs instead. Add tracing when you have several services and cannot tell where requests slow down.
 
 ## Common mistake
 Alerting on every cause, such as high CPU or one failed health check, instead of on what users feel, until the on-call person ignores pages.
@@ -531,19 +537,19 @@ article | Logging, Tracing and Metrics | https://bytebytego.com/guides/logging-t
 
 ```quiz
 A 99.9 percent monthly SLO over 30 days allows about how much downtime? | 4.3 minutes ; 43 minutes ; 7.2 hours | 1 | 0.1 percent of 43,200 minutes is 43.2 minutes.
-Average latency is 100 ms but users report slowness. What should you check first? | CPU usage on one server ; Whether the logs are in JSON format ; The p99 latency histogram | 2 | One percent of requests may take seconds while the average looks fine.
-Failures run at 10 percent against an SLO that allows 0.1 percent. How fast is the budget burning? | At 100 times the allowed rate ; At about 10 times the allowed rate ; At about the same as the allowed rate | 0 | 10 divided by 0.1 is 100, so a 720 hour budget lasts about 7 hours.
+Average latency is 100 ms, but 1 request in 100 takes 5 seconds. Which alert would catch it? | Average latency over 200 ms ; CPU over 80 percent on each server ; p99 latency over 1 second | 2 | One percent of requests may take seconds while the average looks fine.
+Failures run at 10 percent against an SLO that allows 0.1 percent. How fast is the budget burning? | At 100 times the allowed rate ; At about 10 times the allowed rate ; At about the same as the allowed rate | 0 | 10 divided by 0.1 is 100, so a 30 day window of 720 hours is used up in about 7 hours.
 ```
 
 ```story
-Support says checkout is slow for some people, yet every graph is green. An engineer finds one failed order, copies its trace ID, and sees a single span spending seven seconds on one database shard. Without that ID tying the request together across five services, finding it would have taken days.
+Support says checkout is slow for some people, yet every graph is green. An engineer finds one slow order, copies its trace ID, and sees a single span spending seven seconds on one database shard. Without that ID tying the request together across the services, finding it would have meant searching each service's logs by hand.
 ```
 
 # monitoring-and-alerts | Monitoring Types, Instrumentation and Alerts | 2 | 12
 Monitoring means collecting the right data for each question: is it up, is it fast, is it safe, who uses it. This lesson sorts monitoring into five types, then covers what to build into your code and how to turn the data into alerts people trust.
 
 ## Five kinds of monitoring
-The [observability lesson](/sd/docs/reliability/observability) explains the raw signals. This lesson asks what you point them at. The Azure Architecture Center's monitoring guide splits the job by purpose, and each purpose needs different data and a different reaction.
+The [observability lesson](/sd/docs/reliability/observability) explains the raw signals. This lesson asks what you point them at. The Azure Architecture Center's monitoring guide splits the job by purpose, and each purpose needs different data and a different reaction. This lesson uses five of its types.
 
 | Type | Question it answers | Typical data | Typical reaction |
 | --- | --- | --- | --- |
@@ -601,17 +607,17 @@ flowchart TD
   class P bad
 ```
 
-An alert fires only when both windows exceed the rate. Fast burns page within minutes, and slow leaks become tickets (the workbook calls this multiwindow, multi-burn-rate alerting). Each alert should say what is wrong, who is affected and where to look first.
+An alert fires only when both windows exceed the rate. Very fast burns page within minutes, moderate burns page within hours, and slow leaks become tickets (the workbook calls this multiwindow, multi-burn-rate alerting). Each alert should say what is wrong, who is affected and where to look first.
 
 ## A worked example: alerting on burn rate
 Invented numbers. The SLO is 99.9 percent of requests succeed over 30 days (720 hours), so the allowed error rate is 0.1 percent.
 
 1. Errors rise to 5 percent. Burn rate = 5 / 0.1 = 50, so the whole budget lasts 720 / 50 = 14.4 hours.
-2. One hour at burn rate 14.4 uses 14.4 / 720 = 2 percent of the budget, so 14.4 is the first page line. At 50, the 5-minute average passes it at once and the 1-hour average passes it after about 17 minutes (14.4 / 50 x 60), so the page fires then.
+2. One hour at burn rate 14.4 uses 14.4 / 720 = 2 percent of the budget, so 14.4 is the first page line. At 50, the 5-minute average passes 14.4 after about a minute and a half (14.4 / 50 x 5), and the 1-hour average passes it after about 17 minutes (14.4 / 50 x 60). The page needs both, so it fires at about 17 minutes.
 3. A one-minute spike to 5 percent lifts the 5-minute average but barely moves the 1-hour one, so it does not page.
 4. A steady 0.15 percent error rate is a burn rate of 1.5. It never pages, but it passes the ticket line, so someone looks at it that week.
 
-When the page fires for errors that start at 5 percent (burn rate 50) and were zero before, with the 14.4 line on both windows.
+The table shows when the page fires if errors start at 5 percent (burn rate 50) after a period of zero errors, with the 14.4 line applied to both windows.
 
 | Minutes since errors began | 5-minute burn rate | 1-hour burn rate | Page? |
 | --- | --- | --- | --- |
@@ -641,7 +647,7 @@ docs | OpenTelemetry instrumentation | https://opentelemetry.io/docs/concepts/in
 ```quiz
 Which monitoring type uses scripted users that run checkout steps on a schedule? | Usage Monitoring ; Health Monitoring ; Security Monitoring | 1 | Synthetic users replay fixed steps and record each result, which shows whether the system works now.
 The SLO allows 0.1 percent errors and the service now fails 5 percent of requests. What is the burn rate? | 5 ; 50 ; 500 | 1 | Burn rate is 5 divided by 0.1, which is 50, so a 720 hour budget lasts 14.4 hours.
-Why does a burn-rate alert check a short window as well as a long one? | To confirm the problem is still happening so the alert clears fast ; To make the alert fire later than a single window would ; To count only errors from one region | 0 | The long window shows enough budget is gone, and the short window shows the burn has not stopped.
+Why does a burn-rate alert check a short window as well as a long one? | To confirm the errors are still happening, so the alert clears soon after a fix ; To make the alert fire sooner than the long window alone would ; To count only the errors that come from one region | 0 | The long window shows enough budget is gone, and the short window shows the burn has not stopped. The short window does not delay the page. It only ends it sooner.
 ```
 
 ```story
@@ -649,19 +655,21 @@ A shop's CPU alert fires every night during the batch run, so the on-call phone 
 ```
 
 ```adapted
-Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/architecture/patterns/ | CC BY 4.0
+Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/architecture/best-practices/monitoring | CC BY 4.0
 ```
 
 # security-basics | Security Basics for System Design | 2 | 10
 Security is a broad field, but a few habits cover most system-level risk: encrypt data, never trust input, check who is asking and what they may do, and give every part only the access it needs.
 
 ## The basics
-The System Design Primer keeps its security advice short. It still holds up. Encrypt in transit, so data between client and server, and between your services, cannot be read on the wire. Encrypt at rest, so a stolen disk or backup is useless. Sanitize all input, including anything the user can influence, to prevent cross-site scripting (XSS, where an attacker's script runs in another user's browser) and SQL injection (where input is treated as database commands). Use parameterized queries, which keep the SQL text and the values separate, so an input like `' OR '1'='1` is just a string. Follow the principle of least privilege: each user, service and key gets the minimum permission that its job needs.
+The System Design Primer keeps its security advice to four short points, and says itself that the section could use updates. They still hold up, and the rest of this lesson adds to them. Encrypt in transit, so data between client and server, and between your services, cannot be read on the wire. Encrypt at rest, so a stolen disk or backup is useless. Sanitize all input, including anything the user can influence, to prevent cross-site scripting (XSS, where an attacker's script runs in another user's browser) and SQL injection (where input is treated as database commands). Use parameterized queries, which keep the SQL text and the values separate, so an input like `' OR '1'='1` is just a string. Follow the principle of least privilege: each user, service and key gets the minimum permission that its job needs.
 
 ## Who are you and what may you do
 Authentication answers "who are you?" (password, a code, a login via another provider). Authorization answers "what are you allowed to do?" Mixing them up is a classic source of bugs: a logged-in user who can fetch any order by changing the ID in a URL is authenticated but not properly authorized.
 
 There are two common ways to keep a user logged in. With a session, the server stores login state, and the browser holds an opaque ID in a cookie. Deleting a session ends it at once. The store must be shared across servers ([stateless services](/sd/docs/scaling/stateless-services)). With a token such as a JWT (JSON Web Token), the token itself carries the user's claims and a signature. Servers need no lookup, so it scales easily. But a stolen token works until it expires. Revoking one early needs extra machinery, like a blocklist. Keep tokens short-lived, and store passwords only as slow salted hashes such as bcrypt or argon2.
+
+Many systems use two tokens. A short-lived access token (valid for minutes) goes with every request. A longer-lived refresh token is kept by the client and sent only to the auth server to get a new access token. The auth server can refuse a revoked refresh token, so a dismissed user stops getting new access tokens.
 
 ```mermaid The API checks a short-lived access token without a lookup, and a refresh token gets a new one
 sequenceDiagram
@@ -694,9 +702,9 @@ Invented numbers. An app issues JWTs valid for 24 hours. An employee is dismisse
 1. Their laptop still holds a token issued at 8:30, valid until 8:30 the next morning.
 2. Every server accepts it, because checking the signature needs no database call, so the account looks disabled only to the login page.
 3. Exposure window: 23.5 hours.
-4. Change tokens to a 15 minute lifetime with a refresh token the server can revoke. The window is now at most 15 minutes. With server sessions it would be zero, at the cost of one lookup per request.
+4. Change tokens to a 15 minute lifetime with a refresh token the server can revoke. The window is now at most 15 minutes (the 8:30 token would already have expired at 8:45; the worst case is a token issued at 8:59). With server sessions it would be zero, at the cost of one lookup per request.
 
-The same dismissal under three designs, for a token issued at 8:30 and an account disabled at 9:00.
+The same dismissal under three designs. The middle row shows the worst case, a token issued just before the account is disabled.
 
 | Design | How long the old token still works | Lookup per request |
 | --- | --- | --- |
@@ -708,7 +716,7 @@ The same dismissal under three designs, for a token issued at 8:30 and an accoun
 A developer commits a cloud access key to a repository, even a private one. It later leaks through a fork or a laptop. Automated scanners find exposed keys quickly. The symptom may be an unexpected bill or data you did not delete. You confirm it by searching history with a secret scanner and checking the cloud audit log for calls from unknown addresses. The fix is to revoke and rotate the key at once, since deleting the file does not remove it from history, then move secrets to a manager.
 
 ## When these basics are the wrong tool
-These habits are the floor, not the whole job. For payments, health data or regulated systems you need audits and expert review. Rolling your own login, hashing or encryption is the wrong tool: use proven libraries and standards. And a design diagram alone cannot fix security, since most breaches come from misconfiguration and access control mistakes, not clever attacks.
+These habits are the floor, not the whole job. For payments, health data or regulated systems you need audits and expert review. Rolling your own login, hashing or encryption is the wrong tool: use proven libraries and standards. And a design diagram alone cannot fix security. The top two items on the OWASP list are broken access control and security misconfiguration, which are mistakes in how a system is set up and used.
 
 ## Common mistake
 Checking that the user is logged in but never checking that the record they requested belongs to them.
@@ -721,9 +729,9 @@ repo | Security guide for developers | https://github.com/FallibleInc/security-g
 ```
 
 ```quiz
-What does a parameterized query protect against? | Slow queries on large tables ; Data loss when a disk fails ; SQL injection | 2 | It keeps input as values, so it can never be run as SQL commands.
+What does a parameterized query protect against? | Slow queries on large tables ; Cross-site scripting in the browser ; SQL injection | 2 | It sends the SQL text and the values separately, so a value such as ' OR '1'='1 is read as data, not as commands.
 A user changes /orders/812 to /orders/813 and sees someone else's order. What failed? | Authorization, no ownership check ; Authentication, since the login was bad ; Encryption at rest on the database | 0 | They were logged in, but the server did not check what they may access.
-A 24-hour JWT is stolen. What is the best way to shorten the risk? | Use a stronger algorithm to hash passwords ; Short tokens plus a revocable refresh ; Move the token to a much longer expiry | 1 | A short lifetime limits how long a stolen token works.
+An app issues 24 hour JWTs. Which change most reduces how long a future stolen token works? | Hash passwords with a stronger algorithm ; Issue 15 minute access tokens with a revocable refresh token ; Store the JWT in a longer-lived cookie | 1 | A short lifetime caps how long any stolen token works, and the server can refuse the refresh token.
 ```
 
 ```story

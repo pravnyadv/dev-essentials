@@ -16,10 +16,12 @@ The Primer's assumed numbers: 10 million users, 1 billion writes per month, 100 
 | Writes per second | 1 billion divided by 2.5 million | about 400 |
 | Reads per second | 100 billion divided by 2.5 million | about 40,000 |
 
+These are averages. Peaks will be higher, so the real design needs headroom above them.
+
 There is no API to design here, since the exercise is about the shape of the system. The data model is one relational database with user content in it.
 
 ## The loop and the first box
-The Primer repeats four moves: load test, profile for the bottleneck, fix that bottleneck while weighing alternatives, repeat. Never add a component before a measurement says it is needed.
+The Primer repeats four moves: load test (send realistic traffic at the system), profile for the bottleneck (measure where time is spent), fix that bottleneck while weighing alternatives, repeat. Never add a component before a measurement says it is needed.
 
 Step zero is one machine. It runs the web server and a MySQL database and holds user files. Give it a fixed public address (an AWS Elastic IP) so a reboot does not change it, and point a domain at it with a DNS service (AWS Route 53). Open only ports 80 (HTTP) and 443 (HTTPS) to the world, and port 22 (SSH) only for your own addresses. Watch CPU, memory, disk input and output, and network. When one runs out, buy a bigger box. This is [vertical scaling](/sd/docs/scaling/vertical-vs-horizontal). It is simple, but it gets expensive and a failure takes everything down.
 
@@ -29,12 +31,12 @@ Each step starts from a measured symptom.
 | Stage | Measured symptom | Change |
 | --- | --- | --- |
 | Users+ | Database eats memory and CPU, files fill the disk, and web and database cannot scale separately | Move files to an object store (AWS S3). Move the database to a managed relational database (AWS RDS) |
-| Users++ | One web server is slow at peak and its failure is an outage | Add a load balancer (AWS ELB) and several web servers across availability zones, which are separate data centers in one region. Add a standby database. Add a CDN (AWS CloudFront) |
-| Users+++ | Reads are 100 to 1 and the database struggles | Add an in-memory cache (AWS ElastiCache), move sessions into it, add read replicas |
+| Users++ | One web server is slow at peak and its failure is an outage | Add a load balancer (AWS ELB) and several web servers across availability zones, which are separate data centers in one region. Add a standby database (a copy kept ready to take over if the primary fails). Add a CDN (AWS CloudFront) |
+| Users+++ | Reads are 100 to 1 and the database struggles | Add an in-memory cache (AWS ElastiCache), move sessions into it, add read replicas (copies of the database that receive every write and answer reads) |
 | Users++++ | Traffic follows office hours and servers idle at night | Add autoscaling and automate deployment |
-| Users+++++ | Data and write rate outgrow one primary | Old data to a data warehouse, sharding, a NoSQL store, queues and workers |
+| Users+++++ | Data and write rate outgrow one primary (the main database that takes all writes) | Old data to a data warehouse, sharding, a NoSQL store, queues and workers |
 
-Details worth knowing. The Primer splits web servers (which terminate connections and act as [reverse proxies](/sd/docs/scaling/reverse-proxies-and-gateways)) from application servers, so each tier scales alone. A [load balancer](/sd/docs/scaling/load-balancing) can also end HTTPS so the servers do less work. Moving sessions out of the web servers makes them [stateless](/sd/docs/scaling/stateless-services), which is what allows adding and removing them freely. A [CDN](/sd/docs/scaling/cdn-and-edge) serves static files from near the user.
+Details worth knowing. The Primer splits web servers (which can run as [reverse proxies](/sd/docs/scaling/reverse-proxies-and-gateways)) from application servers, so each tier scales alone. A [load balancer](/sd/docs/scaling/load-balancing) can also end HTTPS so the servers do less work. Moving sessions out of the web servers makes them [stateless](/sd/docs/scaling/stateless-services), which is what allows adding and removing them freely. A [CDN](/sd/docs/scaling/cdn-and-edge) serves static files from near the user.
 
 On the database side, RDS Multi-AZ keeps a standby in another zone for failover. In its one-standby form, AWS documents that the standby does not serve read traffic, so read replicas are a separate feature. See [replication](/sd/docs/data/replication) and [caching basics](/sd/docs/caching/caching-basics).
 
@@ -93,9 +95,9 @@ A news link sends traffic from 3,000 to 12,000 requests per second in two minute
 The symptom is a latency wall for several minutes that clears by itself. Confirm it by lining up the autoscaling activity history with the latency graph. If scale-up events start after the latency spike, the policy is too slow. Fixes include a higher minimum before known events, scaling on a faster metric, and [load shedding](/sd/docs/reliability/rate-limiting).
 
 ## Alternatives considered
-The simplest alternative is to stay on one machine and buy a bigger one. Most products never reach 40,000 reads per second, and a single server with a managed database and daily backups serves thousands of users well. Every step above adds cost, moving parts and security surface. The Primer itself says that after profiling you may need only one or two of these techniques.
+The simplest alternative is to stay on one machine and buy a bigger one. Many products never reach 40,000 reads per second. A single server with a managed database and daily backups can be enough until your own load test says otherwise. Every step above adds cost, moving parts and security surface. The Primer itself says that after profiling you may need only one or two of these techniques.
 
-For read load there are two routes. Twenty replicas could carry 40,000 reads a second, but replicas must copy every write. A cache that answers 95 percent of reads needs one replica plus one for failover, so the cache wins. If the real bottleneck is a missing [index](/sd/docs/data/indexes), neither helps, because replicas hide the problem and charge you for it. At the last stage, sharding keeps SQL but splits the data by key, while NoSQL changes the data model. Pick the one that matches what hurts, write volume or query shape.
+For read load there are two routes. Twenty replicas could carry 40,000 reads a second, but replicas must copy every write. A cache that answers 95 percent of reads needs one replica plus one for failover, so the cache wins. If the real bottleneck is a missing [index](/sd/docs/data/indexes), a cache or replicas can cover for it for a while, but the slow query is still there and you pay for the extra machines. Fix the index first. At the last stage, sharding keeps SQL but splits the data by key, while NoSQL changes the data model. Pick the one that matches what hurts, write volume or query shape.
 
 ```card Scale to Millions of Users
 Requirements | Serve reads and writes for users who grow from a few to millions, keep their data safe and stay highly available.
@@ -111,13 +113,14 @@ Adding machines before measuring, so the real bottleneck (a slow query, a single
 article | Design a system that scales to millions of users on AWS (solution) | https://github.com/donnemartin/system-design-primer/blob/master/solutions/system_design/scaling_aws/README.md | Donne Martin | The step-by-step design this lesson adapts, with its numbers and assumptions.
 docs | What is Amazon EC2 Auto Scaling? | https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html | AWS | Defines groups with minimum, maximum and desired size, scaling policies and health checks.
 docs | Multi-AZ deployments for Amazon RDS | https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html | AWS | Explains the standby deployments and that a one-standby instance deployment does not serve read traffic.
-article | Scaling Websites for Millions of Users | https://bytebytego.com/guides/how-to-scale-a-website-to-support-millions-of-users/ | ByteByteGo | A short six-step picture of the same growth path, useful as a second view.
+article | Scaling Websites for Millions of Users | https://bytebytego.com/guides/how-to-scale-a-website-to-support-millions-of-users/ | ByteByteGo | A short six-step picture of a similar path, ending in microservices. Its claim that read replicas raise write throughput is not right: replicas offload reads only, and every replica still copies every write.
 ```
 
 ```quiz
 In the Primer's numbers, why do 100 billion reads a month become about 40,000 per second? | 100 billion divided by 2.5 million ; 100 billion divided by 86,400 seconds ; 100 billion divided by 60 seconds | 0 | A month has about 2.5 million seconds, so the division gives about 40,000.
 A cache answers 95 percent of 40,000 reads per second. How many reads reach the database? | 38,000 per second ; 2,000 per second ; 200 per second | 1 | Five percent of 40,000 is 2,000.
 Your database CPU is high because of one slow query. What should you do first? | Add more read replicas right now ; Move to a NoSQL database now ; Profile and fix the query | 2 | Measure first, since replicas and rewrites hide a cheap fix.
+An autoscaling group has minimum 4 and maximum 12, and each server handles 1,000 requests per second. Load hits 15,000. What happens? | The group stops at 12 and is short by 3 servers ; The group grows to 15 servers ; The group stays at 4 servers | 0 | The maximum caps the group, so 12 servers cover 12,000 and the rest of the load is not served in time.
 ```
 
 ```story
@@ -135,13 +138,13 @@ A search engine can answer popular queries from memory instead of searching its 
 Answer these before reading on. Which queries deserve a cache slot when memory is limited? What data structure finds an entry in constant time and also finds the oldest entry in constant time? If the cache spans ten machines, which machine holds a given query?
 
 ## Requirements and estimates
-The Primer's use cases: a search that hits the cache, a search that misses it, and high availability. Traffic is uneven, so popular queries should almost always be cached. Lookups must be fast, machines are close together, and memory is limited, so the cache must decide what to drop. Assume 10 million users and 10 billion queries a month.
+The Primer's use cases: a search that hits the cache, a search that misses it, and high availability. Traffic is uneven, so a small set of popular queries should be served from the cache most of the time. Lookups must be fast, machines are close together, and memory is limited, so the cache must decide what to drop. Assume 10 million users and 10 billion queries a month.
 
-The cache maps a query (about 50 bytes) to a list of results, which the Primer sizes at a title (20 bytes) and a snippet (200 bytes). That is 270 bytes per entry.
+The cache maps a query (about 50 bytes) to a result of a title (20 bytes) and a snippet (200 bytes), as the Primer sizes it. Key plus value is 50 + 20 + 200 = 270 bytes per entry.
 
 | Quantity | Calculation | Result |
 | --- | --- | --- |
-| Requests per second | 10 billion divided by 2.5 million | about 4,000 |
+| Requests per second | 10 billion queries divided by about 2.5 million seconds in a month | about 4,000 |
 | Data if every query were unique | 270 bytes times 10 billion | 2.7 TB per month |
 
 The second number says that you cannot keep everything. Because traffic is uneven, a small fraction of queries covers most of the load. A real results page holds more than one result, so real entries are larger.
@@ -221,10 +224,10 @@ Trace of the cache above with a capacity of 3. The front of the list is the most
 | get c | c, d, a | hit |
 | set e | e, c, d | a was at the back, so a is dropped |
 
-The Primer shows this with the list methods left blank. Its sketch reads `self.lookup[query]` directly, which raises an error for a missing key in real Python, so the version above uses `.get`. In everyday Python, `collections.OrderedDict` with `move_to_end` and `popitem(last=False)` does the same job in a few lines.
+The Primer shows this with the list methods left blank. Its sketch reads `self.lookup[query]` directly, which raises an error for a missing key in real Python, so the version above uses `.get`. In everyday Python, `collections.OrderedDict` with `move_to_end` and `popitem(last=False)` does the same job in a few lines. Redis does not keep a linked list. With allkeys-lru it samples a few keys and evicts the least recently used of the sample, which behaves almost the same on skewed traffic.
 
 ## Scaling the cache across machines
-The Primer lists three options for a cluster. Each machine could keep its own cache: simple, but the hit rate stays low because a repeat query lands on a machine that has not seen it. Each machine could hold a full copy: simple, but memory is wasted N times. Or the cache can be sharded, and the machine is chosen as `hash(query)` with [consistent hashing](/sd/docs/data/consistent-hashing). That is more work and the best option.
+The Primer lists three options for a cluster. Each machine could keep its own cache: simple, but the hit rate stays low because a repeat query lands on a machine that has not seen it. Each machine could hold a full copy: simple, but memory is wasted N times. Or the cache can be sharded, and the machine is chosen as `hash(query)` with [consistent hashing](/sd/docs/data/consistent-hashing). That is more work, but for a large cache it is usually the best option.
 
 ```mermaid Hashing the query picks the cache machine, so a repeat query lands where it was stored
 flowchart LR
@@ -251,7 +254,7 @@ xychart-beta
 ```
 
 ## What goes wrong: the thundering herd
-A very popular query expires. Within the same second, thousands of requests miss together and all go to the index. The Facebook memcache paper describes this herd and a fix: a server hands out one lease token per key about every 10 seconds, and other clients wait briefly and retry, so one client refills the entry. The paper reports a peak database rate of 17,000 queries per second for the affected keys without leases and 1,300 with them. The symptom in your system is a sawtooth: the miss rate and index latency spike on a regular beat. Confirm it by checking hit and miss counters. Redis exposes `keyspace_hits` and `keyspace_misses` in `INFO`.
+A very popular query expires. Within the same second, thousands of requests miss together and all go to the index. The Facebook memcache paper uses the name thundering herd for a close cousin, a hot key whose value keeps being invalidated by writes, and its fix works for both: a server hands out one lease token per key about every 10 seconds, and other clients wait briefly and retry, so one client refills the entry. For a set of keys prone to herds, the paper reports a peak database rate of 17,000 queries per second without leases and 1,300 with them. The symptom in your system is a sawtooth: the miss rate and index latency spike on a regular beat. Confirm it by checking hit and miss counters. Redis exposes `keyspace_hits` and `keyspace_misses` in `INFO`.
 
 ## Alternatives considered
 The first alternative is no cache and a faster index. If most queries are unique (a long tail), almost every lookup misses and the cache costs memory for nothing. Personalized results need the user in the key, so sharing disappears. Live data, like scores updated every second, expires before it is reused. In those cases make the index itself faster, or cache a smaller shared piece such as the document snippets.
@@ -271,14 +274,14 @@ Forgetting to normalize the query before it becomes a key, so one search is stor
 ```resources
 article | Design a key-value cache to save the results of the most recent web server queries (solution) | https://github.com/donnemartin/system-design-primer/blob/master/solutions/system_design/query_cache/README.md | Donne Martin | The design this lesson adapts: LRU with a hash table and linked list, and the three ways to spread a cache.
 paper | Scaling Memcache at Facebook | https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf | Nishtala et al. | Describes consistent hashing across memcached servers and leases for stale sets and thundering herds.
-docs | Redis key eviction | https://redis.io/docs/latest/develop/reference/eviction/ | Redis | Lists the eviction policies and recommends allkeys-lru as a good default when some keys are hot.
+docs | Redis key eviction | https://redis.io/docs/latest/develop/reference/eviction/ | Redis | Lists the eviction policies and says allkeys-lru is a good default when a subset of keys is hot.
 article | Top 8 Cache Eviction Strategies | https://bytebytego.com/guides/top-8-cache-eviction-strategies/ | ByteByteGo | A quick comparison of LRU, LFU and other policies.
 ```
 
 ```quiz
-Why does an LRU cache pair a hash table with a doubly linked list? | The table finds a key fast and the list reorders it fast ; The table sorts the keys and the list hashes them ; The list stores the data and the table stores the TTL | 0 | Lookup needs the table, while moving and removing nodes in constant time needs a list with two-way links.
+A get must find the entry for "running shoes" and move it to the front, both in constant time. What makes that possible? | A hash table to find the node and a doubly linked list to move it ; A sorted array searched with binary search by key ; A singly linked list with a hash of the key | 0 | A singly linked list cannot unlink a node without walking from the head to find the previous node, so the move would cost linear time. Two-way links let the node unlink itself.
 Four cache machines become five and placement changes from hash mod 4 to hash mod 5. About what share of entries stay on their machine? | 80 percent ; 50 percent ; 20 percent | 2 | Only 4 of every 20 hash values give the same remainder, so 20 percent stay.
-A hot cached query expires and the index is flooded for a second. What helps most? | Shrink the cache so entries expire sooner ; Let one client refill while others wait ; Double the TTL of every entry in the cache | 1 | A lease or request coalescing lets one request refill the entry and stops the herd.
+A hot cached query expires and the index is flooded for a second. What helps most? | Shrink the cache so entries expire sooner ; Let one client refill while others wait ; Keep the TTL and add more index servers | 1 | A lease lets one request refill the entry while the others wait, so the index sees one request instead of thousands (the idea is also called request coalescing).
 ```
 
 ```story
@@ -369,6 +372,8 @@ Take the Primer's tab-separated sample, written as product, category, quantity: 
 2. Flip keys to (category, total): (c1,2) p1, (c2,3) p1, (c1,3) p2, (c2,7) p3, (c1,1) p4.
 3. Sort: (c1,1) p4, (c1,2) p1, (c1,3) p2, (c2,3) p1, (c2,7) p3.
 
+To keep it short, the trace leaves out the timestamp and assumes every line is within the past week. For the top 100, the loader reads each category's rows from the end and stops after 100.
+
 Read each category from the end. Category c1's best seller is p2 with 3 units, then p1 with 2. Category c2's best is p3 with 7. Product p1 appears in both categories with different totals, which is why the category is part of the key. At full scale the same steps run in parallel on many machines, although at this lesson's numbers (about 9 GB a week) one machine would do, as the last section notes.
 
 ```mermaid Two MapReduce steps turn the six log lines into ordered totals per category
@@ -380,14 +385,14 @@ flowchart TD
 ```
 
 ## Serving reads and freshness
-Forty thousand reads per second against 100,000 ranking rows is a perfect cache workload. Put the lists in a memory cache with a TTL near the refresh period, and even a CDN can hold them. A SQL read replica handles misses. Writes are only the hourly job, so write scaling is easy, but the raw log still grows, so keep recent data hot and archive older files in the object store or a data warehouse such as AWS Redshift or Google BigQuery. The Primer's 400 writes per second to the transaction store may strain one primary, so it lists [sharding](/sd/docs/data/sharding) and NoSQL.
+Forty thousand reads per second against 100,000 ranking rows is a perfect cache workload. Put the lists in a memory cache with a TTL near the refresh period, and even a CDN can hold them. A SQL read replica serves the misses. With only about 100,000 ranking rows that is easy, though the Primer warns that a replica can struggle if the cache hit rate is poor. Writes are only the hourly job, so write scaling is easy, but the raw log still grows, so keep recent data hot and archive older files in the object store or a data warehouse such as AWS Redshift or Google BigQuery. The Primer's 400 writes per second to the transaction store may strain one primary, so it lists [sharding](/sd/docs/data/sharding) and NoSQL.
 
 Freshness is a trade-off. Hourly is cheap and good enough for a "this week" list. For hot products, a stream of sale events can keep live counters, and the batch job remains the source of truth that corrects them.
 
 ## What goes wrong: overlapping runs
 Logs grow and the hourly job starts taking 70 minutes. The next run starts while the last is still writing. Two jobs write into one table: some rows come from run A, some from B, and pages show a ranking that never existed. A reader may even see an empty category in the middle of a rewrite.
 
-The symptom is odd lists and a `computed_at` timestamp that falls behind. Confirm it by comparing job durations with the schedule. The fix is to write into a new table (or version number) and switch readers over in one step when it is complete, and to refuse to start a run while another is active. MapReduce also copes with slow machines: the paper describes backup tasks that rerun the last few stragglers.
+The symptom is odd lists and a refresh time that falls behind. Store a `computed_at` value (or the table version number) next to the ranking, so you can see when the current rows were built. Confirm it by comparing job durations with the schedule. The fix is to write into a new table (or version number) and switch readers over in one step when it is complete, and to refuse to start a run while another is active. MapReduce also copes with slow machines: the paper describes backup tasks that rerun the last few stragglers.
 
 ```mermaid The batch job writes a new table version while readers keep using the old one, then one switch moves them over
 sequenceDiagram
@@ -424,7 +429,7 @@ article | Cache Systems Every Developer Should Know | https://bytebytego.com/gui
 ```
 
 ```quiz
-Why does the Primer's second step flip the key to (category, total)? | The reducer needs numeric keys in order to add values ; Sorting by key orders totals inside each category ; It compresses the log before it is stored | 1 | The shuffle sorts by key, so putting the total in the key gives a free distributed sort.
+Why does the Primer's second step flip the key to (category, total)? | The reducer needs numeric keys in order to add values ; Sorting by key orders totals inside each category ; It compresses the log before it is stored | 1 | The shuffle sorts by key, so putting the total in the key lets the framework do the sorting. The order is per reduce task, so partition on the category alone to get a true order per category.
 Log lines are p1 c1 5, p1 c1 2, p2 c1 4. Which product leads category c1? | Both are tied at 5 ; p2, with 4 units ; p1, with 7 units | 2 | The first step sums p1 to 7, which beats p2's 4.
 The hourly job now takes 70 minutes. What is the best fix? | Write to a new table, then switch ; Run the job twice as often to catch up ; Remove the cache so readers see fresh rows | 0 | Versioned output with a single switch stops readers from seeing mixed or half-written rankings.
 ```
@@ -438,7 +443,7 @@ The System Design Primer | https://github.com/donnemartin/system-design-primer |
 ```
 
 # social-graph | Design the Data Structures for a Social Graph | 3 | 12
-A social network can find the shortest chain of friends between two people with a breadth-first search. When the graph is too big for one machine, the people are sharded and every hop becomes a network call, so the design is about cutting hops.
+A social network can find the shortest chain of friends between two people with a breadth-first search. When the graph is too big for one machine, the people are sharded and every hop can become a network call to another machine, so the design is about cutting hops.
 
 ## Try it first
 Answer these before reading on. How would you find the shortest friend chain between two people? How many people might you touch? If the friend lists live on different machines, what does each step of your search cost?
@@ -506,7 +511,7 @@ Trace of the search on a tiny invented network where A is friends with B and C, 
 | 3 | C | E (A and D are already seen) | D, E |
 | 4 | D | F, the target | stop |
 
-Following the `prev` map back from F gives F, D, B, A, so the shortest path is A, B, D, F with 3 hops.
+Following the `prev` map back from F gives F, D, B, A, so a shortest path is A, B, D, F with 3 hops. A, C, D, F is equally short; BFS reports the one it met first.
 
 ```mermaid One ring of the search: group the ids by server, then make one call per server
 sequenceDiagram
@@ -538,18 +543,20 @@ Two searches that each stop at ring 2 touch 2,551 people each. One search that g
 
 A one-sided search to depth 4 may touch 50 + 2,500 + 125,000 + 6,250,000 = about 6.4 million people. Each is a possible network call.
 
-Now search from both ends at once, two rings from each side, and stop when the sets meet. Each side touches 1 + 50 + 2,500 = 2,551 people, so about 5,100 in total. That finds the same paths of length 4 with about 1,250 times less work. This is the Primer's "two BFS searches at the same time" idea.
+Now search from both ends at once, two rings from each side, and stop when the sets meet. Each side touches 1 + 50 + 2,500 = 2,551 people, so about 5,100 in total. That finds paths of length 4 with about 1,250 times less work. For a path of length 5, one side goes a third ring (about 130,000 people in total) against over 300 million one-sided, so the saving grows with depth. This is the Primer's "two BFS searches at the same time" idea.
 
 ## Cutting hops and scaling
 The Primer lists several optimizations. Cache person data in Redis or Memcached, which helps people who search repeatedly and well-connected people ([caching basics](/sd/docs/caching/caching-basics)). Cache full or partial BFS results, or compute them offline and store them in a NoSQL database. Batch friend lookups so one call per Person Server fetches all friends hosted there (explore a whole ring at once, grouped by server). Start from people with many friends, since they shorten paths. Set a limit on time or hops and ask the user whether to keep searching. And with no constraint against it, a graph database such as Neo4j.
 
-## What goes wrong: the celebrity node
-One account has 20 million friends. A search that reaches that person adds 20 million people to the next ring. The batches fan out to every Person Server, and one search can hold shared servers for seconds. Other users see slow responses, and p99 latency spikes only for searches that pass through well-known people.
+The many-friends idea pulls against the celebrity problem below. High-degree people shorten paths but cost the most to expand, so use them as meeting points only where their friend list is already cached, and cap how many of their friends one search will expand.
 
-Confirm it by logging the frontier size per ring and server calls per request, then looking at the slowest requests. Mitigations are a hop or time budget, skipping extreme nodes in the first pass, and caching their adjacency lists separately.
+## What goes wrong: the celebrity node
+One account has 20 million friends. A search that reaches that person adds 20 million people to the next ring. The batches fan out to every Person Server, and one search can hold shared servers for seconds. Other users see slow responses, and p99 latency (the slowest 1 percent of requests) spikes only for searches that pass through well-known people.
+
+Confirm it by logging the frontier size per ring (how many people are waiting to be explored) and server calls per request, then looking at the slowest requests. Mitigations are a hop or time budget, skipping extreme nodes in the first pass, and caching their adjacency lists separately.
 
 ## Alternatives considered
-The Primer asks for traditional systems, but a graph database such as Neo4j is built for this and is the first alternative to weigh if you run many graph queries of many shapes. If you only need friends of friends (two hops), an indexed table and a join is simpler. If edges have weights, such as travel time, BFS is wrong and you need Dijkstra's algorithm. For whole-graph analytics, such as computing every distance, use a batch graph processing job instead of live queries.
+The Primer asks for traditional systems, but a graph database such as Neo4j is built for this and is the first alternative to weigh if you run many graph queries of many shapes. If you only need friends of friends (two hops), an indexed table and a join is simpler. If edges have weights, such as travel time, BFS is wrong and you need Dijkstra's algorithm, a shortest-path search that accounts for edge weights. For whole-graph analytics, such as computing every distance, use a batch graph processing job instead of live queries.
 
 Inside our design, a one-sided search to depth 4 may touch 6.4 million people, while searching from both ends touches about 5,100. That is why we search from both ends.
 
@@ -572,7 +579,7 @@ article | Three and a half degrees of separation | https://research.facebook.com
 ```quiz
 Why does BFS find a shortest path in an unweighted graph? | It sorts friends by how many friends they have ; It always picks the friend closest to the target ; It visits people by distance from the source | 2 | Rings are explored in order, so the first time the target appears is at the minimum number of hops.
 With 50 friends each, about how many people does a bidirectional search touch for a 4-hop path, searching 2 rings from each end? | About 5,100 ; About 125,000 ; About 6.4 million | 0 | Each side touches 1 + 50 + 2,500 = 2,551, so roughly 5,100 in total.
-Searches that pass through one very popular account are slow. What is a sensible first fix? | Move every person to one big machine ; Cap the hops and cache its friends ; Remove the visited set so it moves faster | 1 | A budget limits the damage, and caching removes repeated fetches of the largest lists.
+Searches that pass through one very popular account are slow. What is a sensible first fix? | Add more Person Servers so each holds fewer people ; Cap the hops and cache its friends ; Search only from the celebrity's side | 1 | A budget limits the damage, and caching removes repeated fetches of the largest lists. More servers spread the data, but the search still has to read all 20 million ids.
 ```
 
 ```story
@@ -614,8 +621,10 @@ The Primer pulls transactions asynchronously through a queue, because a bank cal
 1. A refresh job is queued when an account is first linked, when the user taps refresh, and daily for recently active users.
 2. A Transaction Extraction worker pulls the job and fetches transactions from the bank, saving raw files to an object store.
 3. The Category Service labels each transaction.
-4. The Budget Service updates the month's totals and, through the Notification Service, warns if a limit is near or passed.
-5. Workers write the `transactions` and `monthly_spending` rows, then a notification tells the user the refresh finished, sent through another queue.
+4. Workers insert the `transactions` rows, with a unique key on account and bank transaction id.
+5. The Budget Service adds only the newly inserted amounts to the month's totals in `monthly_spending` and, through the Notification Service, warns if a limit is near or passed. A notification then tells the user the refresh finished, sent through another queue.
+
+Insert the transactions first, then update the totals using only the rows that were newly inserted (or recompute the month from the `transactions` table). A rerun inserts nothing new, so it adds nothing to the total and fires no second alert.
 
 Plaid offers a pull-by-cursor alternative: after you sync with a cursor, it sends a `SYNC_UPDATES_AVAILABLE` webhook (a call from their server to yours) when anything changes, and you fetch changes since your last cursor.
 
@@ -678,7 +687,7 @@ sequenceDiagram
 ```
 
 ## Scaling the design
-Reads are only 200 per second, so put session data, monthly totals and recent transactions in a memory cache and use cache-aside ([cache patterns](/sd/docs/caching/cache-patterns)). Keep about a month of transactions in the SQL database and older data in a data warehouse or the object store. SQL read replicas serve cache misses. The 2,000 writes per second at peak may strain one primary, so [shard](/sd/docs/data/sharding) by user id. Then all of one user's rows share a shard, and the budget queries stay on one machine. NoSQL is another option.
+Reads are only 200 per second, so put session data, monthly totals and recent transactions in a memory cache and use cache-aside ([cache patterns](/sd/docs/caching/cache-patterns)). Keep about a month of transactions in the SQL database and older data in a data warehouse or the object store. SQL read replicas serve cache misses. The 2,000 writes per second is an average. Peaks are several times higher, so one primary may strain. [Shard](/sd/docs/data/sharding) by user id. Then all of one user's rows share a shard, and the budget queries stay on one machine. NoSQL is another option.
 
 ## What goes wrong: double counting
 A worker crashes after writing transactions but before acknowledging the job. The queue delivers it again ([delivery guarantees](/sd/docs/async/delivery-guarantees)). The second run adds the same transactions to the monthly total. The user sees spending higher than the bank statement, and gets a false "over budget" alert.
@@ -686,7 +695,7 @@ A worker crashes after writing transactions but before acknowledging the job. Th
 Confirm it by summing one user's `transactions` for the month and comparing with `monthly_spending`. If they differ, a total was added twice. The fix is a unique key on account and bank transaction id so reruns do nothing, and totals computed from the transactions rather than incremented blindly. Also handle expired links: when a bank asks the user to sign in again, mark the account and ask them, rather than retrying forever.
 
 ## Security of financial data
-Protect tokens and data in transit and at rest. OWASP recommends envelope encryption: a data key encrypts the data, and a separate key encryption key (kept on another system) encrypts the data key, so one stolen database is not enough. Keep tokens in their own store with narrow access, never log them, and audit every read. Financial rules differ by country, so check the ones that apply to you.
+Protect tokens and data in transit and at rest. OWASP recommends storing keys in encrypted form with two keys: a data key encrypts the data, and a separate key encryption key encrypts the data key. Keep the key encryption key away from the database, ideally on a separate system, so one stolen database is not enough. (This pattern is usually called envelope encryption.) Keep tokens in their own store with narrow access, never log them, and audit every read. Financial rules differ by country, so check the ones that apply to you.
 
 ## Alternatives considered
 A queue gives delay, which suits a daily refresh. It does not suit a card payment or a fraud check that must answer the user in the same request. Those need a synchronous call with a timeout. At a few thousand users, a cron job and one database are enough, and the queue is extra machinery.
@@ -713,7 +722,7 @@ docs | Cryptographic Storage Cheat Sheet | https://cheatsheetseries.owasp.org/ch
 ```quiz
 Why does the Primer put transaction extraction behind a queue? | Bank calls are slow, so run them later ; The database cannot store raw bank files ; Users need to see results within one request | 0 | A queue lets the web request return quickly while workers fetch from the bank at their own pace.
 About 104 refresh jobs start per second and each takes 3 seconds. How many workers are busy at once? | About 35 ; About 312 ; About 3,000 | 1 | In-flight work is rate times duration, 104 times 3.
-A retried job double counts spending. Which fix is best? | Raise the budget limit for every user ; Lower the refresh frequency to weekly ; A unique key per bank transaction | 2 | The key makes a rerun a no-op, so totals stay correct under at-least-once delivery.
+A job is delivered twice and 3 of its 40 transactions were already saved. With a unique key on account and bank transaction id, what should the Budget Service add to the month's total? | All 40 amounts again ; Only the 37 newly inserted amounts ; Nothing, the key already fixed the total | 1 | The key stops duplicate rows, but the total is only right if it counts rows that were really inserted.
 ```
 
 ```story

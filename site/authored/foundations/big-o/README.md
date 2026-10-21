@@ -4,6 +4,8 @@ Big O describes how the work an algorithm does grows as the input grows. It igno
 
 ## Common growth rates
 
+Here n is the size of the input, for example the number of items in an array.
+
 | Notation | Name | Example | n = 1,000,000 |
 | --- | --- | --- | --- |
 | O(1) | Constant | Array index, Map lookup | 1 |
@@ -28,7 +30,7 @@ Count the extra memory you allocate, including the recursion call stack. A recur
 
 ## Best, average, worst, amortised
 
-Big O usually means the worst case. Quicksort is O(n log n) on average and O(n²) in the worst case. *Amortised* cost averages over a sequence: `array.push` is occasionally O(n) when the array grows, but O(1) amortised.
+Big O usually means the worst case: the input that makes the algorithm do the most work, for example searching an array for an item that is not there. Quicksort is O(n log n) on average and O(n²) in the worst case. *Amortised* cost averages over a sequence: `array.push` is occasionally O(n) when the array grows, but O(1) amortised.
 
 ## Cost of common JavaScript operations
 
@@ -40,7 +42,7 @@ Big O usually means the worst case. Quicksort is O(n log n) on average and O(n²
 | `arr.slice`, `[...arr]`, `arr.concat` | O(n) |
 | `arr.sort` | O(n log n) |
 | `map.get`, `map.set`, `set.has`, `set.add` | O(1) average |
-| `str + str` in a loop | O(n²) overall, prefer `array.join` |
+| `str + str` in a loop | O(n²) in the simple model where every `+` copies; engines often optimise it, but `array.join` never depends on that |
 
 ## What the input size tells you
 
@@ -55,3 +57,5 @@ Interview constraints hint at the target complexity.
 | up to 100,000 | O(n log n) |
 | up to 1,000,000 | O(n) |
 | larger | O(log n) or O(1) |
+
+These limits assume roughly 100 million simple steps a second, so they are rules of thumb, not guarantees.

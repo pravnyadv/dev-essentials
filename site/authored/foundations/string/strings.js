@@ -12,7 +12,7 @@ export const isAnagram = (a, b) => {
     counts[b.charCodeAt(i) - 97]--;
   }
   return counts.every(c => c === 0);
-}; // O(n) time, O(1) space
+}; // O(n) time, O(1) space; lowercase a-z only
 
 export const reverseWords = s => s.trim().split(/\s+/).reverse().join(' ');
 

@@ -7,7 +7,7 @@ A token is a piece of text, usually a word or part of a word. "unbelievable" mig
 The context window is the maximum number of tokens the model can see at once. It holds your system prompt, the whole conversation so far, any files or tool results, and the answer being written. When it is full, something has to be dropped or summarized.
 
 ## Why it matters
-Cost, speed and quality all follow token count. Developers who use a model through an API pay per input and output token. Long inputs are slower. Past a point, quality drops too: models get worse at using facts buried in the middle of a very long context, a failure often called context rot.
+Cost, speed and quality all follow token count. Developers who use a model through an API pay per input and output token. Long inputs are slower. Past a point, quality drops too: the longer the input, the less reliably a model uses it, even on simple tasks. This is often called context rot. Facts buried in the middle of a long input are especially easy to miss.
 
 ## Try it
 Paste a paragraph of prose, a JSON blob and some code into a tokenizer viewer and compare tokens per character. Then count the tokens in the longest message you have ever sent a chatbot.
@@ -26,7 +26,7 @@ flowchart LR
   class I focus
 ```
 
-Common words are usually one piece. Rare words split into several. An invented split: "unbelievable" becomes "un", "believ", "able". This also explains why models struggle to count letters. The letters were never given to the model, only piece IDs.
+Common words are usually one piece. Rare words split into several. An invented split: "unbelievable" becomes "un", "believ", "able". This also helps explain why models miscount letters. The model receives piece IDs, not individual letters, so it has to have learned what is inside each piece.
 
 ## Why long chats get expensive
 Every turn resends the whole conversation as input. Invented numbers: each turn adds 500 tokens. Turn 1 sends about 500. Turn 2 sends turns 1 and 2 together, about 1,000. Turn 3 sends all three, about 1,500, and so on. Over 10 turns the total sent is 500 × (1 + 2 + ... + 10) = 500 × 55 = 27,500 tokens, although the conversation holds only 5,000 tokens of text. Cost grows faster than the number of turns. Providers can discount text that repeats at the start of every call, but the window still fills.
@@ -66,14 +66,14 @@ To confirm, count tokens before sending. Most APIs also report why generation st
 Assuming a bigger window means a better answer. More text can bury what matters. Another mistake is forgetting that the answer also uses window space, so a nearly full window leaves little room to reply.
 
 ```resources
-tool | Tiktokenizer | https://tiktokenizer.vercel.app/ | Vercel | Paste text, see the exact tokens for different models.
+tool | Tiktokenizer | https://tiktokenizer.vercel.app/ | dqbd | Paste text, see the exact tokens for different models.
 video | Let's build the GPT Tokenizer | https://www.youtube.com/watch?v=zduSFxRajkE | Andrej Karpathy | Two hours on why tokenization causes so many odd model behaviors.
 article | Context Rot | https://research.trychroma.com/context-rot | Chroma | Measures how model accuracy degrades as the input gets longer.
 article | Effective context engineering for AI agents | https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents | Anthropic | Treats context as a finite budget to spend carefully.
 ```
 
 ```quiz
-You paste a 300-page PDF and the answers get vague. What is the most likely cause? | The model cannot parse long PDF files ; Key facts get buried in a huge context ; The model only ever reads the first page | 1 | Long contexts dilute attention. Retrieving or summarizing the relevant part usually works better than pasting everything.
+You paste a 40-page report that fits well inside the window, and the answers to specific questions get vague. What is the most likely cause? | The model cannot read PDF files at all ; Key facts get buried in a huge context ; The model only ever reads the first page | 1 | Long contexts dilute attention. Retrieving or summarizing the relevant part usually works better than pasting everything.
 Which text costs more tokens for the same number of characters? | Everyday English with common words ; Text made of many short sentences ; Source code and non-English text | 2 | Tokenizers are tuned on common English, so code and rare words split into more pieces.
 A chat has used 95 percent of the context window. What is a problem with asking for a long answer? | The reply shares the window and may cut off ; The model refuses any request near the limit ; The extra tokens are free, so nothing changes | 0 | The reply also uses window space, so a nearly full window leaves little room to answer.
 ```
@@ -86,7 +86,7 @@ A user pastes a whole contract into a chatbot and asks one question about clause
 An LLM is a function that scores every possible next token. Sampling settings decide which one gets picked.
 
 ## What it is
-Given the tokens so far, the model outputs a probability for every token in its vocabulary (its full list of known pieces). A sampler picks one, appends it, and the model runs again. An answer is just this loop repeated until the model outputs a special end-of-answer marker called a stop token.
+Given the tokens so far, the model gives every token in its vocabulary (its full list of known pieces) a score, and softmax (a formula covered below) turns the scores into probabilities. A sampler picks one, appends it, and the model runs again. An answer is just this loop repeated until the model outputs a special end-of-answer marker called a stop token.
 
 ```mermaid One step is score, pick, append, and the loop repeats until a stop token
 flowchart TD
@@ -109,12 +109,14 @@ Use the sampler above the lesson, which shows three tokens and their odds. Raise
 Prompt: "The capital of France is". The model scores possible next tokens: "Paris" 92 percent, "a" 2 percent, "Lyon" 1 percent, and so on. The sampler picks one, usually "Paris". Now the prompt is "The capital of France is Paris" and the model predicts the next token again, maybe a period. Repeat until it predicts an end marker.
 
 ## Why this explains the weirdness
-The model never plans the whole answer. That is why it can start a sentence confidently and then box itself into an ending that does not fit.
+The model commits to one token at a time and cannot take a token back. It has no written plan to follow, so it can start a sentence confidently and then box itself into an ending that does not fit.
 
 ## Inside one step, with small numbers
 The model first produces a raw score for each token, called a logit. Softmax turns scores into probabilities that sum to 1. Invented scores for three tokens: 2, 1 and 0. Softmax raises e (about 2.718) to each score, which gives 7.389, 2.718 and 1, then divides each by their total of 11.107. The probabilities are about 0.665, 0.245 and 0.090.
 
 Temperature divides the scores first. At temperature 0.5 the scores become 4, 2 and 0, and the probabilities sharpen to about 0.867, 0.117 and 0.016. At temperature 2 they become 1, 0.5 and 0, and flatten to about 0.506, 0.307 and 0.186. Same model, same prompt, different odds.
+
+Temperature 0 itself cannot be divided by, so tools treat it as "always pick the top token". Even then, the same prompt can occasionally give different output, so check important outputs instead of trusting them blindly.
 
 The three temperatures side by side, for the scores 2, 1 and 0 used above.
 
@@ -138,7 +140,7 @@ Because tokens are committed one at a time, the first words steer the rest. If a
 Test it on a yes or no question with a tricky answer. Run it once asking for the verdict first and once asking for reasoning first. Compare the results over about 10 runs each.
 
 ## How to measure variability
-For a task you care about, run the same prompt 10 times at your chosen settings and count the distinct answers. One or two means the task is stable. Many means the model is unsure, and a clearer prompt or lower temperature should come before anything else.
+For a task you care about, run the same prompt 10 times at your chosen settings and compare the final answer only (the yes or no, the number, the label), not the wording. If one or two final answers show up, the task is stable. If many do, the probabilities are spread out, so make the prompt clearer or lower the temperature first.
 
 ## Common mistake
 Believing the model "looks up" facts. It predicts likely text. When a fact was common in training, the likely text is right. When it was rare, the likely text can be a convincing guess.
@@ -154,12 +156,12 @@ course | Neural Networks: Zero to Hero | https://karpathy.ai/zero-to-hero.html |
 
 ```quiz
 An extraction job must return the same JSON every run. What should you change? | Raise the temperature to 1.5 ; Lower the temperature toward 0 ; Add a longer greeting to the prompt | 1 | Low temperature makes the most likely token win almost every time, so output is repeatable.
-Why does "think step by step" often improve answers? | It switches the model over to a larger version ; It unlocks a hidden reasoning mode in the model ; Written steps become context for later tokens | 2 | The model predicts one token at a time, so intermediate steps give it something to build the answer on.
+A prompt asks for a yes or no verdict first, then the reasons. Why can the verdict end up wrong even when the reasons are sound? | The model swaps to a weaker version mid-answer ; The reasons are checked and then thrown away ; The verdict tokens are committed before any reasoning exists | 2 | The model predicts one token at a time, so intermediate steps give it something to build the answer on.
 A model's top token is "Paris" at 92 percent. At temperature 0, what does it output? | Paris, nearly every time it runs ; A random token from the likely few ; Paris, but only 92 percent of the time | 0 | Temperature near 0 makes the highest-probability token win nearly always.
 ```
 
 ```story
-Your phone's keyboard suggests the next word as you type. A language model is that feature scaled up enormously: instead of three suggestions based on your messages, it weighs every word in its vocabulary using patterns learned from a large part of the internet, and it does it one word after another until the answer is done.
+Your phone's keyboard suggests the next word as you type. A language model is that feature scaled up enormously: instead of three suggestions based on your messages, it weighs every token (a word or a piece of one) in its vocabulary using patterns learned from a large part of the internet, and it does it one token after another until the answer is done.
 ```
 
 # sampling-parameters | Sampling parameters | 1 | 12
@@ -181,18 +183,18 @@ flowchart TD
 ```
 
 ## Example
-Probabilities for the next token: A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Top-k 2 keeps A and B and rescales them to 0.67 and 0.33. Top-p 0.9 keeps A, B and C (0.50 + 0.25 + 0.15 = 0.90) and drops D and E.
+Probabilities for the next token: A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Top-k 2 keeps A and B and rescales them to 0.67 and 0.33. Top-p 0.85 keeps A, B and C and drops D and E: A and B add up to 0.75, which is below 0.85, and adding C gives 0.90, which reaches it.
 
 ## Rules of thumb
-Extraction, classification and code: temperature 0 to 0.3. Brainstorming and creative writing: 0.8 to 1.0. Change either temperature or top-p, not both. Some reasoning models fix these values and ignore your settings. Even at temperature 0, output can differ between calls on some providers, so do not rely on bit-exact repeatability.
+Extraction, classification and code: temperature 0 to 0.3. Brainstorming and creative writing: 0.8 to 1.0. Change either temperature or top-p, not both. Some models fix these values. Some reasoning models ignore your settings, and some newer models, including recent Claude models, reject any temperature, top-p or top-k other than the default with an error. Check the provider's docs for the model you use. Even at temperature 0, output can differ between calls on some providers, so do not rely on bit-exact repeatability.
 
 ## A worked example: same prompt, three settings
-Prompt: "Name a fruit." Temperature 0: "Apple" every time. Temperature 0.7: apple, banana, mango across runs. Temperature 1.5: occasionally "dragonfruit" or something odd. For a form that must name exactly one valid fruit from a list, use 0. For brainstorming ten product names, use 0.9.
+Prompt: "Name a fruit." Temperature 0: "Apple" almost every time. Temperature 0.7: apple, banana, mango across runs. Temperature 1.5: occasionally "dragonfruit" or something odd. For a form that must name exactly one valid fruit from a list, use 0. For brainstorming ten product names, use 0.9.
 
 ## How the settings stack
-Settings act in sequence, and earlier ones change what later ones see. Reuse the probabilities A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Dividing the scores by a temperature of 0.5 is the same as squaring each probability and rescaling so they sum to 1. The squares are 0.25, 0.0625, 0.0225, 0.0049 and 0.0009, which total 0.3408. The new probabilities are about 0.734, 0.183, 0.066, 0.014 and 0.003.
+Settings act in sequence, and earlier ones change what later ones see. Reuse the probabilities A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Dividing the scores by a temperature of 0.5 is the same as squaring each probability and rescaling so they sum to 1. In general, raise each probability to the power 1/T and rescale: T = 0.5 squares them, T = 2 takes square roots, which flattens the gap between tokens. The squares are 0.25, 0.0625, 0.0225, 0.0049 and 0.0009, which total 0.3408. The new probabilities are about 0.734, 0.183, 0.066, 0.014 and 0.003.
 
-Now apply top-p 0.9. A and B together reach 0.917, so only A and B survive. Earlier, top-p 0.9 alone kept three tokens. Lowering temperature shrank the candidate set as well. The order can differ between libraries and services, so test rather than assume.
+Now apply top-p 0.85. A and B together reach 0.917, so only A and B survive. Earlier, top-p 0.85 alone kept three tokens. Lowering temperature shrank the candidate set as well. The order can differ between libraries and services, so test rather than assume.
 
 The table follows one set of probabilities through each setting. A zero means the token was dropped.
 
@@ -200,9 +202,9 @@ The table follows one set of probabilities through each setting. A zero means th
 |---|---|---|---|---|---|
 | None | 0.50 | 0.25 | 0.15 | 0.07 | 0.03 |
 | Top-k 2 | 0.67 | 0.33 | 0 | 0 | 0 |
-| Top-p 0.9 | 0.56 | 0.28 | 0.17 | 0 | 0 |
+| Top-p 0.85 | 0.56 | 0.28 | 0.17 | 0 | 0 |
 | Temperature 0.5 | 0.73 | 0.18 | 0.07 | 0.01 | 0.003 |
-| Temperature 0.5, then top-p 0.9 | 0.80 | 0.20 | 0 | 0 | 0 |
+| Temperature 0.5, then top-p 0.85 | 0.80 | 0.20 | 0 | 0 | 0 |
 
 ## Trade-offs and when not to use them
 Low temperature gives repeatable output but can loop and sound flat. High temperature gives variety but more errors. Top-k uses the same cutoff whether the model is sure or unsure, which top-p handles better. A seed helps you debug, but it is not a guarantee of identical output across providers or versions.
@@ -229,13 +231,13 @@ Turning both temperature and top-p up at once, which compounds the randomness an
 Temperature is one number inside the softmax formula. See it with real numbers in [Probability and softmax](/ai/docs/building-blocks/probability-and-softmax).
 
 ```resources
-docs | Messages API parameters | https://docs.anthropic.com/en/api/messages | Anthropic | Temperature, top-p, top-k, max tokens and stop sequences.
+docs | Messages API parameters | https://docs.anthropic.com/en/api/messages | Anthropic | Max tokens and stop sequences, plus temperature, top-p and top-k (now deprecated on newer Claude models).
 article | How to generate text: decoding methods | https://huggingface.co/blog/how-to-generate | Hugging Face | Greedy, beam, top-k and top-p, with code.
 video | Let's build GPT: from scratch, in code, spelled out | https://www.youtube.com/watch?v=kCc8FmEb1nY | Andrej Karpathy | Sampling is built into the generation loop near the end.
 ```
 
 ```quiz
-Token probabilities are A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Which does top-p 0.9 keep? | Only A and B ; A, B and C ; A, B, C and D | 1 | 0.50 + 0.25 + 0.15 reaches 0.90, so D and E are dropped.
+Token probabilities are A 0.50, B 0.25, C 0.15, D 0.07, E 0.03. Which does top-p 0.85 keep? | Only A and B ; A, B and C ; A, B, C and D | 1 | 0.50 + 0.25 = 0.75 is below 0.85, and adding C reaches 0.90, so D and E are dropped.
 What does a stop sequence do? | Raises the temperature for one token ; Blocks the model from mentioning a topic ; Stops output when the string appears | 2 | It cuts the output at a chosen marker, such as the end of a field.
 You want ten different product name ideas. Which setting fits best? | A higher temperature such as 0.9 ; Temperature 0 with top-k set to 1 ; A very small maximum output length | 0 | Brainstorming benefits from variety, which higher temperature provides.
 ```
@@ -250,7 +252,7 @@ The transformer lets every token look at every earlier token and decide which on
 ## What it is
 The transformer is the design behind modern language models. Its key idea is that every token can look at every earlier token and decide which ones matter.
 
-Here is the path a piece of text takes. First it is split into tokens. Each token becomes a vector, which is a list of numbers called an embedding. Then the vectors pass through a stack of identical blocks. Each block does two jobs. Attention lets a token pull in information from other tokens. A feed-forward step then thinks about each token on its own. At the very end, the last vector is turned into a score for every possible next token.
+Here is the path a piece of text takes. First it is split into tokens. Each token becomes a vector, which is a list of numbers called an embedding. Then the vectors pass through a stack of identical blocks. Each block does two jobs. Attention lets a token pull in information from other tokens. A feed-forward step then runs each token's vector through a small neural network, one token at a time with no mixing between tokens. Attention moves information between tokens, and this step reworks the information each token now holds. At the very end, the last vector is turned into a score for every possible next token.
 
 ```mermaid Text becomes vectors, passes through a stack of identical blocks, and ends as a score for every next token
 flowchart TD
@@ -277,7 +279,7 @@ flowchart TD
 ```
 
 ## Why it matters
-You do not need the math to use models, but this picture explains real limits. Attention compares every token with every earlier token, so the work grows quickly with length. That is why long inputs cost more. It also explains why position in a prompt matters, and why models can copy a pattern from examples you give them. Earlier keys and values are saved in a KV cache, so repeated prefixes are cheap. That idea is behind prompt caching.
+You do not need the math to use models, but this picture explains real limits. Attention compares every token with every earlier token, so the work grows quickly with length. That is why long inputs cost more. Attention itself does not know word order, so models add a position signal to each token's vector. Even so, where a fact sits in a prompt can change how well the model uses it (see the long-prompt example below). Attention also lets a model notice that a new line looks like the examples above it and continue the same pattern. Earlier keys and values are saved in a KV cache, so repeated prefixes are cheap. That idea is behind prompt caching.
 
 ```mermaid While generating, each new token adds one key and value to the cache and reuses all the saved ones
 sequenceDiagram
@@ -299,7 +301,7 @@ Watch the 3Blue1Brown chapters first. Then play with an interactive visualizatio
 ## A trace with small numbers
 Invented numbers for illustration. A token has three earlier tokens to look at. Its query compared with their keys gives scores 3, 1 and 0. Softmax turns these into weights: e^3 is about 20.1, e^1 about 2.7, e^0 equals 1, total about 23.8. The weights are about 0.84, 0.11 and 0.04.
 
-Say the three values are single numbers, 10, 20 and 30. The output is the weighted average: 0.84 × 10 + 0.11 × 20 + 0.04 × 30, about 12.0. Most of the answer comes from the first token, because its key matched the query best. Real models scale the scores before softmax and use long vectors, but the steps are the same.
+Say the three values are single numbers, 10, 20 and 30. The output is the weighted average: 0.844 × 10 + 0.114 × 20 + 0.042 × 30, about 12.0 (the weights are rounded, so they add to 1.000 here). Most of the answer comes from the first token, because its key matched the query best. Real models scale the scores before softmax and use long vectors, but the steps are the same.
 
 The same trace as a table, with one row per earlier token.
 
@@ -318,10 +320,10 @@ A model also runs several attention heads in parallel. A head is one independent
 ## A second example: where attention does not help
 Attention can only mix information the vectors already hold. Ask a model how many r letters are in "strawberry". The tokenizer may have hidden the letters inside larger pieces, so the model has little direct access to the letters. Giving the model a code tool avoids the problem.
 
-A different failure is a fact buried in a very long prompt. Weights spread thin across many tokens, and the model may ignore a line that is present. To confirm, move the fact to the start or end of the prompt and ask again. If the answer changes, position was the cause.
+A different failure is a fact buried in a very long prompt. In a very long prompt, models often use a fact in the middle less reliably than one at the start or end, and may miss a line that is present. Researchers have measured this, but the exact cause is not settled. To check, move the fact to the start or end of the prompt and ask again. If the answer changes, position was the cause.
 
 ## Common mistake
-Thinking more layers always means a smarter model. Depth helps, but data and training matter just as much.
+Assuming a model with more layers will answer your question better. Layers are only one of several things that set quality, along with the amount and quality of training data and how the model was tuned afterward. When two models disagree, test both on your own examples instead of picking the bigger one.
 
 ## The math, when you are ready
 Attention is a few dot products, a softmax and a weighted average. The step-by-step numbers are in [Attention in numbers](/ai/docs/building-blocks/attention-math), in the Building Blocks chapter later in the path. Read it after you have used and built with models, and it will feel much easier.
@@ -337,11 +339,11 @@ paper | Attention Is All You Need | https://arxiv.org/abs/1706.03762 | Vaswani e
 ```quiz
 What does attention let a token do? | Look only at the single token just before it ; Weigh earlier tokens by their relevance ; Pick the single most frequent earlier token | 1 | Queries are matched against keys of earlier tokens, and the best matches contribute their values.
 Why are very long inputs expensive? | Longer words use a different tokenizer entirely ; The vocabulary grows with the length of the input ; Every token is compared with earlier ones | 2 | Cost rises roughly with the square of the length because of those comparisons.
-In "The bank approved my loan", what moves the meaning of "bank" toward money? | Attention pulling in "approved", "loan" ; The word being capitalized in the sentence ; The sentence being short enough to fit | 0 | Neighbouring words set the meaning: attention blends their information into the word's vector.
+A token's scores against three earlier tokens are 3, 1 and 0. Which earlier token contributes most to its output? | The one with score 3, because its key matched the query best ; The one with score 0, because it is the most different ; All three equally, since weights always add to 1 | 0 | Softmax turns the scores into weights and the highest score gets the largest weight (about 0.84 here).
 ```
 
 ```story
-A student reads a textbook paragraph and, before answering a question, flips back through the pages looking for the lines that matter. A transformer does this for every word it writes: it looks back over everything so far, scores what is relevant, and uses that. The ability to look back, in parallel, is why models can follow a long instruction or keep a story consistent.
+A student reads a textbook paragraph and, before answering a question, flips back through the pages looking for the lines that matter. A transformer does this for every word it writes: it looks back over everything so far, scores what is relevant, and uses that. Imagine the student has a helper for each page who instantly shouts how relevant their page is to the question, and the student blends the answers weighted by how loudly each one shouted. That all happens at once, which is why models can keep a long story consistent.
 ```
 
 # training-pipeline | Pretraining, fine-tuning and RL | 2 | 15
@@ -354,7 +356,7 @@ Stage one is pretraining. The model reads a huge amount of text and learns to pr
 
 Stage two is supervised fine-tuning, or SFT. People write thousands of example conversations: a question, then a good answer. The model trains on them and starts to answer like an assistant.
 
-Stage three is preference tuning. People compare two answers and pick the better one, and the model is nudged toward the kind people prefer. You will see the names RLHF and DPO for this. Both mean learning from human preferences.
+Stage three is preference tuning. People compare two answers and pick the better one, and the model is nudged toward the kind people prefer. You will see two names for this. RLHF is the original method: it trains a separate scorer from the human picks, then nudges the model toward higher scores. DPO reaches the same goal more simply, with no separate scorer.
 
 Stage four, used for reasoning models, is reinforcement learning on tasks with checkable answers, such as math and code. The model gets a reward when the final answer is right, so it learns to think longer and more carefully.
 
@@ -376,7 +378,7 @@ The table compares what each stage learns from and what it produces.
 | Reinforcement learning | Tasks with checkable answers | A reward when the final answer is right | A reasoning model that thinks longer |
 
 ## Why it matters
-Pretraining has a cutoff date, so the model knows nothing newer. Politeness, refusals and tool use come from the later stages. That is why a prompt can change how a model behaves, but cannot reliably teach it new facts.
+Pretraining has a cutoff date, so the model knows nothing newer. Politeness, refusals and tool use come from the later stages. That is why a prompt can change how a model behaves, but it cannot add lasting knowledge. Facts you put in a prompt help with that one request and are gone afterwards, because the model's weights do not change.
 
 When you need new facts, retrieve them and put them in the prompt. When you need the same style or format every time at large scale, consider fine-tuning.
 
@@ -419,7 +421,7 @@ flowchart TD
 Symptoms to watch for:
 
 1. A tuned model gets worse at unrelated tasks, because the update shifted weights it needed.
-2. Answers have the right format but wrong facts. Format can be taught. Knowledge mostly cannot.
+2. Answers have the right format but wrong facts. Format can be taught by fine-tuning. Facts mostly cannot be added reliably that way, because they come from pretraining.
 3. Reinforcement learning on checkable tasks can be gamed. A coding model might special-case the exact tests instead of solving the problem.
 
 To confirm, test on examples that were not used in tuning. Also rerun a small set of general tasks before and after the change.
@@ -431,29 +433,44 @@ Fine-tuning a model to "teach" it your company facts. Facts are better supplied 
 Training is repeated guessing, measuring the error and nudging the weights. The numbers behind that loop are in [Loss and gradient descent](/ai/docs/building-blocks/loss-and-gradient-descent). It is optional for now.
 
 ```resources
-video | Deep Dive into LLMs like ChatGPT | https://www.youtube.com/watch?v=7xTGNNLPyMI | Andrej Karpathy | Three hours covering pretraining, SFT and RL end to end.
+video | Deep Dive into LLMs like ChatGPT | https://www.youtube.com/watch?v=7xTGNNLPyMI | Andrej Karpathy | About three and a half hours covering pretraining, SFT and RL end to end.
 video | How I use LLMs | https://www.youtube.com/watch?v=EWvNQjAaOHw | Andrej Karpathy | Practical companion to the deep dive, with real workflows.
-paper | Training language models to follow instructions with human feedback | https://arxiv.org/abs/2203.02155 | OpenAI | The InstructGPT paper that defined the RLHF recipe.
-course | Hugging Face LLM Course | https://huggingface.co/learn/llm-course | Hugging Face | Free, hands-on path through transformers, fine-tuning and evaluation.
+paper | Training language models to follow instructions with human feedback | https://arxiv.org/abs/2203.02155 | OpenAI | The InstructGPT paper that made the RLHF recipe the standard way to build assistants.
+course | Hugging Face LLM Course | https://huggingface.co/learn/llm-course | Hugging Face | Free, hands-on path through transformers, datasets and fine-tuning.
 ```
 
 ```quiz
 A model does not know about a product released last month. What is the right fix? | Fine-tune it on one sentence about the product ; Raise the temperature so it guesses better ; Wait until the next pretraining run happens ; Put the facts in the prompt or retrieve them | 3 | Knowledge comes from pretraining and has a cutoff. Supplying facts in context is cheap and reliable.
 Which stage mainly produces instruction-following behavior? | Pretraining on a very large web text corpus ; Supervised and preference fine-tuning ; Tokenizing text before any training starts | 1 | A base model only continues text. Post-training teaches the assistant behavior.
-You want every answer in a strict house format, millions of times a day. What should you consider? | Retraining the base model every single month ; A much longer system prompt that has the facts ; Fine-tuning a small model on that format | 2 | Fine-tuning shines for consistent style or format at scale, and a smaller tuned model can be cheaper.
+A strict three-line house format is needed millions of times a day, and a clear prompt already works but costs many tokens each time. What should you consider? | Retraining the base model every single month ; Keep adding more format rules to the prompt until it never slips ; Fine-tuning a small model on that format | 2 | Past a very large volume, a small tuned model can hold the format without long instructions and cost less per call. A clearer prompt is still the first thing to try.
 ```
 
 ```story
-Think of training a new employee in three stages. First they read every book in the library (pretraining), so they know a lot but have no idea how to behave at work. Then a mentor shows them example conversations with customers (fine-tuning). Finally they get feedback on their real work, "that answer was better" (RLHF and reinforcement learning). Each stage changes a different thing.
+Think of training a new employee in four stages. First they read every book in the library (pretraining), so they know a lot but have no idea how to behave at work. Then a mentor shows them example conversations with customers (fine-tuning), and a manager says which of two replies was better (preference tuning). Finally they practice problems with an answer key and get marked right or wrong with nobody watching (reinforcement learning on checkable tasks).
 ```
 
 # limits-and-hallucinations | Limits and hallucinations | 1 | 10
 Models produce plausible text, not verified facts. Knowing the failure modes tells you where to add checks.
 
 ## What it is
-A hallucination is a confident answer that is not supported by the model's knowledge or the provided sources. It happens because the training objective rewards fluent continuations, and the model has no built-in signal for "I do not know". Common failure areas are precise facts and citations, arithmetic done in its head, events after the knowledge cutoff, and long tasks where an early mistake carries forward.
+A hallucination is a confident answer that is not supported by the model's knowledge or the provided sources. It happens because the training objective rewards fluent continuations and guessing over saying "I do not know", and the text you read carries no sign of how unsure the model was. Common failure areas are precise facts and citations, arithmetic done in its head, events after the knowledge cutoff, and long tasks where an early mistake carries forward. Where possible give the model a tool for these: a calculator, a search, a code runner.
 
 Capabilities are also uneven. A model can solve a hard proof and then miscount letters in a word.
+
+## Why a model makes things up
+Think about what happens with a rare fact. Ask for the author of an obscure book. The model has seen little about it, so its probabilities spread across many plausible names. Invented numbers: 12 percent for one name, 10 percent for another, 9 percent for a third. The sampler must still pick something. With odds this flat it might pick any of the three, and each run can give a different name. Whichever it picks is printed in the same confident tone as a name with 95 percent behind it. If the same question gives different answers each time, treat the answer as a guess.
+
+Nothing in the printed answer separates "I know" from "this looks right". Bigger models tend to make fewer such errors, but none are immune.
+
+```mermaid Invented odds for the first token of an answer: a well-known fact has a clear winner, a rare fact spreads thin
+xychart-beta
+  x-axis [First choice, Second choice, Third choice]
+  y-axis "probability percent" 0 --> 100
+  bar "Well-known fact" [95, 3, 1]
+  bar "Rare fact" [12, 10, 9]
+```
+
+In both cases the answer comes out in the same tone, so a pick from the 12 percent spread looks as sure as the 95 percent one.
 
 ## Why it matters
 Design around the failure instead of hoping it disappears. Give the model sources and ask for quotes. Let it call a calculator or run code instead of computing in its head. Add verification steps that check the output against something independent, such as tests, a schema or a second look from a separate prompt. Then measure how often it still fails (see the evals chapter).
@@ -471,31 +488,13 @@ flowchart TD
   class E good
 ```
 
-## Where models are weak
-Exact arithmetic with long numbers, precise dates and names that are rare, anything after the knowledge cutoff, and counting letters in words (tokens hide letters). Where possible give the model a tool: a calculator, a search, a code runner.
-
-## Why a model makes things up
-Think about what happens with a rare fact. Ask for the author of an obscure book. The model has seen little about it, so its probabilities spread across many plausible names. Invented numbers: 12 percent for one name, 10 percent for another, 9 percent for a third. The sampler must still pick something, and the top choice at 12 percent is printed in the same confident tone as a name with 95 percent behind it.
-
-Nothing in that loop separates "I know" from "this looks right". Bigger models tend to make fewer such errors, but none are immune.
-
-```mermaid Invented odds for the first token of an answer: a well-known fact has a clear winner, a rare fact spreads thin
-xychart-beta
-  x-axis [First choice, Second choice, Third choice]
-  y-axis "probability percent" 0 --> 100
-  bar "Well-known fact" [95, 3, 1]
-  bar "Rare fact" [12, 10, 9]
-```
-
-In both cases the sampler prints its top choice in the same tone, so the 12 percent answer looks as sure as the 95 percent one.
-
 ## A second example: matching checks to stakes
 Guard rails cost time and money, so scale them to what a mistake costs. Rewriting an email to sound politer has few facts to get wrong, and a quick read by you is enough. Summarizing a legal contract needs the full set of rails.
 
 Even a good rail can mislead. A required quote might exist in the contract but not support the claim it is attached to. Checking that the quote exists is not the same as checking that it says what the model claims.
 
 ## How to tell it is working
-Build a small test set of about 30 questions with known answers. Include some whose answers are not in the provided document. Count three things: right answers, wrong answers, and times the model said the answer is not available.
+Build a small test set of about 30 questions with known answers. Include some whose answers are not in the provided document. Count three things: right answers, wrong answers, and times the model said the answer is not available. If the model says "not stated" for questions that are in the document, the rails are too strict.
 
 A well-grounded setup should say "not stated" when asked, for example, the notice period of a contract that never mentions one. If it invents a number, your rails are not yet working. Rerun the set after every change to the prompt or model so you see whether the wrong-answer rate moved.
 
@@ -503,7 +502,7 @@ Scoring the test set means looking at two kinds of question separately.
 
 | Kind of question | Good outcome | Bad outcome |
 |---|---|---|
-| Answer is in the document | Right answer, with a quote that supports it | Wrong answer |
+| Answer is in the document | Right answer, with a quote that supports it | Wrong answer, or says it is not stated when it is |
 | Answer is not in the document | Says it is not stated | Invents an answer |
 
 ## Common mistake
@@ -512,16 +511,16 @@ Reading confidence as accuracy. The tone is equally fluent when the answer is wr
 ```resources
 article | Why language models hallucinate | https://openai.com/index/why-language-models-hallucinate/ | OpenAI | Explains how training and benchmarks reward guessing over abstaining.
 article | What We've Learned From A Year of Building with LLMs | https://applied-llms.org/ | Yan, Husain, Liu and others | Practitioner lessons on prompts, retrieval, evals and operations.
-article | Building LLM applications for production | https://huyenchip.com/2023/04/11/llm-engineering.html | Chip Huyen | Where LLM apps break and how teams handle it.
+article | Building LLM applications for production | https://huyenchip.com/2023/04/11/llm-engineering.html | Chip Huyen | Production problems with LLM apps: ambiguous prompts, evaluation, cost and latency, and composing tools.
 ```
 
 ```quiz
-Which fix reduces arithmetic mistakes most reliably? | Letting the model call a calculator tool ; Writing a much longer and more polite prompt ; Telling the model to concentrate harder | 0 | Hand exact computation to a tool instead of asking the model to compute it token by token.
+A model summarizes a contract and says the notice period is 30 days, but the contract never mentions one. Which check catches this? | Requiring a quote for every claim and searching the contract for it ; Re-reading the summary to see if the wording is fluent ; Asking the model for a shorter summary instead | 0 | A quote that does not exist in the contract cannot be found by text search, so the invented number shows up.
 How can you reduce made-up citations? | Ask the model to be honest in the prompt ; Give sources and demand exact quotes ; Request shorter answers on every question | 1 | Grounding in given text and requiring checkable quotes gives you something to verify mechanically.
 The model states a date in a confident tone. What does the tone tell you? | That the date is probably correct ; That the date came from a trusted database ; Nothing about whether the date is right | 2 | Fluent confidence is the same whether the answer is right or wrong, so check what matters.
 ```
 
 ```story
-A lawyer once submitted a legal brief containing six court cases that a chatbot had invented, with convincing names and citations. None existed. The model was not lying. It produced text that looked like legal citations, because that is what it is built to do. The lawyer skipped the step of checking.
+In 2023 a New York lawyer, Steven Schwartz, filed a brief in Mata v. Avianca that cited six court cases a chatbot had invented, with convincing names and citations. None existed. He even asked the chatbot whether the cases were real, and it said yes. The model was not lying. It produced text that looked like legal citations, because that is what it is built to do.
 ```
 

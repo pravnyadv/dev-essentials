@@ -1,4 +1,6 @@
 # algorithms/math/factorial | after Overview
+Why is `0!` equal to `1`? Multiplying no numbers at all gives `1`, the same way adding no numbers gives `0`. It also keeps the pattern `n! = n * (n - 1)!` working: `1! = 1 * 0!` only holds if `0! = 1`. The code below returns `1` for `0` for the same reason.
+
 ```mermaid Factorial against doubling: n! passes 2^n at n = 4 and is more than 150 times larger by n = 8
 xychart-beta
   x-axis "n" [1, 2, 3, 4, 5, 6, 7, 8]
@@ -27,12 +29,18 @@ The last step is either a 1-step or a 2-step, so the ways to reach stair n are t
 | --- | --- | --- |
 | 1 | 1 | base case |
 | 2 | 2 | base case |
-| 3 | 3 | 2 + 1 |
-| 4 | 5 | 3 + 2 |
-| 5 | 8 | 5 + 3 |
-| 6 | 13 | 8 + 5 |
+| 3 | 3 | ways(2) + ways(1) = 2 + 1 |
+| 4 | 5 | ways(3) + ways(2) = 3 + 2 |
+| 5 | 8 | ways(4) + ways(3) = 5 + 3 |
+| 6 | 13 | ways(5) + ways(4) = 8 + 5 |
+
+These are the Fibonacci numbers, shifted by one.
+
+Two terms come up in the list of solutions below. Memoization means saving each answer the first time you compute it, so the next request for the same stair count is a lookup instead of a repeat calculation. Dynamic programming here means filling a table from the small cases upward, so nothing is ever asked twice. The Memoization and Recursion lessons cover the full idea.
 
 # algorithms/uncategorized/recursive-staircase | after The Solution
+A note on the brute-force space figure above: it does not store a table, but every call that is still waiting for its two sub-answers stays on the call stack. The longest chain is about n calls deep, so its extra space is O(n), not O(1). Only the iterative version really uses O(1) space.
+
 ```mermaid Brute force for 5 stairs makes 9 calls, and the marked boxes repeat questions already asked (3 appears twice, 2 appears three times)
 flowchart TD
   a5[5] --> a4[4]
@@ -59,6 +67,8 @@ xychart-beta
 ```
 
 # algorithms/uncategorized/hanoi-tower | before Code
+The idea: to move a stack of `n` discs from pole A to pole C, first move the top `n - 1` discs to pole B (the spare), then move the biggest disc from A to C, then move the `n - 1` discs from B onto C. Moving `n - 1` discs is the same problem, just smaller, which is why it is a recursion. If `M(n)` is the number of moves, `M(n) = M(n - 1) + 1 + M(n - 1) = 2 * M(n - 1) + 1`. Starting from `M(1) = 1` this gives 1, 3, 7, 15, and so on, which is `2^n - 1`.
+
 Pole A holds discs 3 (largest), 2 and 1 (smallest). The big disc moves only once the two smaller ones are parked on pole B. Discs on each pole are listed bottom to top.
 
 | Move | Disc | Route | Pole A | Pole B | Pole C |
@@ -78,9 +88,13 @@ Moves needed as discs are added, from the 2^n - 1 rule:
 | 1 | 1 |
 | 2 | 3 |
 | 3 | 7 |
+| 4 | 15 |
 | 5 | 31 |
 | 10 | 1,023 |
 | 20 | 1,048,575 |
+
+# algorithms/sets/power-set | before Code
+A note on the Bitwise Solution table above: it writes the bits as `abc` with `a` on the left, so the lowest bit (the right-hand one) picks `c`. The code in `bwPowerSet.js` reads the bits the other way: the lowest bit picks the first element, because it tests `1 << setElementIndex`. So for the set {1, 2, 3} the code produces the subsets in this order: {}, {1}, {2}, {1, 2}, {3}, {1, 3}, {2, 3}, {1, 2, 3}. It is the same eight subsets, just listed in a different order. The numbers run from `0` up to `2^n - 1` (for three elements, 0 to 7), which is exactly `2^n` numbers.
 
 # algorithms/sets/power-set | before Code
 ```mermaid Backtracking power set of {1, 2, 3}: every box is one recorded subset, and each edge is one element added
@@ -205,3 +219,60 @@ Searching every board (naive) against backtracking, which stops extending a boar
 | 7 | 85,900,584 | 551 | 40 |
 | 8 | 4,426,165,368 | 2,056 | 92 |
 
+
+# algorithms/sets/combination-sum | after Explanations
+The tree above is a rough sketch and does not match the code. This is the exact tree the code walks for `candidates = [2, 3]` and `target = 6`. Each line shows the numbers chosen so far and how much is left.
+
+```
+[]
++2 (4 left)
+  +2 (2 left)
+    +2 = [2,2,2], 0 left: answer
+    +3 = [2,2,3], -1 left: too far, stop
+  +3 (1 left)
+    +3 = [2,3,3], -2 left: too far, stop
++3 (3 left)
+  +3 = [3,3], 0 left: answer
+```
+
+Answers: [2,2,2] and [3,3]. A call that reaches exactly 0 saves the answer and adds nothing more. After choosing 3, only 3 is tried again, never 2, because the code never goes back to an earlier candidate.
+
+If the question asked only how many ways there are, or the fewest numbers needed, dynamic programming would be the usual tool. Here we must list every combination, so we walk through them one by one with backtracking.
+
+# algorithms/uncategorized/n-queens | after Bitwise Solution
+Correction: in `leftDiagonal`, `column` and `rightDiagonal`, a 1 bit means that square on the current row is blocked (a queen is in that column, or a queen attacks it along a diagonal). A 0 bit means the square is still free. The code combines the three with OR and flips the result (`~`) to get the free squares. For N = 4 at row 1, after a queen in the rightmost column: column = 0001, rightDiagonal = 0010, leftDiagonal = 0000, so the blocked squares are 0011 and the free squares are 1100.
+
+The picture that belongs above is gone, so here is the trace for N = 4 (the leftmost bit is the leftmost column). Each row shows the blocked bits and the free squares.
+
+| Row | leftDiagonal | column | rightDiagonal | Free squares | The code picks |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 0000 | 0000 | 0000 | 1111 | rightmost free (0001) |
+| 1 | 0000 | 0001 | 0010 | 1100 | rightmost free (0100) |
+| 2 | 0010 | 0101 | 1100 | 0000 | none: dead end, go back to row 1 |
+
+Moving to the next row shifts the masks. A queen's diagonal that points down and to the left moves one square left each row (`rightDiagonal << 1`), and the one pointing down and to the right moves one square right (`leftDiagonal >> 1`). For row 1 above: (0000 | 0001) >> 1 = 0000 and (0000 | 0001) << 1 = 0010.
+
+# algorithms/uncategorized/n-queens | before Code
+How the code below differs from the steps above. The steps place queens column by column and stop at the first solution. The JavaScript places one queen per row, keeps going after a solution, and collects every one (for 4 queens, 2 solutions). It is the same search turned sideways, because rows and columns are interchangeable on a square board. `nQueens` returns a list of boards, each a list of queen positions (row and column), not a 0/1 matrix. `nQueensBitwise` only counts solutions and returns that number (2 for N = 4, 92 for N = 8). Its helper takes five parameters, not three: `boardSize` and `solutionsCount` are bookkeeping, and the three bit masks are the ones described above.
+
+# algorithms/sets/combinations | after Combinations with repetitions
+The two formulas in words. `n!` (n factorial) means n * (n - 1) * ... * 1, so 4! = 24.
+
+Without repetition: n! / (r! * (n - r)!). Choosing 2 of 4 gives 24 / (2 * 2) = 6.
+
+With repetition: (n + r - 1)! / (r! * (n - 1)!). Choosing 3 scoops from 5 flavours gives 7! / (3! * 4!) = 5040 / (6 * 24) = 35.
+
+# algorithms/sets/combinations | before Code
+How the code works for A, B, C, D and length 2. Take A, then combine A with every 1-letter combination from the letters after it (B, C, D): AB, AC, AD. Take B and the letters after it (C, D): BC, BD. Take C and D: CD. D has nothing after it, so it adds nothing. Total 6. Passing only the letters after the current one (`slice(optionIndex + 1)`) is what stops repeats and mirrored pairs such as BA. The with-repetitions version passes `slice(optionIndex)`, so a letter can be picked again: AA is allowed too.
+
+# algorithms/sets/permutations | after Permutations without repetitions
+When you fill only r slots out of n items, you stop multiplying after r factors: n * (n - 1) * ... * (n - r + 1) = n! / (n - r)!. The first three places in a race of 8 runners: 8 * 7 * 6 = 336. Arranging all items is the special case r = n, which gives n!.
+
+# algorithms/sets/permutations | after Permutations with repetitions
+Read both "Number of combinations" labels above as "number of permutations". They count ordered arrangements. A "combination lock" is a permutation by our definition, because 472 and 724 are different codes. The name is everyday English, not the maths term.
+
+# algorithms/sets/permutations | before Code
+How the without-repetition code works for A, B, C. It sets A aside and finds all permutations of B, C (BC and CB). Then it puts A into every position of each: ABC, BAC, BCA from BC, and ACB, CAB, CBA from CB. Same six permutations as above, in a different order. The with-repetition code needs r of at least 1; it has no case for r = 0.
+
+# algorithms/sets/combination-sum | after Code
+Why `startFrom` matters. Each call loops from `startFrom` and passes its own index down. Passing the same index (not index + 1) lets a number repeat: after choosing 2 you may choose 2 again. Never looking at earlier candidates means a set is built in only one order: once 3 is chosen, 2 is never added after it, so [2,2,3] is found but [2,3,2] and [3,2,2] are not. That is how the answers stay unique without any de-duplication step.

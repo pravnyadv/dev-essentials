@@ -23,7 +23,7 @@ const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
 | Read or write a cell | O(1) |
 | Visit every cell | O(rows × cols) |
 | Transpose or rotate | O(rows × cols) |
-| Search in a sorted matrix | O(rows + cols) with the staircase method |
+| Search in a matrix whose rows and columns are both sorted | O(rows + cols) with the staircase method: start at the top right, go left if the cell is too big, down if too small |
 
 ## Moving around
 
@@ -44,7 +44,7 @@ Add the four diagonals for 8-direction movement.
 
 - Cells on the same **diagonal** share `r - c`. Cells on the same **anti-diagonal** share `r + c`.
 - A flat index and a cell convert with `i = r * cols + c`, `r = Math.floor(i / cols)`, `c = i % cols`.
-- Transpose swaps `grid[r][c]` with `grid[c][r]`. Rotating 90 degrees clockwise is a transpose then reversing each row.
+- Transpose turns rows into columns: the new `grid[c][r]` is the old `grid[r][c]`, so a 3 by 4 grid becomes 4 by 3. For a square grid you can swap in place; otherwise build a new grid. Rotating 90 degrees clockwise is a transpose then reversing each row.
 
 ## Common patterns
 

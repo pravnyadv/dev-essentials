@@ -44,8 +44,10 @@ The problem: one consumer cannot keep up, and some messages take much longer tha
 How it works:
 1. The application posts requests as messages on one queue.
 2. Several identical consumer instances read from that queue.
-3. The broker hands each message to a single consumer and hides it from the others while it is being processed.
-4. A consumer that finishes sends an acknowledgement. One that crashes never does, so the message returns to the queue and another consumer takes it.
+3. The broker hands each message to a single consumer and hides it from the others for a set time, the visibility timeout.
+4. A consumer that finishes sends an acknowledgement. If the timeout runs out with no acknowledgement, because the consumer crashed or was just too slow, the message becomes visible again and another consumer takes it.
+
+Delivery is at least once. At any moment only one consumer holds a message, but if its acknowledgement is lost or arrives after the visibility timeout, the same message is handed out again. That is why the consumers must be idempotent.
 
 ```mermaid Competing Consumers: the second consumer takes over when the first crashes without an ack
 sequenceDiagram
@@ -55,7 +57,7 @@ sequenceDiagram
   Q->>A: message 1
   Q->>B: message 2
   B-->>Q: ack 2
-  Note over Q,A: A crashes, no ack for message 1
+  Note over Q,A: A crashes, no ack for message 1, the hide timer runs out
   Q->>B: message 1 again
   B-->>Q: ack 1
 ```
@@ -88,7 +90,7 @@ xychart-beta
 Now someone turns on autoscaling and the pool grows to 40 consumers. They can now push 400 writes per second into a database that handles 200. The queue drains faster, but the database is overloaded again. The queue only helps if the total consumer rate stays within what the downstream system can take.
 
 ## What goes wrong: the poison message
-One message has a malformed field and crashes any consumer that reads it. The crash means no acknowledgement, so the message returns to the queue and another consumer picks it up and crashes too. The symptom is consumers restarting in a loop and a queue that never shrinks even though traffic is low. Confirm it by looking for the same message id with a rising delivery count in the logs. The fix is a maximum delivery count, after which the broker moves the message to a [dead-letter queue](/sd/docs/async/background-jobs) for a human to inspect. Alarm on that queue.
+One message has a malformed field and crashes any consumer that reads it. The crash means no acknowledgement, so once the visibility timeout runs out the message reappears and another consumer picks it up and crashes too. The symptom is consumers restarting in a loop and a queue that never shrinks even though traffic is low. Confirm it by looking for the same message id with a rising delivery count in the logs. The fix is a maximum delivery count, after which the broker moves the message to a [dead-letter queue](/sd/docs/async/background-jobs) for a human to inspect. Alarm on that queue.
 
 ## When a queue is the wrong tool
 If the caller needs the answer in the same request, such as a price quote, a queue adds delay and nothing else. If work must happen in strict order, many competing consumers will break it, so use the [Sequential Convoy](/sd/docs/cloud-messaging/priority-and-ordering). If the average arrival rate is above the average service rate for long, a queue only delays the failure. The backlog grows until messages are too old to matter, which is the case [back pressure](/sd/docs/async/back-pressure) exists for. Also make consumers [idempotent](/sd/docs/async/delivery-guarantees), because redelivery is part of the design.
@@ -100,17 +102,17 @@ Autoscaling consumers on queue depth with no upper limit. The queue looks health
 docs | Competing Consumers pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/competing-consumers | Azure Architecture Center | Covers the problem, one-message-one-consumer delivery, poison messages and ordering caveats.
 docs | Queue-Based Load Leveling pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling | Azure Architecture Center | Explains the buffer, and warns that autoscaling without bounding downstream rate only moves the overload.
 article | System Design Primer: Asynchronism | https://github.com/donnemartin/system-design-primer#asynchronism | Donne Martin | Short treatment of queues, workers and back pressure.
-article | Avoiding insurmountable queue backlogs | https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/ | Amazon Builders Library | Discusses how backlogs form and how Amazon systems use back pressure and prioritization to drain them.
+article | Avoiding insurmountable queue backlogs | https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/ | Amazon Builders' Library (now on AWS Builder Center) | Discusses how backlogs form and how Amazon systems use back pressure and prioritization to drain them.
 ```
 
 ```quiz
 After a 60 second spike a queue holds 36,000 messages. Consumers do 200 per second and 50 arrive per second. How long to drain it? | 240 seconds ; About 180 seconds ; About 12 minutes | 0 | The queue drains at 200 minus 50 which is 150 per second, and 36,000 divided by 150 is 240.
-What keeps a message from being lost when a consumer crashes mid-job? | The consumer first writes a private copy to local disk ; No ack arrives, so it returns to the queue ; The producer resends the message every second | 1 | Without an ack the broker makes the message visible again for another consumer.
+A consumer takes a message, then its server loses power before it finishes. What happens to the message? | It is lost, since the broker already delivered it ; It stays hidden until the visibility timeout ends, then another consumer gets it ; The broker at once gives it to every other consumer | 1 | The broker only counts a message as done when it gets an ack. With none, the message reappears after the timeout and one other consumer gets it.
 Your consumers write to a database that handles 200 writes per second. Why can scaling consumers to 40 hurt? | The queue stops accepting any new messages from producers ; Each consumer then reads fewer messages from the queue ; They can push 400 writes per second into it | 2 | Consumers can push more load than the downstream service can take, which moves the overload.
 ```
 
 ```story
-A ticket site sells out in four minutes. Before launch day, its order service fell over every time a big show went on sale. Now orders go onto a queue and twenty workers feed the database at the speed it can take. Buyers wait a few seconds for confirmation instead of seeing an error page.
+A ticket site sells out in four minutes. Before launch day, its order service fell over every time a big show went on sale. Now orders go onto a queue and twenty workers feed the database at the speed it can take. Buyers see "we got your order" straight away and get the confirmation a few minutes later, instead of an error page.
 ```
 
 ```adapted
@@ -158,7 +160,7 @@ Avoid when | Order does not matter, or one key carries so much traffic that a si
 
 The problem: related messages must be handled in order, but you still want many workers. Take an order system that receives create, add item, edit and cancel events. For one order, the order of events matters. Across different orders it does not. A single consumer keeps the order but cannot scale. Many competing consumers scale, but two of them can take consecutive messages for the same order and apply them in the wrong sequence.
 
-The solution: give every message a category key, such as the order id. The broker groups messages by key, and a consumer that takes a group gets exclusive use of it until it is done. Within a group, messages arrive in order. Different groups go to different consumers at once. Amazon SQS FIFO queues call the key a message group id and process messages in a group one at a time, in strict order. Other brokers use the term session, or partition keys as described in [event streams](/sd/docs/async/event-streams).
+The solution: give every message a category key, such as the order id. The broker groups messages by key, and a consumer that takes a group gets exclusive use of it until it is done. Within a group, the broker hands messages to the consumer in the order it received them. Different groups go to different consumers at once. Amazon SQS FIFO queues call the key a message group id and process messages in a group one at a time, in strict order. Other brokers use the term session, or partition keys as described in [event streams](/sd/docs/async/event-streams).
 
 ```mermaid Sequential Convoy: each order id is one group, handled in order by one consumer at a time
 flowchart LR
@@ -176,14 +178,14 @@ Trace of five messages through two consumers, where each consumer owns one order
 | 2 | order 17 add item | order 18 add item |
 | 3 | order 17 cancel | idle |
 
-Order 17 never runs out of sequence, because only A touches it. Orders 17 and 18 still run side by side.
+Once the broker has the messages, order 17 is handled in sequence, because only A touches it. Orders 17 and 18 still run side by side.
 
 Choose the key carefully. It is the unit of parallelism. A key that is too coarse, like one customer id for all orders, limits parallel work. Within a group, throughput is limited to one message per processing time. Producers must also set the key correctly, since a wrong key puts a message in the wrong group.
 
-## A worked example: starvation and a hot key (invented numbers)
-Twelve workers take 2 seconds per job, so the pool completes 12 / 2 = 6 jobs per second. Premium jobs arrive at 4 per second and standard jobs at 3 per second, a total of 7. That is above capacity.
+## A worked example: a backlog under priority, and a hot key (invented numbers)
+Twelve workers take 2 seconds per job, so the pool completes 12 / 2 = 6 jobs per second. Premium jobs arrive at 4 per second and standard jobs at 3 per second, a total of 7. That is above capacity. With plain first-in, first-out order the backlog would grow by 1 job per second too, shared by everyone. Strict priority moves all of that growth onto standard jobs.
 
-With one shared pool and strict priority, premium takes 4 of the 6 slots. Standard gets the remaining 2 per second, but 3 arrive. The standard backlog grows by 1 per second. After 10 minutes (600 seconds) it holds 600 jobs, and a new standard job waits 600 / 2 = 300 seconds and rising. Nothing is broken, yet standard users see growing delays.
+With one shared pool and strict priority, premium takes 4 of the 6 slots. Standard gets the remaining 2 per second, but 3 arrive. The standard backlog grows by 1 per second. After 10 minutes (600 seconds) it holds 600 jobs, and a new standard job waits 600 / 2 = 300 seconds and rising. Nothing is broken, yet standard users see growing delays. If premium alone arrived at 6 per second, standard would get 0 slots, and that is true starvation.
 
 ```mermaid Standard backlog under strict priority when 3 standard jobs arrive and only 2 slots are left each second
 xychart-beta
@@ -195,7 +197,7 @@ xychart-beta
 For the convoy, say processing one message takes 50 ms, so one group handles 1 / 0.05 = 20 messages per second. Ten consumers can then handle 10 x 20 = 200 messages per second across many groups. One very busy order that produces 100 messages per second is still served by one consumer at a time, so it falls behind by 100 - 20 = 80 messages per second.
 
 ## What goes wrong: a poison message in a convoy
-Inside a group, one message that always fails blocks every message behind it, because order must be kept. The symptom is one key whose lag grows while every other key is fine. Confirm it by listing per-group backlog and looking for a group whose oldest message keeps its delivery count rising. The fix is a retry limit that sends the message to a dead-letter queue so the group can continue. That breaks strict order for that one message, so decide ahead of time what the business wants. Messages can also arrive out of order before the broker sees them, so add sequence numbers when order is critical.
+Inside a group, one message that always fails blocks every message behind it, because order must be kept. The symptom is one key whose lag grows while every other key is fine. Confirm it by listing per-group backlog and looking for a group whose oldest message keeps its delivery count rising (the number of times the broker has handed it out and had it fail). The fix is a retry limit that sends the message to a dead-letter queue so the group can continue. That breaks strict order for that one message, so decide ahead of time what the business wants. Messages can also arrive out of order before the broker sees them, so when order is critical, add a sequence number to each message in a group, so the consumer can spot a gap or a late arrival and wait for the missing one.
 
 ## When these patterns are the wrong tool
 If every job is equally important, a priority queue adds rules for no gain. If you use priorities, check that spikes in top-priority work cannot starve everything else. If ordering is not required, plain [Competing Consumers](/sd/docs/cloud-messaging/competing-consumers) are simpler and scale better. Amazon's article on queue backlogs also notes that by the time a backlog has built up, it can be too late to prioritize, and describes separate queues per customer or workload as one option. And if you need strict order across everything at very high volume, rethink whether you really need global order.
@@ -211,9 +213,9 @@ docs | Using the message group ID with Amazon SQS FIFO queues | https://docs.aws
 ```
 
 ```quiz
-Capacity is 6 jobs per second. Premium arrives at 4 per second, standard at 3, strict priority. How fast does the standard backlog grow? | About 3 per second ; Just 1 per second ; Exactly 2 per second | 1 | Standard gets 6 minus 4 which is 2 per second, and 3 arrive, so the backlog grows by 1.
-Messages for one order must stay in order, but different orders can run together. What is the right key? | The consumer's name ; The order id ; The time of arrival | 1 | The key defines the group that is processed one message at a time.
-One group in a convoy has a message that always fails. What happens to the rest of that group? | They wait behind it ; They skip it and carry on as normal without it ; They are moved over to the other groups | 0 | Strict order means nothing after the failing message in that group can proceed.
+Capacity is 6 jobs per second. Premium arrives at 4 per second, standard at 3, strict priority. How fast does the standard backlog grow? | About 3 per second ; 1 per second ; Exactly 2 per second | 1 | Standard gets 6 minus 4 which is 2 per second, and 3 arrive, so the backlog grows by 1.
+A chat app with group chats must show each conversation's messages in order, while different conversations run in parallel. What is the best key? | The sender's id ; The conversation id ; The message length | 1 | The key defines the group that is processed one message at a time, so it must be the thing whose messages need order. Many senders share one conversation.
+One group in a convoy has a message that always fails, and no retry limit is set. What happens to the rest of that group? | They wait behind it ; They skip it and carry on as normal without it ; They are moved over to the other groups | 0 | Strict order means nothing after the failing message in that group can proceed. With a retry limit and a dead-letter queue, the message would be moved aside and the group could continue.
 ```
 
 ```story
@@ -241,7 +243,7 @@ The problem: message systems are built for many small messages and often cap mes
 How it works:
 1. The sender creates the payload, such as a video or a large document.
 2. The sender saves it in an external store, such as object storage.
-3. Only after the save succeeds, the sender publishes a small message holding a reference to the stored payload. That message is the claim check.
+3. Only after the save succeeds, the sender publishes a small message holding a reference (the claim check) to the stored payload.
 4. The receiver reads the message and takes the reference.
 5. The receiver fetches the payload from the store and processes it.
 
@@ -259,7 +261,7 @@ sequenceDiagram
   St-->>R: payload
 ```
 
-The name comes from a coat check: you hand over the coat and get a ticket, and later the ticket gets the coat back. The broker never sees the payload. The store also controls who may read it and when it expires. Do not put secrets in the reference, and let the store check access. If the receiver must verify the payload, put a content hash in the message. The store must stay available as long as any message can still be read. Libraries do some of this for you, such as the Amazon SQS Extended Client Library, which sends larger messages through S3.
+The name comes from a coat check: you hand over the coat and get a ticket, and later the ticket gets the coat back. The reference is the ticket. The broker never sees the payload. The store also controls who may read it and when it expires. Do not put secrets in the reference, and let the store check access. If the receiver must verify the payload, put a content hash in the message. The store must stay available as long as any message can still be read. Libraries do some of this for you, such as the Amazon SQS Extended Client Library, which sends larger messages through S3.
 
 ## Asynchronous Request-Reply
 
@@ -276,7 +278,7 @@ How it works over HTTP, using polling:
 1. The client sends the request. The API checks it, so a bad request gets an immediate 400.
 2. The API starts the work, often by putting a message on a queue, and replies with 202 Accepted. The 202 carries a Location header with the address of a status endpoint, and often a Retry-After header saying how long to wait.
 3. The client asks the status endpoint. While the work runs it answers 200 with a status such as Pending or Running.
-4. When the work is done, the client fetches the result. The status endpoint may answer 303 See Other pointing to the result, or the resource named in Location may simply return 200. If the work failed, the client gets an error status with details.
+4. When the work is done, the client fetches the result. The status endpoint may answer 303 See Other pointing to the result, or the resource named in Location may simply return 200. If the work failed, the client gets an error status with details. A 303 means "the result is at a different address, fetch it with a GET", and clients follow it automatically.
 
 ```mermaid Asynchronous Request-Reply: 202 with a status address, then polling until the work is done
 sequenceDiagram
@@ -293,11 +295,13 @@ sequenceDiagram
   W-->>A: result stored
   C->>A: GET status
   A-->>C: 303 See Other, result address
+  C->>A: GET result address
+  A-->>C: 200 result
 ```
 
 Some designs skip the status endpoint. The client polls the final address and gets 404 until the result exists.
 
-Good status responses include the state, when it was created and last updated, and a structured error if it failed. A DELETE on the status resource can cancel the work. An idempotency key on the first request stops a retried request from starting the job twice. Delete old status records after a retention period.
+Good status responses include the state, when it was created and last updated, and a structured error if it failed. A DELETE on the status resource can cancel the work, and a cancelled job ends in a Canceled state. An idempotency key on the first request stops a retried request from starting the job twice. Delete old status records after a retention period.
 
 ```mermaid A status resource moves from accepted to running to a final state, and the client reads it by polling
 stateDiagram-v2
@@ -305,8 +309,11 @@ stateDiagram-v2
   Accepted --> Running: worker takes the job
   Running --> Succeeded: result stored
   Running --> Failed: error recorded
+  Accepted --> Canceled: DELETE on the status resource
+  Running --> Canceled: DELETE on the status resource
   Succeeded --> [*]
   Failed --> [*]
+  Canceled --> [*]
 ```
 
 ## A worked example: payload size and polling (invented numbers)
@@ -322,13 +329,13 @@ xychart-beta
 ```
 
 ## What goes wrong: orphans and dead references
-The payload store and the broker are two systems, so there is no single transaction across them. A sender saves the payload, then crashes before publishing. The payload sits in the store forever. The reverse is worse: if the message were sent before the save finished, the receiver would hold a reference to nothing. Another trap is a lifecycle rule that deletes payloads after 7 days while messages can wait in a queue for 14, so valid messages point at deleted data. Symptoms are growing storage bills and consumers failing with "not found". Confirm by comparing payload count to message count and checking retention settings on both sides. Publish only after the save, give payloads a retention longer than message retention, and make consumers [idempotent](/sd/docs/async/delivery-guarantees).
+The payload store and the broker are two systems, so there is no single transaction across them. A sender saves the payload, then crashes before publishing. The payload stays in the store with no message pointing at it, and costs money until a lifecycle rule or a cleanup job removes it. The reverse is worse: if the message were sent before the save finished, the receiver would hold a reference to nothing. Another trap is a lifecycle rule that deletes payloads after 7 days while messages can wait in a queue for 14, so valid messages point at deleted data. Symptoms are growing storage bills and consumers failing with "not found". Confirm by comparing payload count to message count and checking retention settings on both sides. Publish only after the save, give payloads a retention longer than message retention, and make consumers [idempotent](/sd/docs/async/delivery-guarantees).
 
 ## When these patterns are the wrong tool
-If payloads fit comfortably inside the broker limit, send them inline. The pattern adds a second system and an extra network trip. Compressing the message or splitting it into chunks are alternatives. Asynchronous Request-Reply is also wrong when the work takes 100 ms, since a plain response is simpler. When the server can push, such as with WebSockets or webhooks, you may not need polling. For live streams of updates, Server-Sent Events fit better.
+If payloads fit comfortably inside the broker limit, send them inline. The pattern adds a second system and an extra network trip. Compressing the message or splitting it into chunks are alternatives. Asynchronous Request-Reply is also wrong when the work takes 100 ms, since a plain response is simpler. When the server can push, such as with WebSockets or webhooks, you may not need polling. For live streams of updates, Server-Sent Events (a one-way connection where the server keeps sending updates to the browser) fit better.
 
 ## Common mistake
-Returning 202 with no status endpoint. The client has no way to learn the outcome, so it either guesses or resubmits.
+Returning 202 with no Location header, so the client has no address to check. It cannot learn the outcome, so it guesses or resubmits and the job runs twice.
 
 ```resources
 docs | Claim Check pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/claim-check | Azure Architecture Center | Lists the six steps and the lifecycle, security and consistency issues of storing a payload separately.
@@ -339,8 +346,8 @@ docs | Amazon SQS message quotas | https://docs.aws.amazon.com/AWSSimpleQueueSer
 
 ```quiz
 A claim-check sender publishes the message before the payload save finishes. What can happen? | The broker rejects the small message as invalid ; The receiver may point at nothing ; The payload gets saved twice by mistake | 1 | A token that points at data not yet stored cannot be resolved.
-1,000 clients poll every 2 seconds. With Retry-After set to 10 and obeyed, how many status requests per second? | 100 ; 500 ; about 50 | 0 | 1,000 clients divided by a 10 second interval is 100 per second.
-Which response tells a client its slow request was received but is not finished? | 201 Created, with the full result ; 200 OK, with the full result inside ; 202 Accepted with Location | 2 | 202 means accepted for processing, and Location points to where to check progress.
+2,000 clients poll every 5 seconds. The server starts sending Retry-After: 20 and clients obey. How many status requests per second now? | 100 ; 400 ; 40 | 0 | 2,000 clients divided by a 20 second interval is 100 per second, down from 2,000 / 5 = 400.
+An export takes about 45 seconds. What should the API do on the first request? | Wait 45 seconds, then reply 200 with the file ; Reply 201 Created and tell the client to retry the same POST later ; Reply 202 Accepted with a Location to poll | 2 | 202 means accepted for processing, and Location points to where to check progress.
 ```
 
 ```story
@@ -365,9 +372,9 @@ Avoid when | Steps share a lot of in-memory state, take microseconds, or must su
 
 Picture one big function that decodes an upload, scans it, resizes it and stores it. It works, but it is a lump. Another pipeline that needs the same scan step must copy it. A change to one step forces a retest of everything. Every copy of the program must be as large as the most demanding step.
 
-Pipes and Filters breaks the lump apart. A filter does one task. It reads from an inbound pipe, does its work and writes to an outbound pipe. A pipe is a channel such as a queue or a stream. The idea is old: the Unix shell's `|` joins programs the same way.
+Pipes and Filters breaks the lump apart. A filter does one task. It reads from an inbound pipe, does its work and writes to an outbound pipe. A pipe is a channel such as a queue, or a stream of items read in order. The idea is old: the Unix shell's `|` joins programs the same way.
 
-Filters know only their input and output formats. So you can reorder them or insert a new one, as long as one filter's output matches the next filter's input. A filter should not assume how it was invoked, so each message must carry the context the filter needs.
+Filters know only their input and output formats. So you can reorder them or insert a new one, as long as one filter's output matches the next filter's input. A filter should not assume how it was invoked, so each message must carry what the filter needs. For the resize filter that is the image (or a pointer to it) and the target size, not a hope that an earlier step left it somewhere.
 
 ## Running it with queues
 The pattern works inside one program, but it earns its keep when the pipes are queues and each filter is its own service.
@@ -387,7 +394,7 @@ flowchart TD
   class F2 warn
 ```
 
-The whole pipeline's speed is the speed of its slowest filter. Filters can run on different hardware. A heavy one can use powerful machines while a light one uses cheap machines.
+Throughput is set by the stage with the least total capacity, which is its instances times its per-instance rate. An unscaled slow filter is the usual bottleneck, which is why you run more instances of it. One image's total time is the sum of all stages, so a slow filter also adds to latency. Filters can run on different hardware. A heavy one can use powerful machines while a light one uses cheap machines.
 
 Filters should ignore fields they do not understand and pass them along unchanged. That tolerance lets you add a field for a later stage without touching the earlier ones.
 
@@ -403,7 +410,7 @@ Target: 40 images per second. One instance of each filter handles this many per 
 
 The slowest stage is the scan, at 5 per second per instance, so it needs 40 / 5 = 8 instances. Resize needs 40 / 10 = 4. Total instances: 1 + 8 + 4 + 1 = 14.
 
-Suppose resize needs a large machine at $0.40 per hour, and the others run on small ones at $0.05 per hour. As a pipeline: 10 small instances x $0.05 + 4 large x $0.40 = $0.50 + $1.60 = $2.10 per hour. As a monolith, each instance does all four steps, so every instance must be large. One instance takes 330 ms per image, about 3 per second, so 40 / 3.03 is about 14 instances at $0.40, which is $5.60 per hour. The pipeline costs 62.5 percent less, because only the stage that needs big machines gets them. The monolith needs the same instance count here, so the saving is in cost and flexibility, not in raw speed.
+Suppose resize needs a large machine at $0.40 per hour, and the others run on small ones at $0.05 per hour. As a pipeline: 10 small instances x $0.05 + 4 large x $0.40 = $0.50 + $1.60 = $2.10 per hour. As a monolith, each instance does all four steps, so every instance must be large. One instance takes 330 ms per image, about 3 per second, so 40 / 3.03 is about 14 instances at $0.40, which is $5.60 per hour. The pipeline costs 62.5 percent less, because only the stage that needs big machines gets them. The monolith needs the same instance count here, so the saving is in cost and flexibility, not in raw speed. The $2.10 leaves out the three queues and the extra time each hop adds to every image, so the real saving is smaller. It stays large only because one stage needs a much bigger machine than the rest.
 
 ```mermaid Hourly cost for 40 images per second in invented prices, pipeline against monolith
 xychart-beta
@@ -437,12 +444,12 @@ Splitting into too many tiny filters. Every extra pipe adds a hop, a queue to mo
 ```resources
 docs | Pipes and Filters pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/pipes-and-filters | Azure Architecture Center | Explains filters, pipes and the idempotency and repeated message issues when filters fail.
 article | Pipes and Filters | https://www.enterpriseintegrationpatterns.com/patterns/messaging/PipesAndFilters.html | Hohpe and Woolf | The original pattern write-up from Enterprise Integration Patterns.
-article | Top 6 Cloud Messaging Patterns | https://bytebytego.com/guides/top-6-cloud-messaging-patterns | ByteByteGo | A short visual overview of messaging patterns that connect to this one.
+article | Top 6 Cloud Messaging Patterns | https://bytebytego.com/guides/top-6-cloud-messaging-patterns | ByteByteGo | A short overview of six neighbouring messaging patterns (Competing Consumers, Claim Check, Priority Queue and others). It does not cover Pipes and Filters itself.
 ```
 
 ```quiz
 In the image pipeline, the scan takes 200 ms. How many scan instances serve 40 images per second? | 4 ; 40 ; 8 | 2 | One instance does 5 per second, and 40 divided by 5 is 8.
-What decides the top speed of a pipeline? | The fastest filter ; The slowest filter ; The number of pipes | 1 | Every item must pass the slowest stage, so that stage caps throughput.
+Every filter has one instance and the pipeline is too slow. Where do you add instances first? | The last filter in line ; The filter with the lowest rate ; The filter with the fastest rate | 1 | Throughput is capped by the stage with the least capacity, so adding capacity anywhere else changes nothing.
 A filter crashes after posting its result but before acknowledging its input. What is the risk? | The next stage gets a copy ; The pipe is deleted by the broker ; Later filters will never start again | 0 | The input is redelivered, so the work and its output can repeat.
 ```
 
@@ -514,7 +521,7 @@ flowchart TD
   Sup -.->|request retry or undo| Sch
 ```
 
-The Supervisor only requests recovery. The Scheduler and Agents carry it out. Retries at several layers multiply calls to a failing service, so let the Scheduler own the retry budget. Retrying means each step must be [idempotent](/sd/docs/async/delivery-guarantees).
+The Supervisor only requests recovery. The Scheduler and Agents carry it out. Retries at several layers multiply calls to a failing service. Say each of 3 layers retries 3 times: one step can then make 4 x 4 x 4 = 64 calls. So let the Scheduler hold the one total retry budget, and give the Agent only a small retry allowance (or none) inside it. Retrying means each step must be [idempotent](/sd/docs/async/delivery-guarantees).
 
 | | Orchestration | Choreography | Scheduler Agent Supervisor |
 | --- | --- | --- | --- |
@@ -540,10 +547,10 @@ Trace of one hung step with a 30 second deadline and a Supervisor scan every 60 
 
 The step was late for 59 seconds before anyone noticed, and about 89 seconds passed since it started.
 
-With 4 attempts, the worst case before giving up and compensating is 4 x 90 = 360 seconds, 6 minutes. If the business needs a decision within 2 minutes, tighten the numbers: a 15 second deadline and a 15 second scan give 4 x 30 = 120 seconds. Shorter intervals find faults sooner but cost more scans and risk retrying slow steps that were about to finish.
+With 4 attempts, the worst case before giving up and compensating is 90 + 3 x 60 = 270 seconds, about 4.5 minutes. Only the first attempt can wait the full 30 + 60 = 90 seconds. A retry starts at a scan, so the next scan comes 60 seconds later. A simple safe bound is attempts x (deadline + scan interval), here 4 x 90 = 360 seconds. If the business needs a decision within 2 minutes, tighten the numbers: a 15 second deadline and a 15 second scan give at most 4 x 30 = 120 seconds. Shorter intervals find faults sooner but cost more scans and risk retrying slow steps that were about to finish.
 
 ## What goes wrong: an order nobody can find
-In a choreographed system, the payment service emits PaymentTaken but the stock service is down and its queue is full. Support asks where order 5521 is. No service owns the order, and logs are in four places. Symptom: orders that stay "processing" for hours. Confirm by searching for the order's correlation id across services and checking each queue. Mitigations are a correlation id on every message, a projection that shows each order's last event, an alarm on orders older than their expected time, and dead-letter queues. Also guard against event loops, where two services keep reacting to each other's events. Consumer concurrency limits and filters help.
+In a choreographed system, the payment service emits PaymentTaken but the stock service is down and its queue is full. Support asks where order 5521 is. No service owns the order, and logs are in four places. Symptom: orders that stay "processing" for hours. Confirm by searching for the order's correlation id across services and checking each queue. Mitigations are a correlation id on every message, a status table, built by listening to every event, that shows each order's last event, an alarm on orders older than their expected time, and dead-letter queues. Also guard against event loops, where two services keep reacting to each other's events. Consumer concurrency limits and filters help.
 
 ## When these patterns are the wrong tool
 Choreography is the wrong tool for a long, branching workflow with many conditions, or when you must report one clear status. A central orchestrator is easier there. Scheduler Agent Supervisor is hard to build and needs fault-injection testing, and it is too heavy for one remote call, where [retry with a circuit breaker](/sd/docs/reliability/timeouts-and-retries) is enough. Both patterns assume steps can be retried or undone. If a step cannot be undone, such as sending a letter, put it last.
@@ -559,9 +566,9 @@ article | Process Manager | https://www.enterpriseintegrationpatterns.com/patter
 ```
 
 ```quiz
-A step has a 30 second deadline, scans run every 60 seconds, and there are 4 attempts. What is the worst case before compensation? | 90 seconds ; 360 seconds ; About 4 minutes | 1 | Each attempt can go unnoticed for 30 plus 60 which is 90 seconds, and 4 times 90 is 360.
+A step has a 30 second deadline, scans run every 60 seconds, and there are 4 attempts. What is the worst case before compensation, counting that a retry starts at a scan? | 90 seconds ; 270 seconds ; 360 seconds | 1 | Only the first attempt can wait 30 plus 60 which is 90 seconds. Each of the 3 retries starts at a scan and is noticed within 60 more, so 90 plus 3 times 60 is 270.
 What is the Supervisor's job? | Detect stalled steps, request recovery ; Run each step of the workflow in order ; Call the remote service itself directly | 0 | It detects steps past their deadline and requests recovery, while the Scheduler and Agents act.
-In a choreographed order flow, why add a correlation id to every message? | To make every message smaller on the wire ; To keep messages in order inside the broker ; To trace one order across services | 2 | No service owns the whole flow, so the id is how you find where an order stopped.
+Support asks where order 5521 is. Payment logged PaymentTaken, but nobody knows what happened next. What lets you find out? | Ask the Payment service to replay the event ; Restart the broker and wait for redelivery ; Search every service's logs for the order's correlation id | 2 | No service owns the whole flow, so the id on every message is how you find where an order stopped.
 ```
 
 ```story
@@ -632,9 +639,9 @@ flowchart TD
   class D good
 ```
 
-A rollback makes the database forget the change, and nobody ever saw it. A compensation is a new, forward action, and the world already saw the first one. The customer got a "payment received" email. You cannot unsend it, so you send a refund and an apology. Compensations must be designed per step, and some steps cannot be undone at all, such as a sent email or a shipped parcel. Put steps that cannot be undone last, so everything that can fail runs first. Undoing usually runs in reverse order, but not always: if one data store is more sensitive to inconsistency than another, undo that one first.
+A rollback makes the database discard the change, and with normal isolation nobody else ever saw it. A compensation is a new, forward action, and the world already saw the first one. Say the payment service also emails a receipt. The customer got a "payment received" email. You cannot unsend it, so you send a refund and an apology. Compensations must be designed per step, and some steps cannot be undone at all, such as a sent email or a shipped parcel. Put steps that cannot be undone last, after every check that could reject the order. Steps after that point can no longer be compensated, so they must be safe to retry until they succeed. A saga also does not have to compensate on every failure. Offering the customer a different hotel may be better than cancelling, and for a decision like that a person should choose. Undoing usually runs in reverse order, but not always: if one data store is more sensitive to inconsistency than another, undo that one first.
 
-Compensations must also be idempotent (safe to run twice) and retried until they succeed, because a saga that stops halfway leaves money or stock locked. A saga step and its message must also be recorded together, usually with an outbox table, otherwise a crash can lose the event that starts the next step.
+Compensations must also be idempotent (safe to run twice) and retried, because a saga that stops halfway leaves money or stock locked. Retries can run out, though. Record how far the compensation got so it can resume, and alert a person when a step keeps failing. A saga step and its message must also be recorded together, usually with an outbox table, otherwise a crash can lose the event that starts the next step.
 
 ## Isolation: the missing letter in ACID
 Sagas give up isolation. Between steps 2 and 5 above, other requests can see the card charged and the order pending. Richardson's page warns that concurrent sagas can cause data anomalies, so sagas need countermeasures (design techniques that restore some isolation), which his book describes. One is a semantic lock: set a flag such as `PENDING` on the order so other operations know it is mid-saga and wait or refuse. Others include commutative updates (order does not matter) and re-reading a value before you act on it. Choose the lightest one that makes your anomaly impossible.
@@ -656,7 +663,7 @@ xychart-beta
   line [2.0, 4.0, 5.9, 7.8, 9.6, 11.4, 13.2, 14.9]
 ```
 
-Say a refund call fails 1 percent of the time and is retried every minute. Each day about 780 x 0.01 = 8 refunds need at least one retry. Without idempotency keys, a retry after a timeout could refund twice. With an idempotency key such as the order id, the second call is a no-op.
+Say every compensation includes one refund call that fails 1 percent of the time and is retried every minute. Each day about 780 x 0.01 = 8 refunds need at least one retry (invented, and it assumes the steps fail independently). Without idempotency keys, a retry after a timeout could refund twice. With an idempotency key such as the order id, the second call is a no-op.
 
 ## What goes wrong: the stuck saga
 A saga stops between steps: the payment is taken, the stock service is down, and the saga waits. Customers see a pending order for hours, and their money is held. The symptom is a growing count of orders older than a few minutes in PENDING. Confirm it by querying saga state by age. Give every saga a timeout and a state record, alert on sagas that exceed it, and make the timeout path trigger compensation. A dashboard of saga state is also the first thing you need when debugging choreography.
@@ -675,8 +682,8 @@ repo | Sagas | https://github.com/karanpratapsingh/system-design#sagas | Karan P
 ```
 
 ```quiz
-Why is a compensating transaction different from a rollback? | It runs before any step starts ; It undoes work others have seen ; It locks every table involved | 1 | It is a new forward action, since the earlier step was already committed and visible.
-A saga has 4 steps, each failing 2 percent of the time. About what share of sagas need compensation? | About 2 percent ; About 20 percent ; About 8 percent | 2 | 1 minus 0.98 to the fourth power is about 0.078.
+A payment succeeded and a later step failed. Which fits a compensation, not a rollback? | Hold the payment until the saga ends ; Erase the payment row as if it never happened ; Issue a refund as a new payment | 2 | A compensation is a new forward action, since the earlier step was already committed and visible.
+A saga has 20 steps, each failing 2 percent of the time. About what share need compensation? | About 40 percent ; About 33 percent ; About 2 percent | 1 | 1 minus 0.98 to the 20th power is about 0.33. Adding the rates would wrongly give 40.
 What does a semantic lock do? | Flags a record as mid-saga ; Encrypts every saga message sent ; Blocks all other reads of the data | 0 | A flag like PENDING tells other operations the data is not final.
 ```
 
@@ -712,13 +719,15 @@ Event Sourcing stores the facts. Each change is an immutable event, appended to 
 sequenceDiagram
   participant C as Command handler
   participant E as Event store
-  C->>E: load events for account A-7
+  C->>E: load events for account A-3
   E-->>C: Opened, Deposited 100, Withdrew 30
   Note over C: replay gives balance 70, rules allow withdraw 20
   C->>E: append Withdrew 20
 ```
 
-Events should record intent: "two seats reserved" says more than "seats left changed to 42". You never edit an event. To fix a mistake you append a compensating event, such as ReservationCanceled. Streams can grow long, so a snapshot saves the state at some point, and replay starts from the latest snapshot. Keep a version number in each event, because the format will change. The store itself is a database with per-stream reads and concurrency checks. A message broker like Kafka distributes events well, but the Microsoft page says brokers typically lack per-stream reads and concurrency checks, so they are not a substitute for the store.
+Events should record intent: "two seats reserved" says more than "seats left changed to 42". You do not edit an event. To fix a mistake you append a compensating event, such as ReservationCanceled. If the format of old events changes, the usual answer is an upcaster, a small function that converts old events to the new shape as they are read, so the stored events stay untouched. Rewriting stored events is a last resort because it destroys the audit trail. Streams can grow long, so a snapshot saves the state at some point, and replay starts from the latest snapshot. Keep a version number in each event, because the format will change. Two commands can arrive at once. Both load account A-7 with a balance of 100, and both try to withdraw 80. The store prevents this with a concurrency check: each append says which event number it expects to be next, and the store rejects the second one because the stream has grown. That handler reloads the events, sees a balance of 20 and refuses the withdrawal.
+
+The store itself is a database with per-stream reads and concurrency checks. A message broker like Kafka distributes events well, but the Microsoft page says brokers typically lack per-stream reads and concurrency checks, so they are not a substitute for the store.
 
 ## CQRS
 
@@ -770,7 +779,7 @@ xychart-beta
 Read side: if the read model updates 200 ms after a write, a user who saves and instantly reloads may not see the change. A fix is to return the new state in the command's response.
 
 ## What goes wrong: a wrong event you cannot delete
-A bug records deposits twice for 3 hours. You cannot edit the store, because it is the source of truth. Balances look wrong and every view built from those events is wrong too. Confirm by finding duplicate event ids or a jump in event volume. The repair is to append compensating events, fix the code, and rebuild the views by replay. Also plan for privacy law. If a user asks you to delete their data, immutable events are a problem. Keep personal data outside the events and reference it by id, or encrypt it with a per-person key and delete the key.
+A bug records deposits twice for 3 hours. You should not edit the store, because it is the source of truth and the audit trail. Balances look wrong and every view built from those events is wrong too. Confirm by finding pairs of events with the same account, amount and command id but different event ids, or a jump in event volume that starts at the deploy time. The repair is to append compensating events, fix the code, and rebuild the views by replay. Also plan for privacy law. If a user asks you to delete their data, immutable events are a problem. Keep personal data outside the events and reference it by id, or encrypt it with a per-person key and delete the key.
 
 ## When these patterns are the wrong tool
 Most systems should stay with CRUD. Event Sourcing is hard to move to or away from and affects every part that uses it. Skip CQRS when the domain is simple and one model reads and writes well. If you only need fast reads of aggregated data, a [materialized view](/sd/docs/cloud-messaging/index-table-and-materialized-view) or a [read replica](/sd/docs/data/replication) is much less work. Consider [caching](/sd/docs/caching/cache-patterns) first. Use Event Sourcing when you truly need the full history, audit trail or the ability to rebuild state.
@@ -786,9 +795,9 @@ article | CQRS | https://martinfowler.com/bliki/CQRS.html | Martin Fowler | Expl
 ```
 
 ```quiz
-Events: Opened, Deposited 100, Withdrew 30, Deposited 50, Withdrew 20. What does replay give? | 100 ; 150, if you skip the withdrawals ; 80 | 0 | Replaying 100 minus 30 plus 50 minus 20 gives 100.
-A stream has 10,000 events at 0.05 ms each and snapshots every 1,000. About how long is the worst replay? | 500 ms ; 5 ms ; 50 ms | 2 | At most 999 events replay after the latest snapshot, which is about 50 ms.
-A bug wrote bad events to an event store. How do you fix it? | Edit the bad events in place in the store ; Delete the whole stream and start over again ; Append fixing events, rebuild views | 2 | Events are immutable, so corrections are new events and views are rebuilt by replay.
+Events: Opened, Deposited 40, Deposited 60, Withdrew 25. A command asks to withdraw 90. What happens? | Refused, the balance is 75 and no event is appended ; Appended, balance becomes -15 ; Appended as an overdraft event, balance 75 | 0 | Replay gives 40 + 60 - 25 = 75, and 90 is more than 75, so the command is refused and nothing is appended.
+A stream has 5,000 events at 0.02 ms each and snapshots every 500. About how long is the worst replay? | About 100 ms ; About 10 ms ; About 1 ms | 1 | At most 499 events replay after the latest snapshot, and 499 x 0.02 is about 10 ms.
+A bug wrote bad events to an event store. How do you fix it? | Edit the bad events in place in the store ; Delete the whole stream and start over again ; Append compensating events, then rebuild the views | 2 | Events are meant to stay as written, so corrections are new events and views are rebuilt by replay.
 ```
 
 ```story
@@ -805,7 +814,7 @@ An Index Table and a Materialized View are both read structures built from a mai
 ## The shared idea
 A main store is shaped for writes and for lookups by its key. Readers often want something else: records by another field, or a summary that needs a heavy join. Rather than bend the main store, you build a second structure just for reading.
 
-Both patterns are derived data. You can throw either away and rebuild it from the main store. Both must be updated when the main data changes, and between the change and the update they are wrong. That gap is the central cost of this lesson.
+Both patterns are derived data. You can throw either away and rebuild it from the main store. Both must be updated when the main data changes. Unless the update happens in the same transaction as the change, they are wrong for a short time between the change and the update. That gap is the central cost of this lesson.
 
 | | Index Table | Materialized View |
 | --- | --- | --- |
@@ -839,9 +848,9 @@ flowchart TD
   W -.->|second write| IX
 ```
 
-For queries on two fields, build a composite key, such as town plus last name, encoded so values cannot run together. Index tables also help with [sharded](/sd/docs/data/sharding) data. If the shard key is a hash, a range query by town cannot find its shards, but an index sorted by town and storing the shard key can.
+For queries on two fields, build a composite key, such as town plus last name, with a separator between the parts or a fixed length for each part. Without one, town "Red" with surname "mondSmith" and town "Redmond" with surname "Smith" both become "RedmondSmith" and collide. Index tables also help with [sharded](/sd/docs/data/sharding) data. If the shard key is a hash, a range query by town cannot find its shards, but an index sorted by town and storing the shard key can.
 
-Writes now go to two places. Unless one transaction can cover both, the index is eventually consistent. DynamoDB's global secondary indexes work this way: they are updated asynchronously and are eventually consistent. Index updates can arrive twice or out of order, so make the updater idempotent and carry a version number.
+Writes now go to two places. Unless one transaction can cover both, the index is eventually consistent. Even native secondary indexes show this lag: DynamoDB's global secondary indexes are updated asynchronously and are eventually consistent. A hand-built index table behaves the same way, and you own the update code. Index updates can arrive twice or out of order, so make the updater idempotent and carry a version number.
 
 ## Materialized View
 
@@ -881,28 +890,31 @@ xychart-beta
 
 With a materialized view of totals per customer, one row each, a lookup takes about 2 ms. The 12 customers cost 12 x 2 = 24 ms.
 
-Now freshness. The index is updated from a queue, about 1 second behind. The view refreshes every 5 minutes. A customer who moved to Redmond 10 seconds ago appears in the search, but their spend row can be up to 5 minutes old. The page is fast, and each half has its own lag. Decide for each field how old is acceptable.
+Now freshness. The index is updated from a queue, about 1 second behind. The view refreshes every 5 minutes. A customer who moved to Redmond 10 seconds ago appears in the search. If they also placed an order 10 seconds ago, that order is not in their spend row yet, which can be up to 5 minutes behind. The page is fast, and each half has its own lag. Decide for each field how old is acceptable.
 
-```mermaid A customer moves to Redmond: the index catches up in about a second, the view only at its next refresh
+```mermaid A customer moves and places an order: the town index catches up in about a second, the spend view only at its next refresh
 sequenceDiagram
-  participant W as Customer table
+  participant C as Customer table
   participant I as Town index
+  participant O as Orders table
   participant V as Spend view
-  W->>I: change queued
+  C->>I: move to Redmond, change queued
   Note over I: about 1 second later the customer shows in Redmond searches
-  Note over V: refreshes every 5 minutes, so spend can be 5 minutes old
-  W->>V: next scheduled refresh
+  O->>O: new order saved
+  Note over V: the order is not in the totals yet
+  O->>V: next scheduled refresh, up to 5 minutes later
+  Note over V: now the totals include the order
 ```
 
 ## What goes wrong: drift in either structure
 A write to the customer table succeeds. The update to the town index fails or is lost. The customer is in the main table but invisible in a search by town. A support agent says "this customer does not exist", while the order system finds them by id. Confirm by counting rows in both tables, or by sampling ids from the main table and looking each up in the index.
 
-A view fails more quietly. Its refresh job dies, and the view keeps serving the last result with no error. Microsoft's page warns that a lost refresh signal means silently stale results, so monitor the view's age and alert past the staleness you promised. For both structures, retry from a queue, run a periodic repair job that compares them with the source, and add a [monitor](/sd/docs/reliability/observability) on lag.
+A view fails more quietly. Its refresh job dies, and the view keeps serving the last result with no error. Microsoft's page warns that a lost refresh signal means silently stale results, so monitor the view's age and alert past the staleness you promised. For both structures, record each change durably in the same step as the write, for example with a change feed or an outbox table (a table that holds pending updates, saved in the same transaction as the write) that a worker reads, so the update cannot be lost. Then retry from that record, run a periodic repair job that compares the structure with the source, and add a [monitor](/sd/docs/reliability/observability) on lag.
 
 ## When these patterns are the wrong tool
 An index table is the wrong tool when data changes faster than the index can update, since it stays out of date. Fields with few values, such as an active flag, or very skewed ones, such as 90 percent of rows sharing one value, give little benefit for the cost. If your database has secondary indexes that fit the query, use them.
 
-A materialized view fits a few hot queries. If you have many different queries, you end up with a view for each and a refresh bill to match. If every reader must see the latest write, query the source or use a [cache](/sd/docs/caching/cache-patterns) with careful invalidation. A [read replica](/sd/docs/data/replication) is often less work than a hand-built view.
+A materialized view fits a few hot queries. If you have many different queries, you end up with a view for each and a refresh bill to match. If every reader must see the latest write, query the source or use a [cache](/sd/docs/caching/cache-patterns) with careful invalidation. If the problem is read load rather than one slow query, a [read replica](/sd/docs/data/replication) is often less work than a hand-built view. It will not make a heavy join cheaper.
 
 ## Common mistake
 Building index tables and views for queries that might be needed someday. Each one adds storage, write or refresh cost and a freshness problem, and the unwatched ones go stale unnoticed. Build them for queries you run often, and watch their lag.
@@ -916,7 +928,7 @@ docs | REFRESH MATERIALIZED VIEW | https://www.postgresql.org/docs/current/sql-r
 
 ```quiz
 A normalized index holds 50 bytes per entry for 10 million customers. About how big is it? | About 5 GB ; About 50 MB ; 500 MB | 2 | 10,000,000 times 50 bytes is 500 million bytes, about 500 MB.
-Which field is a poor choice for an index table? | An active flag ; A surname field with many distinct values ; A town name | 0 | Few distinct values means little selectivity, so cost is paid for almost no benefit.
+Which field is a poor choice for an index table? | An active flag ; A surname field with many distinct values ; A town name | 0 | An active flag has two values, so a lookup returns about half the table. That is almost as slow as scanning it, and you pay the write cost for nothing.
 A materialized view refresh job dies for a day. What do readers see? | A clear error on every single query ; Old results and no warning ; An empty result set every time | 1 | The view keeps serving its last contents, so staleness is silent unless you monitor its age.
 ```
 

@@ -4,6 +4,8 @@ Two antipatterns put heavy work on the wrong machine. The Busy Database makes th
 ## What an antipattern is
 An antipattern is a common fix that looks sensible and makes things worse under load. This chapter covers ten of them, taken from Microsoft's performance antipattern catalog. Each one passes a small test and fails in production, because production has many users at once and the test had few. For every antipattern we look at four things: what it looks like, why it hurts, how to detect it, and how to fix it.
 
+Here "front end" means the web servers that answer user requests, not browser code. In a small system the app tier and the web tier are the same servers. Moving light work such as formatting there is fine, because it is cheap and you can add servers. Moving heavy work there is the Busy Front End.
+
 ## Busy Database
 ```card Busy Database
 Symptoms | Database CPU is high while the data moved out of it is small, and every endpoint that touches it slows down.
@@ -89,14 +91,14 @@ sequenceDiagram
   W-->>U: answers in about 5 ms
 ```
 
-Why it hurts: the background work shares the CPU, memory and network of the box that serves user requests. A server also has a limit on threads, so a flood of heavy requests can end in errors when it cannot start another. Ten reports at once can leave no CPU for a cheap profile lookup. The response time of unrelated, light endpoints climbs. Adding more front-end servers only buys more machines that do the same thing.
+Why it hurts: the background work shares the CPU, memory and network of the box that serves user requests. A server also has a limit on threads, so a flood of heavy requests can end in errors when it cannot start another. Ten reports at once can leave little CPU for a cheap profile lookup. The response time of unrelated, light endpoints climbs. Adding more front-end servers only buys more machines that do the same thing.
 
 How to detect it: light endpoints get slow at the same time that heavy ones are called. CPU on the web tier sits near its limit. Plot latency per route against the rate of the heavy route. If the profile lookup slows exactly when report requests rise, that confirms it.
 
 How to fix it: use Queue-Based Load Leveling. The front end puts a small message on a [queue](/sd/docs/async/message-queues) and replies at once. A separate pool of workers pulls messages and does the heavy work at its own pace. The queue absorbs bursts, and you scale the workers by queue length. See [background jobs](/sd/docs/async/background-jobs). Do not just add front-end servers, and make sure the back end can keep up with the throughput you need. Moved tasks may also take longer to finish. The cost is extra moving parts and the need to handle lost or repeated messages safely.
 
 ## A worked example: two bad endpoints (invented numbers)
-A database server has 8 cores. Each order-list request spends 40 ms of database CPU because the SQL formats everything. The database can finish at most 8 cores / 0.040 s = 200 requests per second. After the move to plain rows, each request costs 4 ms in the database: 8 / 0.004 = 2,000 requests per second. The formatting costs 1 ms of app CPU per request. Ten app servers with 4 cores each supply 40 / 0.001 = 40,000 requests per second of formatting, so the database is the limit again, 10 times later than before.
+A database server has 8 cores. Each order-list request spends 40 ms of database CPU because the SQL formats everything. The database can finish at most 8 cores / 0.040 s = 200 requests per second. After the move to plain rows, each request costs 4 ms in the database: 8 / 0.004 = 2,000 requests per second. The formatting costs 1 ms of app CPU per request. Ten app servers with 4 cores each supply 40 / 0.001 = 40,000 requests per second of formatting, so the database is the limit again, but at 10 times the load (2,000 requests per second instead of 200).
 
 ```mermaid Most requests per second the 8 core database can finish, before and after the formatting moves out
 xychart-beta
@@ -105,13 +107,13 @@ xychart-beta
   bar [200, 2000]
 ```
 
-Now the Busy Front End. A web server has 4 cores. A report job burns 8 CPU-seconds. Ten reports at once need 80 CPU-seconds, which is 20 seconds of every core. For those 20 seconds a 5 ms profile lookup waits for a turn on the CPU.
+Now the Busy Front End. A web server has 4 cores. A report job burns 8 CPU-seconds. Ten reports at once need 80 CPU-seconds, which is 20 seconds of all four cores. While they run, the 5 ms profile lookup has to share the CPU with them, so it gets much slower. In Microsoft's own load test the cheap profile request fell from about 500 to about 150 requests per second once heavy requests arrived. If the work runs on a single event loop instead of a thread, it is worse: the loop is one thread, so each 8-second report freezes every other request until it finishes.
 
-## Spot it in production: a slow checkout and a quiet database
-Symptom: at 10:00 each day the checkout page takes 6 seconds instead of 300 ms. The team adds web servers and nothing improves. Database CPU is at 95 percent, but network out of the database is tiny. The slow-query list shows one stored procedure that formats an invoice, called thousands of times. Confirm by running that procedure with the formatting removed on a copy of the database. If the CPU per call drops by roughly 10 times, the Busy Database is proven. The fix is to move the formatting out. Adding web servers did not help, because every new server called the same procedure on the same database.
+## Spot it in production: a slow checkout and a database with little traffic (invented numbers)
+Symptom: at 10:00 each day the checkout page takes 6 seconds instead of 300 ms. The team adds web servers and nothing improves. Database CPU is at 95 percent, but network out of the database is tiny. The slow-query list shows one stored procedure that formats an invoice, called thousands of times. Confirm by running that procedure with the formatting removed on a copy of the database. If the CPU per call falls sharply, the formatting was most of the cost and the Busy Database is the likely cause. The fix is to move the formatting out. Adding web servers did not help, because every new server called the same procedure on the same database.
 
 ## When moving work out is the wrong tool
-Do not move work out of the database when it is data-heavy. Summing 5 million rows in SQL returns 8 bytes. Summing them in the app moves gigabytes. The same goes for joins and filters that the database can do with an [index](/sd/docs/data/indexes). For the front end, a quick task of a few milliseconds does not need a queue. A queue adds delay and failure modes. Use it for work that is heavy, bursty or slow.
+Do not move work out of the database when it is data-heavy. Summing 5 million rows in SQL returns 8 bytes. Summing them in the app moves at least 40 MB (just the amount column at 8 bytes a row), and gigabytes if the query fetches whole rows. The same goes for joins and filters that the database can do with an [index](/sd/docs/data/indexes). For the front end, a quick task of a few milliseconds does not need a queue. A queue adds delay and failure modes. Use it for work that is heavy, bursty or slow.
 
 ## Common mistake
 Fixing a slow database by adding more app servers, or fixing a slow web tier by adding more threads, without first checking which resource is actually the bottleneck.
@@ -123,9 +125,10 @@ article | Performance testing and antipatterns for cloud applications | https://
 ```
 
 ```quiz
-A database has high CPU but very little network traffic out. What does that point to? | The database is busy computing ; The network card is the bottleneck ; The cache hit ratio is too high | 0 | Busy CPU with little data moved means the database is running code such as formatting.
+A database has high CPU but very little network traffic out. What does that point to? | The database is busy computing ; The network card is the bottleneck ; The database has too few rows to index | 0 | High CPU with little data leaving the database means it spends its time on work other than sending rows. The next step is to read the slow queries to see whether that work is formatting and rules (Busy Database) or scanning for rows that an index would find.
 Why does adding web servers not fix a Busy Front End? | Load balancers cannot spread the traffic ; Web servers cannot use more than one core ; Each copy still runs the heavy task | 2 | More servers still run the heavy task next to user requests.
-In the worked example the database cost drops from 40 ms to 4 ms per request. What is the new maximum rate on 8 cores? | 200 requests per second ; 2,000 requests per second ; 20,000 requests per second | 1 | 8 cores divided by 0.004 seconds gives 2,000 requests per second.
+Each request costs 10 ms of database CPU on an 8-core server. What is the most requests per second it can finish? | 80 requests per second ; 800 requests per second ; 8,000 requests per second | 1 | 8 cores divided by 0.010 seconds gives 800 requests per second.
+Login gets slow every time the nightly export runs on the same web servers. What is the best first fix? | Add an index to the users table ; Add more web servers ; Put the export on a queue for workers | 2 | A queue moves the heavy export off the servers that answer users, while more servers would still run it beside logins.
 ```
 
 ```story
@@ -133,7 +136,7 @@ Maya's team has a report button. The handler starts a thread to build the report
 ```
 
 ```adapted
-Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/architecture/patterns/ | CC BY 4.0
+Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/architecture/antipatterns/ | CC BY 4.0
 ```
 
 # chatty-io-and-extraneous-fetching | Chatty I/O and Extraneous Fetching | 2 | 12
@@ -142,7 +145,7 @@ Chatty I/O sends many tiny requests where one would do. Extraneous Fetching does
 ## Chatty I/O
 ```card Chatty I/O
 Symptoms | A page makes dozens or hundreds of tiny calls, and time grows with the size of the list.
-Why it hurts | Every call pays a fixed round trip and queueing cost however small the payload, so total time is the number of calls times the delay.
+Why it hurts | Every call pays a fixed round trip and queueing cost however small the payload, so when calls run one after another, total time is the number of calls times the delay.
 Detect | Count queries or calls per request in a trace or query log. If the count scales with result size, or repeats differ only by an id, it is chatty.
 Fix | Batch with joins, IN lists, eager loading and bulk writes, and keep each batch bounded.
 ```
@@ -163,6 +166,8 @@ for o in orders:
 rows = db.query("""SELECT o.id, c.name FROM orders o
                    JOIN customers c ON c.id = o.customer_id LIMIT 50""")
 ```
+
+An IN query is the other way to batch: `SELECT id, name FROM customers WHERE id IN (3, 8, 15)` fetches many rows in one trip.
 
 Why it hurts: each round trip costs the network latency plus queueing in the server, even when the query itself takes microseconds. N+1 turns one list page into N+1 trips. The total time grows with the list size, so the page passes testing with 5 rows and fails in production with 500. Most ORMs offer eager loading for this. In Django, `select_related` follows foreign keys in a single, more complex query, and `prefetch_related` handles many-to-many relations with one extra query per relation.
 
@@ -192,7 +197,7 @@ names = [r.name for r in all_rows if r.price > 100]              # filtering in 
 names = db.query("SELECT name FROM products WHERE price > 100")  # let the database filter
 ```
 
-It often starts as an overcorrection to Chatty I/O ("fetch everything once so we never go back"). It also hides inside ORMs. In .NET, a filter that cannot be translated to SQL silently runs in memory after loading the whole table, and Microsoft's page shows that case. Check how your own ORM translates filters, since a function it cannot turn into SQL may be a sign of the same trap.
+It often starts as an overcorrection to Chatty I/O ("fetch everything once so we never go back"). It also hides inside ORMs. In Entity Framework, calling `AsEnumerable()` or `ToList()` before a `where` makes the filter run in app memory after the whole table is loaded. Microsoft's page shows this with a date filter. When you review ORM code, look for a conversion to an in-memory list before the filter, and check the SQL the ORM actually sends.
 
 Why it hurts: you pay to read, send and parse bytes that you throw away. The extra data crowds out the cache and eats network bandwidth and memory in the app. How to detect it: large response sizes, high network out of the database, and an app whose memory spikes on one endpoint. A query that returns 100,000 rows to an endpoint that shows 20 is the giveaway, so compare the bytes the store returns with the bytes the endpoint sends. The symptoms look much like Monolithic Persistence, covered later in this chapter. Fix: select only the columns you need, filter and aggregate in the database, and paginate any list.
 
@@ -219,21 +224,21 @@ sequenceDiagram
 ```
 
 ## A worked example: 50 orders across a region (invented numbers)
-A page lists 50 orders with customer names. The database is in the same data center: a round trip costs 2 ms. N+1 makes 51 queries, so 51 x 2 = 102 ms of waiting. One join takes 1 trip plus a slightly heavier query, say 6 ms in all. That is 17 times faster.
+A page lists 50 orders with customer names. The database is in the same data center: a round trip costs 2 ms. N+1 makes 51 queries, so 51 x 2 = 102 ms of waiting. One join takes 1 trip plus a slightly heavier query, say 6 ms in all (2 ms of trip and 4 ms of work). That is 17 times faster.
 
-Now suppose the database is in another region and each round trip costs 40 ms. N+1 becomes 51 x 40 = 2,040 ms, a two-second page. The join stays near 46 ms. Same code, same data, and the distance multiplied the antipattern.
+Now suppose the database is in another region and each round trip costs 40 ms. N+1 becomes 51 x 40 = 2,040 ms, a two-second page. The join stays near 44 ms (40 ms of trip and the same 4 ms of work). Same code, same data, and the distance multiplied the antipattern.
 
 ```mermaid Time to build the page of 50 orders, in milliseconds, by query shape and round trip time (invented numbers)
 xychart-beta
   x-axis [N+1 same site, Join same site, N+1 other region, Join other region]
   y-axis "milliseconds" 0 --> 2100
-  bar [102, 6, 2040, 46]
+  bar [102, 6, 2040, 44]
 ```
 
-Extraneous Fetching on the same data: a table has 1,000,000 products at about 1 KB each, so 1 GB. Loading it to count the expensive ones moves 1 GB. `SELECT COUNT(*) WHERE price > 100` returns a few bytes.
+Extraneous Fetching with invented numbers: a products table has 1,000,000 rows at about 1 KB each, so 1 GB. Loading it to count the expensive ones moves 1 GB. `SELECT COUNT(*) WHERE price > 100` returns a few bytes.
 
 ## Spot it in production: the cure causes the disease
-A team sees 300 queries per request and "fixes" it by loading all products and all prices at the start of each request. Queries per request fall to 2, and the trace looks clean. But response time doubles, memory use jumps and the garbage collector starts to pause. The team swapped Chatty I/O for Extraneous Fetching. Confirm by checking rows returned versus rows shown. If 200,000 rows are fetched to show 20, the fix overshot. The right shape is a join or batched `IN` query for exactly the 20 ids, plus pagination.
+A team sees 300 queries per request and "fixes" it by loading all products and all prices at the start of each request. Queries per request fall to 2, and the trace looks clean. But response time rises sharply (say it doubles), memory use jumps and the app starts to stall while it cleans up memory it no longer needs. The team swapped Chatty I/O for Extraneous Fetching. Confirm by checking rows returned versus rows shown. If 200,000 rows are fetched to show 20, the fix overshot. The right shape is a join or batched `IN` query for exactly the 20 ids, plus pagination.
 
 ## When batching is the wrong tool
 Do not batch when each item must succeed or fail on its own, or when waiting to fill a batch delays something users watch. A write that needs to be durable now should not sit in a buffer for 5 seconds. Do not widen a query when a [cache](/sd/docs/caching/caching-basics) already holds the small pieces. For one-off scripts, a few extra round trips are fine. Measure first.
@@ -251,7 +256,7 @@ repo | The System Design Primer: Database | https://github.com/donnemartin/syste
 ```quiz
 A list page runs 1 query for 50 orders and 1 more per order. How many queries is that? | 2 ; 51 ; 100 | 1 | One list query plus 50 per-order queries gives 51.
 Why does N+1 hurt more when the database is far away? | The query text grows with distance ; Distant databases cannot run joins ; Each extra trip pays the full delay | 2 | Every query waits for a round trip, so 51 trips at 40 ms is about 2 seconds.
-A fix drops queries from 300 to 2 but loads 200,000 rows to show 20. What happened? | The ORM cache is now disabled ; Chatty I/O became over-fetching ; The index was dropped from the table | 1 | Fewer trips came at the price of fetching far more data than needed.
+A trace shows 2 queries per request, but the store returns 200,000 rows and the page shows 20. What should you change first? | Add a second cache layer in front ; Select only the needed rows and columns, and paginate ; Split the query back into one per row | 1 | The query count is already low, so the waste is rows moved and thrown away; filtering and paginating in the query fixes that.
 ```
 
 ```story
@@ -288,7 +293,7 @@ async def profile(user_id):
 # Sketch: http is an async client (for example httpx.AsyncClient)
 # A non-blocking client and await let the loop serve others while waiting
 async def profile(user_id):
-    r = await http.get(f"https://users.internal/{user_id}")  # http is an async client
+    r = await http.get(f"https://users.internal/{user_id}", timeout=2)  # always set a timeout
     return r.json()
 ```
 
@@ -309,20 +314,22 @@ What it looks like: some classes are brokers to an outside resource: an HTTP cli
 ```python tab="Before"
 # Sketch: requests is the Python Requests library
 def get_product(pid):
-    r = requests.get(f"https://catalog.internal/{pid}")   # new TCP and TLS connection each time
+    r = requests.get(f"https://catalog.internal/{pid}", timeout=2)   # new TCP and TLS connection each time
 ```
 
 ```python tab="After"
+# One Session is fine in a single-threaded or async-per-process app. With many
+# threads, check the library's thread-safety notes or keep one Session per thread.
 session = requests.Session()                               # created once at startup
 def get_product(pid):
-    return session.get(f"https://catalog.internal/{pid}")  # reuses pooled connections
+    return session.get(f"https://catalog.internal/{pid}", timeout=2)  # reuses pooled connections, always set a timeout
 ```
 
 The Requests docs say a Session uses connection pooling, so several requests to one host reuse the same TCP connection. Why it hurts: opening a connection costs a TCP handshake, and HTTPS adds a TLS handshake. That is 2 to 3 extra round trips before any data moves: one for TCP, plus two for a full TLS 1.2 handshake or one for TLS 1.3. Closed connections also linger. On Linux, a closed TCP connection stays in a state called TIME_WAIT for 60 seconds, and each one holds a local port. With roughly 28,000 ephemeral ports (the Linux default range of 32768 to 60999 is 28,232 ports, and it can be changed), about 28,000 / 60 = 470 new connections per second to one destination address and port can use them all. New requests then fail with "cannot assign requested address" or socket errors.
 
 How to detect it: errors about exhausted sockets, ports, file handles or database connections. Counts of connections in TIME_WAIT climb (`ss -s` shows them). Memory use and garbage collection rise, and new-connection counts in the downstream service track your request rate. Fix: create one shared instance at startup, or use a pool. Check that the class is thread-safe first. Set per-request settings, such as headers, per call and not on the shared object, or you invite races.
 
-Database connections are the exception to "hold on to it". They are scarce, so you borrow one from a pool for a short time and return it.
+Database connections need one more step. Share the pool (or database client) for the life of the app, but borrow a single connection from it only for the length of a query, then give it back. Scarce resources like these should not be held while you are not using them.
 
 The diagram shows the worked example below: once the pricing API slows, every thread ends up waiting and the pool has nothing left for other work.
 
@@ -345,7 +352,7 @@ xychart-beta
   line [2000, 1000, 500, 200]
 ```
 
-Now add Improper Instantiation. Each request opens a new connection: 3 round trips of 10 ms for TCP and TLS 1.2, so 30 ms of setup before a call that takes 20 ms once connected. A shared pooled client skips the setup, so the call takes 20 ms instead of 50 ms.
+Separately, take a different service (the 50 ms below is unrelated to the pricing API above). Each request opens a new connection: 3 round trips of 10 ms for TCP and TLS 1.2, so 30 ms of setup before a call that takes 20 ms once connected. A shared pooled client skips the setup, so the call takes 20 ms instead of 50 ms.
 
 ```mermaid A new client pays three setup round trips before the call, a pooled client skips them
 sequenceDiagram
@@ -360,7 +367,7 @@ sequenceDiagram
 ```
 
 ## Spot it in production: "works until Black Friday"
-Symptom: at about 600 requests per second the service logs `Cannot assign requested address`, though the CPU is at 20 percent. Confirm by counting sockets in TIME_WAIT on the server: tens of thousands pointing at one IP. At 470 new connections per second the port range is gone. The code builds a client inside the request handler. The same mistake can also cost time without errors, when a class is merely slow to build. Moving the client to startup removes the errors without a single new server. Be careful when proving it: reproduce with a load test and check that the count of new connections falls to the pool size after the fix.
+Symptom: at about 600 requests per second the service logs `Cannot assign requested address`, though the CPU is at 20 percent. Confirm by counting sockets in TIME_WAIT on the machine that runs your service (the one making the outbound calls): tens of thousands, all pointing at one downstream IP. At 470 new connections per second the port range is gone. The code builds a client inside the request handler. The same mistake can also cost time without errors, when a class is merely slow to build. Moving the client to startup removes the errors without a single new server. Be careful when proving it: reproduce with a load test and check that the count of new connections falls to the pool size after the fix.
 
 ## When async or sharing is the wrong tool
 Synchronous code is fine for scripts, batch jobs, and low-traffic services where simple code matters more than throughput, and for tiny local reads such as a small file on an SSD, where handing off to another thread costs more than it saves. Unblocking threads can also shift the bottleneck, because more concurrent calls reach the database or API and may get throttled. Async brings its own risk, such as a forgotten `await`, and CPU-heavy work still blocks an event loop. For CPU-bound work, use separate processes or a queue (see [Busy Front End](/sd/docs/antipatterns/busy-database-and-frontend)). Sharing is wrong for objects that are not thread-safe, and for resources that are scarce and should be returned quickly.
@@ -377,8 +384,8 @@ docs | Python asyncio: Coroutines and Tasks | https://docs.python.org/3/library/
 
 ```quiz
 A service has 200 threads and each request waits 100 ms on I/O. What is its maximum throughput? | 20 requests per second ; 2,000 requests per second ; 200,000 requests per second | 1 | 200 threads divided by 0.1 seconds is 2,000 requests per second.
-Why create an HTTP client once instead of per request? | Clients stop working after one call ; Servers refuse repeated clients ; Setup repeats and ports can run out | 2 | A new client pays handshakes each time and leaves closed sockets waiting.
-A downstream API slows from 50 ms to 500 ms with 100 threads. What happens to capacity? | It drops to a tenth ; It stays about the same ; It doubles | 0 | 100 threads at 0.5 seconds gives 200 per second instead of 2,000.
+Why create an HTTP client once instead of per request? | A shared client is faster only because it skips DNS ; Each new client is rejected by the rate limiter ; Setup repeats and ports can run out | 2 | A new client pays handshakes each time and leaves closed sockets waiting.
+A service opens a new HTTPS connection per request, and each closed one sits in TIME_WAIT for 60 seconds. With about 28,000 usable local ports, roughly how many new connections per second before ports run out? | About 47 per second ; About 470 per second ; About 28,000 per second | 1 | 28,000 ports divided by 60 seconds is about 470 per second.
 ```
 
 ```story
@@ -390,7 +397,7 @@ Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/
 ```
 
 # noisy-neighbor-and-monolithic-persistence | Noisy Neighbor and Monolithic Persistence | 2 | 12
-A Noisy Neighbor is one tenant that eats shared capacity and hurts the others. Monolithic Persistence is the same thing inside your own system: very different data crammed into one store until the parts fight each other.
+A Noisy Neighbor is one tenant that eats shared capacity and hurts the others. Monolithic Persistence is a cousin of it inside your own system: very different kinds of data share one store, so they fight over its capacity, and the store suits some of them badly.
 
 ## Noisy Neighbor
 ```card Noisy Neighbor
@@ -400,13 +407,13 @@ Detect | Break CPU, queries and bandwidth down per tenant. Failures for a tenant
 Fix | Measure per tenant, apply quotas, isolate big tenants with bulkheads or dedicated stamps, and move heavy work off-peak.
 ```
 
-What it looks like: a multitenant system serves many customers (tenants) from the same pool of CPU, database, queue or network. Pooling is cheaper than giving everyone their own stack. The risk is that one tenant uses far more than a fair share, and the rest see failed or slow requests. The tenant is usually not malicious. It may run a big import or a bad query. It can also be many tenants peaking together, each small on its own. Occasionally it is an attack on a shared component, so treat it as a resource governance problem whatever the cause.
+What it looks like: a multitenant system serves many customers (tenants) from the same pool of CPU, database, queue or network. Pooling is usually cheaper than giving everyone their own stack. The risk is that one tenant uses far more than a fair share, and the rest see failed or slow requests. The tenant is usually not malicious. It may run a big import or a bad query. It can also be many tenants peaking together, each small on its own. Occasionally it is an attack on a shared component, so treat it as a resource governance problem whatever the cause.
 
 Why it hurts: shared resources have a fixed capacity, and usually whoever arrives first wins. When total demand passes capacity, everyone slows down, or the unlucky tenants fail. The victim sees random errors on a request that works at other times, with nothing in its own code to blame.
 
 How to detect it: the client sees the same request succeed at some times and fail or crawl at others. The provider sees resource use that is dominated by one tenant ID. Failures for a tenant that is itself using little are the other clue. This is why per-tenant metrics matter: a graph of total CPU hides the culprit, but CPU by tenant names it. See [observability](/sd/docs/reliability/observability).
 
-```mermaid Without a quota tenant A starves B and C, a quota keeps the pool shared
+```mermaid With a quota check, tenant A's bulk job is held back with a 429 and B and C keep their share of the pool
 flowchart LR
   A[Tenant A, bulk job] --> Q{Quota check}
   B[Tenant B] --> Q
@@ -473,10 +480,10 @@ xychart-beta
 ```
 
 ## Spot it in production: checkout dies at 2 a.m.
-Symptom: every night at 2 a.m. checkout slows and some requests fail with "too many connections". No traffic spike. Confirm with the database's process list at that moment: a nightly report is scanning the log table with a long query that holds connections, and the application pool is exhausted. The cause is shared storage, not slow checkout code. Move the logs to a separate store and give reports a read replica, so the report cannot touch order traffic.
+Symptom: every night at 2 a.m. checkout slows and some requests fail with "too many connections". No traffic spike. Confirm with the database's process list at that moment: a nightly report is scanning the log table with a long query that holds connections, and the application pool is exhausted. The cause is shared storage, not slow checkout code. Move the logs to a separate log store. Point the nightly report at that store, so its long scan can only slow logging and never touches order traffic. If the report must read orders, run it against a [read replica](/sd/docs/data/replication), a copy of the database that serves reads only.
 
 ## When splitting is the wrong tool
-A small system with one modest database is fine. Each new store brings cost: more to run, back up, secure and learn. Data in two stores cannot share a transaction, so keeping them consistent is your job. For Noisy Neighbor, strict isolation for every tenant is also wasteful. Dedicated stacks cost far more, so reserve them for tenants who pay for it. Quotas and monitoring cover most cases.
+A small system with one modest database is fine. Each new store brings cost: more to run, back up, secure and learn. Data in two stores usually cannot share one ordinary transaction, so keeping them consistent is your job. For Noisy Neighbor, strict isolation for every tenant is also wasteful. Dedicated stacks cost far more, so reserve them for tenants who pay for it. Quotas and monitoring are the first things to try, and they are often enough.
 
 ## Common mistake
 Watching only total resource use. A system at 70 percent overall can still be at 100 percent for one tenant or one table.
@@ -489,7 +496,7 @@ repo | The System Design Primer: SQL or NoSQL | https://github.com/donnemartin/s
 
 ```quiz
 Three tenants have a 400 per second quota each on a 1,000 per second system. Tenant A sends 900. How many of A's requests are served? | 100 ; 400 ; 900 | 1 | The quota caps A at 400, and the rest are throttled.
-Why does a total CPU graph fail to find a noisy neighbor? | It hides which tenant is heavy ; It only records overnight data ; It counts idle time twice | 0 | Per-tenant metrics are needed to see who is taking the capacity.
+Total CPU is at 70 percent and tenant D keeps timing out. What do you check first? | CPU broken down by tenant ID ; Add servers until the total drops ; Restart the database right now | 0 | A total hides which tenant is at its limit. Breaking usage down per tenant shows whether one tenant is dominating or D is being starved.
 In the example, what share of the 3,500 writes per second are logs? | 14 percent ; 50 percent ; 86 percent | 2 | 3,000 log writes out of 3,500 total is about 86 percent.
 ```
 
@@ -508,8 +515,8 @@ A Retry Storm is clients retrying a struggling service so hard that it cannot re
 ```card Retry Storm
 Symptoms | Clients show repeated attempts, the retry rate climbs while success falls, and the service stays down after the original fault is fixed.
 Why it hurts | Failures often mean overload, so immediate retries from every client multiply the load on a service that is already behind.
-Detect | Look for many requests from one client in a short time and a retry rate that rises with errors. Graphs of retries per layer help.
-Fix | Limit attempts and total time, use exponential backoff with jitter, retry at one layer, keep a retry budget and honor Retry-After.
+Detect | Look for many requests from one client in a short time and a retry rate that rises with errors. A graph of retry rates can show it, but the rate looks like a symptom of the outage, so compare it with the request rate before blaming the service.
+Fix | Limit attempts and total time, use exponential backoff with jitter, retry at one layer where you can, keep a retry budget and honor Retry-After.
 ```
 
 What it looks like: a call fails, and the client tries again straight away, many times or forever.
@@ -528,7 +535,10 @@ for attempt in range(3):          # limited attempts
     r = call_service()
     if r.ok or r.status == 400:   # do not retry errors that cannot succeed
         break
-    time.sleep(random.uniform(0, 0.2 * 2 ** attempt))   # backoff with jitter
+    if attempt < 2:               # no pause after the last try
+        time.sleep(random.uniform(0, 0.5 * 2 ** attempt))   # backoff with jitter
+if not r.ok:
+    raise RuntimeError("giving up")
 ```
 
 ```mermaid Instant retries pile on the failing service, backoff with jitter spreads them out
@@ -541,7 +551,7 @@ sequenceDiagram
   C->>S: retry at once, up to 3 times
   Note over S: Offered load reaches 3,200 per second
   S-->>C: more errors and late answers
-  Note over C,S: With backoff and jitter the retries arrive spread over seconds
+  Note over C,S: With backoff and jitter the retries arrive spread over time
 ```
 
 Why it hurts: failures often mean overload. Retrying at once adds more load to a service that is already behind. Every client does it together, so the load multiplies. Suppose a service has capacity of 1,000 requests per second and normal traffic of 800. A 5-second blip makes requests fail. If each client retries 3 times at once, the offered load becomes up to 800 x 4 = 3,200 per second, 3.2 times capacity. Even after the cause is fixed, the service stays buried and cannot get back to normal. This synchronized pile-up is sometimes called a thundering herd. The Google SRE book describes this loop in its chapter on cascading failures: overloaded servers answer late, clients retry, and the extra work adds overload. The same chapter shows that retries at each layer of a call chain multiply: three layers that each retry 3 times can turn one user action into 64 attempts against the database.
@@ -562,9 +572,9 @@ Retries stack across layers too. Each layer that retries 3 times multiplies the 
 | 2 | 16 |
 | 3 | 64 |
 
-How to detect it: very long response times on the client with telemetry showing repeated attempts, a retry rate that climbs while success falls, many requests from one client in a short time, and a service that stays down after the original fault is fixed. The SRE book notes that in an emergency it may not be obvious that bad retry behavior is the cause, and that graphs of retry rates can help.
+How to detect it: very long response times on the client with telemetry showing repeated attempts, a retry rate that climbs while success falls, many requests from one client in a short time, and a service that stays down after the original fault is fixed. The SRE book notes that in an emergency it may not be obvious that bad retry behavior is the cause, and that a retry-rate graph can be mistaken for a symptom instead of a compounding cause.
 
-How to fix it: the mechanics are in [timeouts, retries and backoff](/sd/docs/reliability/timeouts-and-retries): limit attempts and total time (most callers need to retry for seconds or minutes, not forever), use exponential backoff with jitter, retry at one layer, and keep a retry budget. Three more points. Give up and return an error when the caller cannot wait. Do not retry errors that cannot succeed, such as a 400 Bad Request. And honor the Retry-After header. On the service side, throttle at a gateway, use [circuit breakers and load shedding](/sd/docs/reliability/circuit-breakers), and send a clear overload signal so clients back off.
+How to fix it: the mechanics are in [timeouts, retries and backoff](/sd/docs/reliability/timeouts-and-retries): limit attempts and total time (most callers need to retry for seconds or minutes, not forever), use exponential backoff with jitter, retry at one layer where you can (retrying at several layers multiplies attempts), and keep a retry budget. Three more points. Give up and return an error when the caller cannot wait. Do not retry errors that cannot succeed, such as a 400 Bad Request. And honor the Retry-After header. On the service side, throttle at a gateway, use [circuit breakers and load shedding](/sd/docs/reliability/circuit-breakers), and send a clear overload signal so clients back off.
 
 ## No Caching
 ```card No Caching
@@ -599,7 +609,7 @@ How to detect it: the same query text appears thousands of times with the same p
 
 How to fix it: use cache-aside (see [cache patterns](/sd/docs/caching/cache-patterns)): read the cache, on a miss read the store and fill the cache, and on a write update the store and delete the old entry. Set a TTL that matches how stale the data may be. Web APIs can also use `Cache-Control` and ETags so clients and CDNs cache. Count cache hits and misses so you can tune what you cache and for how long. If the cache fails, falling back to the database is right, but it can swamp the database, so plan for [stampedes](/sd/docs/caching/cache-invalidation) and protect the store with a circuit breaker.
 
-## A worked example: two ways to double the load (invented numbers)
+## A worked example: how the two antipatterns multiply each other (invented numbers)
 A product service gets 5,000 reads per second. The database can handle 1,500. With no cache, 3,500 reads per second cannot be served, so requests time out. A cache with a 90 percent hit ratio sends only 5,000 x 0.10 = 500 reads per second to the database, a third of its capacity.
 
 ```mermaid Attempts per second reaching a database that can handle 1,500, in four situations from the example
@@ -609,7 +619,7 @@ xychart-beta
   bar [500, 5000, 5000, 15500]
 ```
 
-Now the two antipatterns together. The cache restarts, so hit ratio drops to 0. All 5,000 reads reach the database, which fails 70 percent of them. Each failed read is retried 3 times. The database sees 5,000 first attempts plus 3,500 x 3 = 10,500 retries, which is 15,500 attempts per second, more than 10 times capacity. Warm caches and capped retries each prevent that.
+Now the two antipatterns together. The cache restarts, so hit ratio drops to 0. All 5,000 reads reach the database, which can serve only 1,500, so at first 70 percent of them fail. If every failed read is retried 3 times at once, the database is offered up to 5,000 first attempts plus 3,500 x 3 = 10,500 retries, which is 15,500 attempts per second, more than 10 times capacity. At that load even more attempts fail, so the real number only goes up from here. A warm cache prevents it. So do backoff with jitter (a random wait that grows after each failure) and a retry budget, which keep the retries from arriving all at once. Capping retries at 3 was not enough here, because the capped version is the one that produced 15,500.
 
 ## Spot it in production: the outage that outlives the cause
 Symptom: a 30-second database failover finished at 14:02, but errors continue until 14:40. Confirm in the logs: the request rate to the database after 14:02 is 4 times normal and most of it is repeats from the same clients, with the cache empty. The failover was the trigger. The retry loop and the cold cache were the reason it kept going. Recovery needs fewer requests, not more patience: shed load, shrink retries, and warm the cache before sending full traffic.
@@ -628,9 +638,10 @@ article | Timeouts, retries and backoff with jitter | https://aws.amazon.com/bui
 ```
 
 ```quiz
-A service handles 800 requests per second and each failed request is retried 3 times at once. What is the peak offered load? | 1,600 per second ; 2,400 per second ; 3,200 per second | 2 | Each request becomes up to 4 attempts, so 800 x 4 is 3,200.
+A service handles 800 requests per second. During a 5-second blip every request fails and each is retried 3 times at once. What is the peak offered load? | 1,600 per second ; 2,400 per second ; 3,200 per second | 2 | Each request becomes up to 4 attempts, so 800 x 4 is 3,200.
 Which error should a client not retry? | A 503 Service Unavailable ; A 400 Bad Request ; A connection timeout | 1 | A malformed request will fail the same way every time.
 A cache with a 90 percent hit ratio fronts 5,000 reads per second. How many reach the database? | 500 per second ; 4,500 per second ; 5,000 per second | 0 | Ten percent miss, so 5,000 x 0.10 is 500.
+Three layers (frontend, backend, client library) each retry a failed call 3 times. One user action fails at the database. How many attempts reach it? | 9 ; 12 ; 64 | 2 | Each layer makes 4 attempts and they multiply: 4 x 4 x 4 is 64.
 ```
 
 ```story

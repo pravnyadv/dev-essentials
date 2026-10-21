@@ -1,6 +1,6 @@
 # Recursion
 
-A function is recursive when it calls itself on a smaller version of the same problem. Trees, graphs, backtracking and dynamic programming are all recursion in some form, so it is worth getting comfortable first.
+A function is recursive when it calls itself on a smaller version of the same problem. Tree traversals, depth-first search on graphs, backtracking and top-down dynamic programming are all recursion, so it is worth getting comfortable first.
 
 ## Anatomy
 
@@ -27,7 +27,7 @@ factorial(3) = 3 * factorial(2)
                           = 1
 ```
 
-then unwinds: 1, then 2, then 6. A very deep recursion overflows the stack (`RangeError: Maximum call stack size exceeded`, roughly 10,000 frames in JavaScript). JavaScript engines do not optimise tail calls, so turn deep recursion into a loop or an explicit stack.
+then unwinds: 1, then 2, then 6. A very deep recursion overflows the stack (`RangeError: Maximum call stack size exceeded`, roughly 10,000 frames in JavaScript). Most JavaScript engines, including Chrome's and Node's, do not reuse the stack for a call that is the very last thing a function does (a tail call), and Safari is the exception. So do not count on it: turn deep recursion into a loop or an explicit stack.
 
 ## Reading the cost
 
@@ -38,7 +38,8 @@ Write the recurrence, then solve it.
 | T(n) = T(n-1) + O(1) | O(n) | factorial, list length |
 | T(n) = T(n/2) + O(1) | O(log n) | binary search |
 | T(n) = 2T(n/2) + O(n) | O(n log n) | merge sort |
-| T(n) = 2T(n-1) + O(1) | O(2ⁿ) | all subsets, naive Fibonacci |
+| T(n) = 2T(n-1) + O(1) | O(2ⁿ) | all subsets |
+| T(n) = T(n-1) + T(n-2) + O(1) | about O(1.6ⁿ), usually quoted as O(2ⁿ) | naive Fibonacci |
 
 Space is the depth of the stack: O(n) for factorial, O(log n) for binary search.
 
@@ -59,4 +60,4 @@ Do not trace every call. Assume the function already works for smaller inputs an
 - Missing or wrong base case, giving infinite recursion.
 - Not making progress (calling with the same input).
 - Copying arrays on every call (`slice`, spread) and silently making it O(n²). Pass indexes instead.
-- Recomputing overlapping subproblems (naive Fibonacci is O(2ⁿ)).
+- Recomputing overlapping subproblems (naive Fibonacci is about O(1.6ⁿ), usually quoted as O(2ⁿ)).

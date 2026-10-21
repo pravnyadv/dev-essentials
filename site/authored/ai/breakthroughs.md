@@ -2,10 +2,10 @@
 Computers learned to see around 2012. A decade later they learned to draw.
 
 ## Seeing
-Before 2012, image recognition used hand-designed features. AlexNet, a convolutional neural network (a network that slides small filters across an image to detect edges, then shapes, then objects), cut the ImageNet error rate sharply. Later models like ResNet passed human-level accuracy on that benchmark. Vision models now power photo search, medical imaging support, self-driving perception and document reading.
+Before 2012, image recognition used hand-designed features. AlexNet, a convolutional neural network (a network that slides small filters across an image to detect edges, then shapes, then objects), cut the error rate on ImageNet, a benchmark of over a million labelled photos sorted into 1,000 categories, from about 26% to about 15% (the share of photos where the right label was missing from the model's five best guesses). Later models like ResNet (2015) matched or beat the human error rate measured on that test. Vision models now power photo search, medical imaging support, self-driving perception and document reading.
 
 ## Drawing
-Generative adversarial networks (GANs, 2014) pitted a generator against a critic to produce realistic images. Diffusion models took over from 2020. A diffusion model is trained by adding noise to images step by step and learning to reverse it. To generate, it starts from pure noise and removes it step by step, guided by a text prompt. DALL-E, Midjourney and Stable Diffusion (open weights, 2022) made this mainstream. Video models such as Sora extended the idea to moving images.
+Generative adversarial networks (GANs, 2014) pitted a generator against a discriminator (a critic that judges real or fake) to produce realistic images. Diffusion models took over from 2020. A diffusion model is trained by adding noise to images step by step and learning to reverse it. To generate, it starts from pure noise and removes it step by step, guided by a text prompt. DALL-E, Midjourney and Stable Diffusion (open weights, 2022) made this mainstream. Video models such as Sora extended the idea to moving images.
 
 ## Why it matters
 The same pattern of a scalable architecture, lots of data and lots of compute drove both. It also raised real questions about training data rights, deepfakes and provenance, which the field is still working out.
@@ -59,13 +59,13 @@ A filter is a small grid of numbers. At the start those numbers are random. The 
 Removing all the noise in one jump gives a blurry average of everything the model has seen. Small steps let it commit to details gradually. Early steps tend to settle the rough layout and colors, and later steps add texture and sharp edges. A guidance setting controls how strongly your text pulls on each step. Too low and the image ignores your words. Too high and images often look harsh and overdone.
 
 ## When the result is wrong
-The symptom is a hand with six fingers, a sign with scrambled letters, or three apples when you asked for four. The cause is that the model learned what these things usually look like, not the rules behind them. A recognition model that only saw bright daytime photos can also fail at night, because the pixels look unlike its training data. To check whether a flaw is a model limit or bad luck, repeat the prompt with ten different random seeds (the seed fixes the starting noise). If most of the ten share the flaw, it is the model.
+The symptom is a hand with six fingers, a sign with scrambled letters, or three apples when you asked for four. The cause is that the model learned what these things usually look like, not the rules behind them. A recognition model that only saw bright daytime photos can also fail at night, because the pixels look unlike its training data. To check whether a flaw is a model limit or bad luck, repeat the prompt with ten different random seeds (the seed fixes the starting noise). If several of the ten share the flaw, it is a model limit. If only one does, it was probably bad luck.
 
 ## Try it yourself: count the apples
 Open any free image generator. Ask for "a hand holding four red apples" five times. Count the fingers and the apples in each image. Then add detail ("on a white table, daylight, photo") and repeat. Counting errors are common, especially above three or four objects, and often persist while the style changes. Treat that as a sign the model copies appearance more than it counts.
 
 ## Common mistake
-Believing the image model understands what it draws. It captures how things usually look. That is why hands, text and counting objects were hard for early versions.
+Believing the image model understands what it draws. It captures how things usually look. That is why hands, text and counting objects are still where these models slip, though newer versions get them right more often.
 
 ```resources
 paper | Denoising Diffusion Probabilistic Models | https://arxiv.org/abs/2006.11239 | Ho, Jain, Abbeel | The paper that made diffusion practical.
@@ -76,8 +76,8 @@ video | But how do AI images and videos actually work? | https://www.youtube.com
 
 ```quiz
 How does a diffusion model make an image? | It copies the closest image it saw in training ; It paints the image one pixel at a time ; It cleans up random noise step by step | 2 | It is trained to reverse a noising process, and applies that reversal at generation time.
-What did AlexNet show? | Learned features beat hand-designed ones ; Hand-designed features still win on images ; GPUs are too slow to train big networks | 0 | It started the deep learning era in vision.
-A diffusion model draws six fingers on a hand. What is the most likely reason? | It ran out of memory midway through drawing it ; It learned how hands look, not how they work ; The prompt was longer than the image allows | 1 | The model captures typical appearance without understanding structure, which is why hands and text were hard.
+What did AlexNet show? | Learned features beat hand-designed ones ; Hand-designed features still win on images ; Bigger images always give better accuracy | 0 | Before AlexNet people wrote the feature detectors by hand. AlexNet learned them from labelled photos and won by a wide margin, which is why the field moved to deep learning.
+A diffusion model draws six fingers on a hand. What is the most likely reason? | The prompt asked for too many things at once ; It learned how hands look, not how they work ; The prompt was longer than the image allows | 1 | The model learned the typical look of hands, so it can reproduce fingers that look right up close but never learned that a hand has exactly five. Running longer or changing the prompt does not give it that rule.
 ```
 
 ```story
@@ -88,7 +88,7 @@ A radiologist reviews hundreds of scans a day. A vision model flags the ten that
 Games are clean test beds: clear rules, a score, endless practice. They showed that learning from trial and error can beat human experts.
 
 ## What happened
-Deep Blue (1997) beat the chess champion with brute-force search. AlphaGo (2016) beat Lee Sedol at Go using neural networks to guess good moves and positions, trained first on human games and then by playing itself. In game two, its move 37 surprised experts as something no human would play. AlphaZero (2017) learned chess, shogi and Go from scratch with only the rules, by playing itself, and beat the best programs.
+Deep Blue (1997) beat world chess champion Garry Kasparov with brute-force search and hand-written scoring rules. AlphaGo (2016) beat Lee Sedol at Go using neural networks to guess good moves and positions, trained first on human games and then by playing itself. In game two, its move 37 was one DeepMind estimated a human would play about 1 time in 10,000, and experts were surprised. AlphaZero (2017) learned chess, shogi and Go from scratch with only the rules, by playing itself, and beat the best programs.
 
 ## The idea: reinforcement learning
 An agent takes actions in an environment and receives rewards. It learns a policy, a rule for choosing actions, that maximizes total reward. There are no labels, only a score that arrives late. The same idea later trained language models: with a reward for correct math or passing code tests, models learned to reason in longer chains of thought.
@@ -107,7 +107,7 @@ Self-play and reward signals let a system exceed its teachers. The limit is that
 A robot in a 3-cell corridor starts in cell 1. Cell 3 holds a reward of +10. Moving costs -1. At first it moves randomly. After a few hundred tries, it notices that moving right from cell 2 usually leads to +10 and records a high value for that action. Soon the value spreads backward: moving right from cell 1 is good too, because it leads to cell 2. This is the core idea of Q-learning.
 
 ## How the value spreads: a trace
-Q-learning keeps a score for each action in each cell. After every move it updates that score with a simple rule: new score = old score + learning rate × (reward + best score of the next cell − old score). These are invented numbers for illustration. Use a learning rate of 0.5, all scores starting at 0, and a net reward of +9 for the move that reaches cell 3 (+10 minus the move cost of 1).
+Q-learning keeps a score for each action in each cell. After every move it updates that score with a simple rule: new score = old score + learning rate × (reward + best score of the next cell − old score). The learning rate here is how much of the gap between the old score and the new estimate you close in one update. At 0.5 you close half of it; at 1 you would jump straight to the new estimate. These are invented numbers for illustration. Use a learning rate of 0.5, all scores starting at 0, and a net reward of +9 for the move that reaches cell 3 (+10 minus the move cost of 1).
 ```mermaid Value spreads backward from the goal, one cell per visit
 flowchart LR
   C1[Cell 1] -->|move right| C2[Cell 2]
@@ -143,7 +143,7 @@ The agent must choose between the best action it knows and a new one. If it alwa
 A reward that arrives only at the end of a long game gives the agent almost nothing to learn from early on. The symptom is a score curve that stays flat for a long time. Adding small rewards along the way helps, but each one is a new chance to be gamed. Another symptom is a rising score with strange behavior. Confirm it by watching replays of the agent, not only the score chart.
 
 ## Try it yourself: three more updates
-On paper, repeat the trace above for the cell 2 score. Apply the rule again and again. You should get 4.5, then 6.75, then 7.875. Then update the cell 1 score once using the new cell 2 value. The numbers climb toward 9 and 8 but never jump there at once. Ten minutes is enough, and it shows why learning takes many tries.
+On paper, continue the table for two more visits. You should get 8.4375 for the cell 2 score, then 6.375 for the cell 1 score. Then try a learning rate of 1 from the start and see how fast the scores jump. With 0.5 the numbers climb toward 9 and 8 but never jump there at once, which is why learning takes many tries.
 
 ## Common mistake
 Expecting the same method to work where there is no clear score. Defining the reward is the hard part. A badly chosen reward gets exploited: a cleaning robot rewarded for "no visible mess" may learn to hide the mess.
@@ -156,9 +156,9 @@ paper | Mastering Chess and Shogi by Self-Play with a General Reinforcement Lear
 ```
 
 ```quiz
-What does a reinforcement learning agent try to maximize? | The number of labelled examples it sees ; The number of moves in each game it plays ; The total reward it collects over time | 2 | It learns actions that earn reward, not copies of labelled answers.
+A robot's score for an action is 4.5 and the next estimate is 9. With a learning rate of 0.5, what is the new score? | 4.5 ; 9 ; 6.75 | 2 | It closes half of the 4.5 gap: 4.5 + 0.5 × 4.5 = 6.75.
 Why does reinforcement learning work well on math and code? | Answers can be auto-checked for reward ; Those subjects are short and simple to write ; They have the largest amount of data online | 0 | A computable reward is what the method needs.
-A cleaning robot is rewarded for "no visible mess" and learns to hide mess under a rug. What went wrong? | The robot had too little time to train properly ; The reward missed the real goal and was gamed ; The robot's sensors could not see the rug | 1 | A badly chosen reward gets gamed. Defining the reward is the hard part.
+A cleaning robot is rewarded for "no visible mess" and learns to hide mess under a rug. What went wrong? | The robot did not train long enough ; The reward did not match the real goal ; The robot's sensors failed to work | 1 | A badly chosen reward gets gamed. Defining the reward is the hard part.
 ```
 
 ```story
@@ -169,16 +169,16 @@ In March 2016 an AI called AlphaGo played a move in game two against champion Le
 Pattern-finding models turned out to be useful for hard science problems with lots of data.
 
 ## Proteins
-A protein is a chain of amino acids that folds into a 3D shape, and the shape determines what it does. Predicting the shape from the chain was a 50-year problem. AlphaFold 2 (DeepMind, 2020 to 2021) reached near-experimental accuracy at the CASP14 competition. DeepMind released predicted structures for hundreds of millions of proteins in a free database. In 2024 Demis Hassabis and John Jumper shared the Nobel Prize in Chemistry with David Baker for protein structure prediction and design.
+A protein is a chain of amino acids (the building blocks of proteins) that folds into a 3D shape, and the shape determines what it does. Predicting the shape from the chain was a 50-year problem. AlphaFold 2 (DeepMind, 2020 to 2021) reached near-experimental accuracy at CASP14, a blind contest where teams predict structures that labs have solved but not yet published. DeepMind released predicted structures for hundreds of millions of proteins in a free database. In 2024 the Nobel Prize in Chemistry went half to David Baker, for designing new proteins, and half jointly to Demis Hassabis and John Jumper, for AlphaFold's structure prediction.
 
 ## Other areas
-Weather forecasting models trained on decades of data now match or beat traditional physics simulations on many measures at a fraction of the compute. Models help search for new materials and drug candidates, and they help read medical images. In math, systems solved olympiad-level problems, with some reaching gold-medal level at the International Mathematical Olympiad in 2025.
+Weather models such as Google DeepMind's GraphCast, trained on decades of past weather data, beat the leading physics-based forecast on most of the measures tested in a 2023 study, and run in about a minute. Models help search for new materials and drug candidates, and they help read medical images. In math, systems solved olympiad-level problems, and in 2025 Google DeepMind's Gemini Deep Think and an OpenAI model each reached gold-medal level at the International Mathematical Olympiad.
 
 ## Caveat
 These systems are tools in a pipeline. Predictions need lab or expert verification, and models can be confidently wrong outside the data they were trained on.
 
 ## A worked example: why folding is hard
-A short protein of 100 building blocks has an astronomical number of possible shapes. Trying them all is impossible. AlphaFold learned from about 170,000 known structures which blocks tend to sit near each other, and predicts the shape directly. The result is not magic. It is pattern knowledge from known proteins, applied to a new one.
+A short protein of 100 amino acids has an astronomical number of possible shapes. Trying them all is impossible. AlphaFold learned from the roughly 170,000 experimentally solved structures in the Protein Data Bank (PDB), a free archive of known protein shapes. It learned which amino acids tend to sit near each other, and predicts the shape directly. The result is not magic. It is pattern knowledge from known proteins, applied to a new one.
 
 ## How the prediction works
 Related proteins from different species are lined up next to each other. If two positions tend to change together across species, they are probably close in 3D, because a change at one spot needs a matching change at the other to keep the protein stable. The network learns to read these paired signals and turns them into a predicted shape. This is a simplified picture, but it shows why the method needs many known proteins to learn from.
@@ -217,18 +217,19 @@ Treating a predicted structure as a measured one. It is a strong hypothesis. Che
 ```resources
 article | AlphaFold | https://deepmind.google/science/alphafold/ | Google DeepMind | Overview and access to the structure database.
 tool | AlphaFold Protein Structure Database | https://alphafold.ebi.ac.uk/ | EMBL-EBI | Look up predicted structures for proteins.
+paper | Learning skillful medium-range global weather forecasting | https://www.science.org/doi/10.1126/science.adi2336 | Lam et al. | The GraphCast paper in Science.
 paper | Highly accurate protein structure prediction with AlphaFold | https://www.nature.com/articles/s41586-021-03819-2 | Jumper et al. | The Nature paper.
 article | The Nobel Prize in Chemistry 2024 | https://www.nobelprize.org/prizes/chemistry/2024/press-release/ | Nobel Prize | The official announcement.
 ```
 
 ```quiz
-What problem did AlphaFold address? | Reading handwritten text from old documents ; Beating human champions at the game of Go ; Predicting protein 3D shape from sequence | 2 | Protein structure prediction was a long-standing open problem.
+A learned weather model forecasts 6 hours per step. How many steps does a 5-day forecast take? | 5 steps ; 20 steps ; 120 steps | 1 | 5 days is 120 hours, and 120 / 6 = 20 steps, each feeding the last, so small errors can add up.
 Why should you verify AI predictions in science? | Models can fail outside their training data ; Models are usually wrong on any real protein ; Journals require a second model to agree first | 0 | Treat outputs as strong hypotheses until experiments confirm them.
-A predicted protein shape suggests a drug could bind. What should happen next? | Publish the shape as if it were measured ; Test it in a lab before relying on it ; Skip testing because the model scored well | 1 | The prediction narrows the search. People and labs still confirm.
+In the AlphaFold database, one region of a predicted protein is colored low confidence. How should you treat it? | As proof the protein has no shape ; As reliable as the high-confidence core ; As a weaker guess that needs checking | 2 | The model reports its own doubt, so low-confidence regions, often flexible loops, are the ones to verify first.
 ```
 
 ```story
-Proteins are tiny machines that run every cell, and each one folds from a string of building blocks into a specific 3D shape. For fifty years, finding one shape could take a lab a year of expensive work. After AlphaFold, a researcher studying a disease protein can look up its predicted shape in a free database in a few seconds and decide where to spend lab time.
+Proteins are tiny machines that run every cell, and each one folds from a string of amino acids into a specific 3D shape. For fifty years, finding one shape could take a lab a year of expensive work. After AlphaFold, a researcher studying a disease protein can look up its predicted shape in a free database in a few seconds and decide where to spend lab time.
 ```
 
 # speech-and-multimodal | Speech and multimodal models | 1 | 12
@@ -238,7 +239,7 @@ Modern models take in and produce text, images, audio and video in one system.
 Speech recognition used to need separate acoustic and language models. Whisper (OpenAI, 2022) trained a transformer on about 680,000 hours of audio from the web and became a robust open speech-to-text model across many languages. Text-to-speech now sounds natural, and real-time voice conversation is a product feature.
 
 ## Multimodal
-A multimodal model maps different kinds of input into a shared representation. Images are cut into patches and turned into vectors the same way tokens are, then processed by the same transformer. This lets a model read a chart, a screenshot or a handwritten note, and describe or reason about it. CLIP (2021) trained image and text encoders so matching pairs land close together, which powers image search and guides image generation.
+A multimodal model turns different kinds of input into vectors it can compare or combine. In many models, an image is cut into patches and each patch becomes a vector, much as a word becomes a token, and a transformer reads those vectors with attention. This lets a model read a chart, a screenshot or a handwritten note, and describe or reason about it. Some systems use a separate image encoder and text encoder (an encoder is a network that turns its input into vectors) and train them so matching pairs land close together. CLIP (2021) does this, which powers image search and guides image generation.
 
 ## Why it matters for builders
 Screenshots and documents can go straight in without a separate OCR step, and voice becomes an interface. Cost and latency go up with image and audio input, so check token usage for each type.
@@ -257,7 +258,7 @@ flowchart TD
 ```
 
 ## Costs to plan for
-Images and audio use many more tokens than the text that describes them. A single high-resolution photo can cost as much as a few thousand words. Downscale before sending, and send audio in short segments.
+Images and audio use many more tokens than the text that describes them. Image cost depends on the model and the resolution. A large photo can cost thousands of tokens, which is far more than the one-sentence caption that describes it. Check your provider's pricing page for how it counts image tokens. Downscale before sending, and send audio in short segments.
 
 ```mermaid Doubling an image's width and height quadruples the patches the transformer must read, at 16 by 16 pixel patches
 xychart-beta
@@ -267,7 +268,7 @@ xychart-beta
 ```
 
 ## How speech becomes text
-Sound is a stream of numbers, for example 16,000 a second (a common rate). The model first turns a short clip into a spectrogram, a picture showing which pitches are loud at each moment. It then reads that picture with a transformer, much as it would read an image, and writes out text tokens one at a time. Many modern speech models, including Whisper, work in roughly this way. One second of audio at that rate is 16,000 numbers, which is why audio is heavy to process.
+Sound is a stream of numbers, for example 16,000 a second (a common rate). The model first turns a clip into a spectrogram, a picture showing which pitches are loud at each moment. Whisper reads audio in 30-second windows, so longer recordings are cut into chunks. The transformer reads that picture, much as it would read an image, and writes out text tokens one at a time. Many modern speech models, including Whisper, work in roughly this way. One second of audio at that rate is 16,000 numbers, which is why audio is heavy to process.
 
 ```mermaid Audio is turned into a spectrogram, read by a transformer, and written out as text tokens
 flowchart TD
@@ -281,7 +282,7 @@ flowchart TD
 You need to pull the total from a scanned invoice. Option one: run OCR (software that turns a picture of text into text) and send only the text. It is cheap, but it loses layout, so a total in a table can be confused with a subtotal. Option two: send the image directly. The model sees the layout and stamps, but you pay for more tokens. Option two is not needed for a clean typed contract where plain text is enough. Try both on ten real documents and compare.
 
 ## When it goes wrong
-With speech, the symptom is confident but wrong words, mostly names, jargon and accents, and sometimes text invented for silent or noisy stretches. With images, the symptom is a description of details that are not there, or small print that became unreadable after downscaling. To confirm, ask the model to quote the exact text it relied on and compare it with the source. For speech, measure the word error rate: wrong words divided by total words, checked against a transcript you wrote by hand.
+With speech, the symptom is confident but wrong words, mostly names, jargon and accents, and sometimes text invented for silent or noisy stretches. With images, the symptom is a description of details that are not there, or small print that became unreadable after downscaling. To confirm, ask the model to quote the exact text it relied on and compare it with the source. For speech, measure the word error rate: the wrong, missing and extra words, divided by the number of words in a transcript you wrote by hand.
 
 ## Try it yourself: measure your own error rate
 Record a 30 second clip that includes two names and some background noise. Run it through any speech-to-text tool. Write down what you actually said and count the wrong, missing or extra words. With invented numbers, 6 wrong out of 100 words is 6 ÷ 100 = 6 percent. Names and jargon are often the biggest source of errors, so those are the words to double-check.
@@ -296,8 +297,8 @@ paper | Learning Transferable Visual Models From Natural Language Supervision | 
 ```
 
 ```quiz
-How does a transformer read an image? | It converts the image to text with another tool ; It cannot read images without a special chip ; It cuts it into patches, treated like tokens | 2 | Vision transformers treat image patches the way language models treat tokens.
-What does CLIP do? | Maps matching images and text close together ; Compresses video so that it takes less storage ; Writes captions for any video, word by word | 0 | That shared space powers image search and guides image generation.
+You double an image's width and height before sending it to a patch-based model. What happens to the number of patches? | It stays the same ; It doubles ; It quadruples | 2 | Patches are counted in both directions, so doubling each side gives 2 × 2 = 4 times as many (196 becomes 784).
+What does CLIP do? | Maps matching images and text close together ; Compresses video so that it takes less storage ; Writes captions for any video, word by word | 0 | CLIP trains an image encoder and a text encoder so a photo and its caption end up with similar vectors, and a photo and an unrelated caption end up far apart. That closeness is what makes image search by text possible.
 A 224 by 224 image is cut into 16 by 16 patches. How many patches is that? | 256, a 16 by 16 grid ; 196, a 14 by 14 grid ; 1,024, a 32 by 32 grid | 1 | 224 divided by 16 is 14 in each direction, and 14 × 14 = 196.
 ```
 
@@ -309,13 +310,13 @@ A video platform used to rely on volunteers to add subtitles. Now a speech model
 Code and math are where models improved fastest, because answers can be checked.
 
 ## Code
-GitHub Copilot (2021) brought autocomplete from large models into editors. Chat assistants followed, then agents that read a repository, edit files and run tests. SWE-bench measures this on real GitHub issues: the model gets the repository and the issue and must make the tests pass. Scores climbed from low single digits in 2023 to a majority of tasks solved on its verified subset in 2025.
+GitHub Copilot (2021) brought autocomplete from large models into editors. Chat assistants followed, then agents that read a repository, edit files and run tests. SWE-bench measures this on real GitHub issues: the model gets the repository and the issue and must make the tests pass. Scores climbed from low single digits in 2023 to over half of the tasks on SWE-bench Verified in 2025. Verified is a smaller set of issues that people checked to make sure each one is solvable and its tests are fair.
 
 ## Math
-Reasoning models trained with reinforcement learning on problems with checkable answers improved quickly on competition math. In 2024 DeepMind's AlphaProof and AlphaGeometry reached silver-medal level on International Mathematical Olympiad problems. In 2025 several systems reached gold-medal level.
+Reasoning models trained with reinforcement learning on problems with checkable answers improved quickly on competition math. In 2024 DeepMind's AlphaProof and AlphaGeometry 2 solved four of the six International Mathematical Olympiad problems, 28 of 42 points, which is silver-medal level. People translated the problems into a formal language first, and the systems took up to three days on some. AlphaProof checks each proof with a program, which is exactly the automatic check this lesson is about. In 2025 two systems, from Google DeepMind and OpenAI, reached gold-medal level.
 
 ## Why it matters
-When you can verify a result automatically, you can train on it and you can trust it more. That is why coding agents lead the agent field, and why building verification into your own tasks pays off.
+When you can verify a result automatically, you can train on it and you can trust it more. That is a big reason coding agents are among the most useful agents today, and why building verification into your own tasks pays off.
 
 ## A worked example: why checkable work improves fastest
 Suppose a model attempts 1,000 coding problems with hidden tests. Each attempt either passes or fails, with no argument. That pass/fail signal can be used to train the model: reinforce the attempts that passed. For an essay there is no such signal, only opinions. Domains with automatic checks, like code, math and games, therefore improve first.
@@ -340,7 +341,7 @@ flowchart TD
 3. Run every attempt against the tests.
 4. Score each one 1 for pass and 0 for fail. Suppose 3 pass, so the pass rate is 3 ÷ 8 = 37.5 percent.
 5. Adjust the model so the 3 passing styles become more likely.
-Repeat over thousands of problems. No human has to read the attempts, which is why this scales.
+Repeat over thousands of problems. No human has to read each attempt, only the tests, which is why this scales. The tests have to be good, as the next example shows.
 
 ## A second example: where checking is weak
 Ask a model to write a friendly welcome email. There is no test that says the email is good. Even in code, tests can be weak. If the tests only check one input, a function that hardcodes the expected answer passes. The symptom is green tests and wrong behavior on real data. Confirm it by adding a test the model never saw, with a different input, and reading the diff for special-case code.
@@ -366,24 +367,25 @@ Accepting generated code because it compiles. Read it, run the tests and look fo
 ```resources
 tool | SWE-bench | https://www.swebench.com/ | Princeton NLP | Leaderboard of agents fixing real GitHub issues.
 article | AI achieves silver-medal standard solving International Mathematical Olympiad problems | https://deepmind.google/discover/blog/ai-solves-imo-problems-at-silver-medal-level/ | Google DeepMind | AlphaProof and AlphaGeometry 2.
+article | Advanced version of Gemini with Deep Think officially achieves gold-medal standard at the International Mathematical Olympiad | https://deepmind.google/discover/blog/advanced-version-of-gemini-with-deep-think-officially-achieves-gold-medal-standard-at-the-international-mathematical-olympiad/ | Google DeepMind | The 2025 gold-medal result.
 paper | Evaluating Large Language Models Trained on Code | https://arxiv.org/abs/2107.03374 | Chen et al. | The Codex paper that introduced HumanEval.
 ```
 
 ```quiz
-Why did code and math improve fastest? | Their wording is the least ambiguous of any field ; More money was spent on them than on anything else ; Answers can be auto-checked during training | 2 | A pass or fail result can be used to train and to trust the output.
-What does SWE-bench test? | Whether an agent fixes real repository issues ; How quickly a model can write a new function ; How well a model explains legacy code to users | 0 | It scores agents on real repository tasks.
+Why did code and math improve fastest? | Their problems are shorter than problems in other fields ; More money was spent on them than on any other field ; Answers can be auto-checked during training | 2 | A pass or fail result can be used to train and to trust the output.
+A tool scores 70 percent on SWE-bench. What can you conclude? | It will fix 70 percent of the bugs in your codebase ; It did well on a public set of open-source issues, so try it on your own code ; It never needs tests when it writes code for you | 1 | The score shows a trend on one public set, not how the tool does on your code.
 A generated change compiles. Why is that not enough to accept it? | Compiling guarantees that the logic is correct ; It may be wrong, so test and read the diff ; The model has already tested it internally | 1 | Compiling checks syntax, not behavior. Tests and review check behavior.
 ```
 
 ```story
-A developer opens a repository they have never seen and asks an agent to find where passwords are validated and add a length check. The agent searches, reads three files, makes the change and runs the tests. Doing it by hand would take an hour of orientation. Code is where AI gave the earliest daily value, because the result can be checked by running it.
+A developer opens a repository they have never seen and asks an agent to find where passwords are validated and add a length check. The agent searches, reads three files, makes the change and runs the tests. Doing it by hand could take an hour of orientation. Code is where AI gave the earliest daily value, because the result can be checked by running it.
 ```
 
 # open-models | Open-weight models | 1 | 12
 Some labs publish the trained weights, so anyone can download and run the model.
 
 ## What it means
-Open-weight means the numbers that define the trained model are available. It is not always open source: licenses vary, and the training data and code are often not released. You can run an open-weight model on your own machine or server, fine-tune it and inspect it. Llama (Meta), Mistral, Qwen (Alibaba) and DeepSeek are well-known families. Hugging Face hosts close to a million models and the tools to use them.
+Open-weight means the numbers that define the trained model are available. It is not always open source: licenses vary, and the training data and code are often not released. You can run an open-weight model on your own machine or server, fine-tune it and inspect it. Llama (Meta), Mistral, Qwen (Alibaba) and DeepSeek are well-known families. Hugging Face hosts over a million models and the tools to use them.
 
 ## Trade-offs
 Open weights give privacy, control, predictable cost at scale and the ability to customize. You take on serving, updates and safety. Frontier closed models are usually somewhat ahead on the hardest tasks, and the gap has varied over time. Smaller open models run on a laptop and are good enough for many tasks like classification and extraction.
@@ -392,7 +394,7 @@ Open weights give privacy, control, predictable cost at scale and the ability to
 "Open weights" means you can download the trained numbers. "Open source" in the strict sense would also include the training data and code. Most releases are the first kind. Always read the license: some forbid commercial use or have size limits.
 
 ## A worked example: choosing
-You need to classify 5 million support tickets a month. A closed API at $0.50 per million tokens with 300 tokens per ticket costs about 1.5 billion tokens × $0.50/million = $750 a month. A small open model on one rented GPU may cost around $400 a month and keep data in-house, but you must run it and keep it updated. If volume is small, the API is easier. Here the saving is only $350 a month, which an hour or two of engineer time a week could use up, so hosting pays off only when volume is much larger or privacy matters.
+You need to classify 5 million support tickets a month. A closed API at $0.50 per million tokens with 300 tokens per ticket costs about 1.5 billion tokens × $0.50/million = $750 a month. A small open model on one rented GPU may cost around $400 a month and keep data in-house, but you must run it and keep it updated. This assumes one GPU keeps up with about 600 tokens a second, which small models can do when requests are batched, so check your own load first. If volume is small, the API is easier. Here the saving is only $350 a month, which two hours of engineer time a week, at about $50 an hour, would use up, so hosting pays off only when volume is much larger or privacy matters.
 
 ```mermaid The API bill rises with volume while a rented GPU costs the same each month, so they cross near 2.7 million tickets (invented prices, 300 tokens a ticket)
 xychart-beta
@@ -403,7 +405,7 @@ xychart-beta
 ```
 
 ## What you actually download
-An open-weight release is a large file of numbers plus a program that runs them. The file size is roughly the number of parameters times the bytes stored for each one. Invented numbers: a model with 7 billion parameters stored at 2 bytes each is 14 GB. Quantization (storing each number with less precision) at half a byte each cuts that to 3.5 GB, at some cost in quality. The model also needs extra memory while it works, so a file that fits on your disk may not fit in memory.
+An open-weight release is a large file of numbers plus a program that runs them. The file size is roughly the number of parameters times the bytes stored for each one. Invented numbers: a model with 7 billion parameters stored at 2 bytes each is 14 GB. Quantization (storing each number with less precision) at half a byte each cuts that to 3.5 GB, at some cost in quality. The model also needs extra memory while it works, so a file that fits on your disk may not fit in memory. "Fast memory" means the memory the chip does the math from: your computer's RAM, or the GPU's own memory if you have one. Disk is far slower. As a rough rule, plan on the file size plus 20 to 30 percent, so the 3.5 GB version wants about 4.5 GB free, and a laptop with 8 GB of RAM can usually hold it.
 
 ```mermaid The file size comes from parameters times bytes each, and the model must fit in fast memory to run quickly
 flowchart TD
@@ -433,18 +435,18 @@ Assuming open means free. You pay in hardware, time and maintenance.
 tool | Hugging Face Hub | https://huggingface.co/models | Hugging Face | The main place to find, compare and download open models.
 repo | Ollama | https://github.com/ollama/ollama | Ollama | Run open models locally with one command.
 repo | llama.cpp | https://github.com/ggml-org/llama.cpp | ggml | Efficient local inference in C and C++.
-article | Open-source AI is the path forward | https://about.fb.com/news/2024/07/open-source-ai-is-the-path-forward/ | Mark Zuckerberg | Meta's argument for open weights.
+article | Open-source AI is the path forward | https://about.fb.com/news/2024/07/open-source-ai-is-the-path-forward/ | Mark Zuckerberg | Meta's case for releasing its models openly. It calls them "open source"; the section above explains why "open weights" is the more exact term.
 tool | Gemma | https://deepmind.google/models/gemma | Google DeepMind | Google's lightweight open models.
 course | Building with Llama 4 | https://www.deeplearning.ai/short-courses/building-with-llama-4 | DeepLearning.AI and Meta | Short course on using Llama models.
 ```
 
 ```quiz
-What do open-weight models usually let you do? | Read all of their training data ; Skip reading the license terms ; Download and run them yourself | 2 | The weights are published. Licenses and data availability vary.
-When is an open model a good choice? | When data control matters and you can run it ; When you want it running with no setup work ; When you need top quality on every single task | 0 | Running it yourself keeps data in-house, at the cost of operating it.
-You classify 5 million tickets a month and have no privacy concern. What should you compare first? | Which model has the largest parameter count ; API cost against hosting cost plus upkeep ; Which license text is the shortest to read ; Whichever model tops a public leaderboard | 1 | At volume, total cost including your own time decides, not size or fame.
+What do open-weight models usually let you do? | Read all of their training data ; Use them commercially under any terms ; Download and run them yourself | 2 | The weights are published. Licenses and data availability vary.
+When is an open model a good choice? | When data control matters and you can run it ; When you want someone else to run and update it ; When you need the strongest model on the hardest tasks | 0 | Running it yourself keeps data in-house, at the cost of operating it.
+A team sends 200 requests a day of 1,000 tokens each, with no privacy rule, at $0.50 per million tokens. Which is the better choice? | A rented GPU, because it is billed by the hour ; The API, because the bill is about $3 a month ; A GPU, because open models are free to run ; Neither, because the volume is too small to matter | 1 | 200 x 1,000 x 30 is 6 million tokens, about $3, far below a GPU rental.
 ```
 
 ```story
-A hospital cannot send patient notes to an outside service. It downloads an open-weight model and runs it on its own servers. The notes never leave the building. The model is a bit weaker than the best closed one, but for summarizing notes it is good enough, and the privacy problem disappears.
+A hospital cannot send patient notes to an outside service. It downloads an open-weight model and runs it on its own servers. The notes never leave the building. The model is a bit weaker than the best closed one, but for summarizing notes it is good enough, and the biggest privacy problem, sending notes to an outside company, goes away. The hospital still has to secure its own servers.
 ```
 

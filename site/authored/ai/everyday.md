@@ -4,7 +4,7 @@ AI is most useful as a patient helper that explains, drafts and critiques. It is
 ## What it is
 You do not need to code to get value from a model. The strongest everyday uses fall into a few groups. Explaining: ask for a concept in three ways, with an analogy, or at a younger reading level. Practising: ask it to quiz you, wait for your answers, then grade them and explain what you missed. Drafting and critiquing: write your own draft, then ask "what is the weakest part of this and why?" Planning: turn a messy goal into a weekly schedule. Rewriting: change the tone of an email without changing what it says. Working with data: ask for a spreadsheet formula and an explanation of how it works.
 
-A good habit is to say what you want it to do for your thinking, not instead of it. "Explain, then test me" builds skill. "Write it for me" builds nothing.
+A good habit is to say what you want it to do for your thinking, not instead of it. "Explain, then test me" builds skill. "Write it for me" gives you text but builds little skill, so save it for work where the skill is not the point, like tidying an email.
 
 ## A worked example: learning fractions
 Version one: "Give me the answers to my fractions homework." You get answers and learn nothing. Version two: "Explain adding fractions with a pizza example. Then give me five practice questions, one at a time. After each of my answers, tell me if I am right and why." In ten minutes you have practised five problems, found the step you get wrong, and can try a fresh set tomorrow. The same tool, used differently, is a tutor or a shortcut.
@@ -28,17 +28,17 @@ A model has no idea what you already know. It sees only the words in the convers
 The model also keeps track of the conversation only inside its context window, the amount of text it can see at once. In a very long chat, early instructions can fade. If the helper starts ignoring your rules, restate them or open a fresh chat.
 
 ## A second example: when AI is the wrong tool
-Suppose you want to know whether a bus leaves at 7:40 tomorrow. A chatbot may give a confident time, but it has no live timetable and may be guessing. Open the transport site instead. The same goes for today's weather, a score from last night, or the current rules of your school. Use a model for explaining, drafting and practising. Use the real source for facts that change or that you will act on.
+Suppose you want to know whether a bus leaves at 7:40 tomorrow. A plain chatbot has no live timetable and may be guessing. Some chatbots can search the web, but they can still misread or misquote a page, so for a bus you will board, open the transport site yourself. The same goes for today's weather, a score from last night, or the current rules of your school. Use a model for explaining, drafting and practising. Use the real source for facts that change or that you will act on.
 
 ## What goes wrong
-The most common failure is agreement. A model often praises a weak draft or accepts your wrong answer, because it was tuned on human ratings, and people tend to rate agreeable answers higher. You will see this as feedback that is always positive. To test it, paste in a paragraph you know is flawed and ask for problems. If it finds none, ask again with "list three specific weaknesses".
+The most common failure is agreement. A model often praises a weak draft or accepts your wrong answer. One known reason is that models are further trained on human ratings of their answers, and people tend to rate agreeable answers higher. You will see this as feedback that is always positive. To test it, paste in a paragraph you know is flawed and ask for problems. If it finds none, ask again with "list three specific weaknesses".
 
 Another failure is a plausible but wrong explanation. If a step does not make sense to you, say so and ask for a different example. Do not nod along.
 
 ## Try it yourself
 Spend ten minutes on a topic from your next test.
 1. Ask the model to explain one idea with an analogy.
-2. Ask for four questions, one at a time, and answer each before it replies.
+2. Ask for five questions, one at a time, and answer each before it replies.
 3. Note which answer you got wrong, and ask for a new explanation of only that part.
 4. Check one fact it gave you in your textbook.
 
@@ -55,12 +55,12 @@ docs | Prompt engineering overview | https://docs.anthropic.com/en/docs/build-wi
 
 ```quiz
 Which prompt helps you learn the most? | Write my full homework answers in my own style ; Summarize the chapter in one line so I can skip reading ; Give me only the final results of each problem ; Explain it, then quiz me and grade my answers | 3 | Explaining, then testing and grading you, makes you do the thinking. The others skip it.
-You wrote an essay draft. What is a strong thing to ask a model? | What is the weakest argument here, and why? ; Please make this essay sound smarter overall ; Rewrite the whole thing in a different voice ; Tell me it is great so I can hand it in | 0 | Asking for the weakest part uses the model as a critic and keeps the writing yours.
+A model calls your weak paragraph "excellent" every time you ask. What do you try next? | Accept it, since the model is the expert ; Ask the same thing again in capital letters ; Ask it for three specific weaknesses ; Ask it to make the paragraph longer | 2 | Asking for specific problems pushes past the habit of agreeing, and keeps the writing yours.
 A model gives a confident answer you cannot check. What is the sensible next step? | Trust it, since confident answers are usually right ; Check the key facts against another source first ; Ask again and keep whichever reply is longer ; Add the word please to the question next time | 1 | Confidence is not evidence. Check anything that matters against something independent.
 ```
 
 ```story
-Two students prepare for the same biology test. One asks a chatbot for a summary of the chapter and reads it once. The other asks it to quiz her on the chapter, finds she keeps missing the difference between two processes, and asks for a clearer explanation of exactly that. On test day the second student remembers more, because she did the retrieval herself.
+Two students prepare for the same biology test. One asks a chatbot for a summary of the chapter and reads it once. The other asks it to quiz her on the chapter, finds she keeps missing the difference between two processes, and asks for a clearer explanation of exactly that. On test day the second student remembers more, because she had to pull the answers out of her own head, which strengthens memory far more than rereading a summary does.
 ```
 
 # checking-ai-answers | How to check an AI answer | 1 | 12
@@ -80,10 +80,10 @@ The table shows what each check catches.
 | Ask what it assumed | Hidden guesses behind a confident answer |
 | Try it first on something you know | A kind of question the model handles badly |
 
-A well-known fact-checking routine called SIFT fits here: stop and think before sharing, investigate who is behind a source, find better coverage, and trace claims back to where they started.
+SIFT, a fact-checking routine from Mike Caulfield, fits here: Stop before you read or share, Investigate the source, Find better coverage, and Trace the claim to its original context. For an AI answer that means: find who actually published the claim, and see what other sources say about it.
 
 ## A worked example
-You ask for "three studies showing that sleep improves memory", and the answer lists three titles with authors and years. You search for each title. Two exist. The third does not, and it was a plausible invention. In 2023 a lawyer submitted a legal brief that cited six court cases a chatbot had invented, and none of them existed. A search takes a minute. The cost of skipping it can be very large.
+You ask for "three studies showing that sleep improves memory", and the answer lists three titles with authors and years. You search for each title. Two exist. You open them and find the claimed result in one; the other is a real paper about something else. The third does not exist, and it was a plausible invention. In 2023 a lawyer submitted a legal brief that cited six court cases a chatbot had invented, and none of them existed. A search takes a minute. The cost of skipping it can be very large.
 
 ## How much to check
 Low stakes, such as a joke or a recipe idea: a quick glance. Medium, such as a homework fact or a work email: confirm the key claims. High, such as health, money, law or safety: use an authoritative source or a professional, and treat the model as a starting point only.
@@ -106,8 +106,8 @@ You ask: "A jacket costs $80 with 15% off. What do I pay?" A model might answer 
 ## What goes wrong when you check
 Checking can fail too. A search that only repeats the same claim is not independent. Ten websites copying one source count as one source. Also beware asking the model to confirm itself: "Is this accurate?" tends to produce agreement. Instead, search for the specific name, number or quote in a place the model did not write.
 
-## How to tell your checking is working
-Run a small test. Ask a model five questions where you already know the answers, including one trick question about something that does not exist, such as a made-up book title. Count how many it gets right and whether it admits it does not know the made-up one. That gives you a rough feel for how far to trust it on that kind of question. The sample is tiny, so treat it as a hint, not a measurement.
+## Test the model before you trust it
+Run a small test. Ask a model five questions where you already know the answers, including one trick question about something that does not exist, such as a made-up book title. Count how many it gets right and whether it admits it does not know the made-up one. That gives you a rough feel for how far to trust it on that kind of question. The sample is tiny, so treat it as a hint, not a measurement. If it invents the made-up book, check every source it gives you.
 
 ## Common mistake
 Asking the model "are you sure?" and accepting the reply. It will often agree or reverse itself without checking anything. Check against the world, not against the model.
@@ -119,9 +119,9 @@ course | Calling Bullshit | https://www.callingbullshit.org/ | Bergstrom and Wes
 ```
 
 ```quiz
-A model gives you a citation. What is the best first check? | Assume it is real because it includes a year ; Ask the model whether the source is real ; Find the source and confirm it says that ; Count how many authors the citation lists | 2 | Invented citations look real. Only finding the actual source proves it exists.
+A model cites a real paper, and the quote it gives sounds right. Which check catches that the paper does not say it? | Searching for the quote inside the paper itself ; Confirming the paper title exists in a search ; Asking the model to repeat the quote again ; Checking that the year looks plausible | 0 | A real title proves only that the paper exists. Searching the source for the quote shows whether it says that.
 How much checking does a question about medicine or law deserve? | A quick glance, since models train on expert text ; None, if the model sounds completely sure ; Only a spelling check on the names involved ; A lot, with expert sources or a professional | 3 | The higher the stakes, the more independent verification you need.
-You ask a model "are you sure?" and it says yes. What have you learned? | Very little, it never looked outside itself ; That the answer has now been double-checked ; That it looked up a second source to confirm ; That its confidence level is well calibrated | 0 | Models often agree or flip when asked. Verification has to come from an outside source.
+You ask a chatbot with no search tool "are you sure?" and it says yes. What have you learned? | Very little, it only looked at its own earlier answer ; That the answer has now been double-checked ; That it looked up a second source to confirm ; That its confidence level is well calibrated | 0 | Models often agree or flip when asked. Without a visible source you can open, a yes from the model is not a check.
 ```
 
 ```story
@@ -141,7 +141,7 @@ Passwords and security codes. Government ID, bank or card numbers. Medical recor
 Before: "Dear Maria Lopez, your account 4421-8830 is overdue by $240. Please call 555-0142." You want help making it politer. After redacting: "Dear [customer], your account [number] is overdue by [amount]. Please call [phone]." The model improves the wording just as well. You paste the real details back in yourself.
 
 ## What happens to your message
-Your text travels over the internet to the provider's computers, where the model reads it and writes a reply. The provider may store the conversation, let staff review some of it for safety, or use it to improve future models. Which of these applies depends on the service and plan. That is why the settings page matters more than the logo on the app.
+Follow one message. It leaves your device and reaches the provider's servers, where the model reads it and writes a reply. The provider may then keep a copy, let staff look at some of it for safety, or add it to training data. Training means your text may be used to adjust a future model, so pieces of it could shape what that model says later. Each step is a separate choice that depends on the service and plan, which is why the settings page matters more than the logo on the app.
 
 ```mermaid Your message passes through the provider, which may do several things with it depending on the service and settings.
 flowchart LR
@@ -160,7 +160,7 @@ Redacting works when the details are separate from the question. Imagine you pas
 Strict privacy has a cost. The more context you give a model, the better its help, so withholding everything makes answers vague. Pick the level by risk. A recipe or a poem needs no care. Health, money and other people's secrets need a lot. Some tools can run on your own computer, so the text never leaves it. Those models are usually smaller and less capable, which is the trade.
 
 ## What goes wrong
-Data leaks mostly through habit, not hacking. You paste a whole document when two paragraphs would do. You upload a screenshot with notifications visible. You use a work account on a personal device. You will not see any symptom, which is the problem. Prevention is the only fix, because you cannot take text back once it is sent.
+Most leaks start with ordinary habits. You paste a whole document when two paragraphs would do. You upload a screenshot with notifications visible. You use a work account on a personal device. You will often see no symptom at the time, which is the problem. Prevention is the best fix. Deleting a chat removes it from your history, but you cannot be sure every copy is gone, and text already used for training cannot be pulled back out of a model. Check the service's retention rules, and assume anything you send may be kept for a while.
 
 ## Try it yourself
 Open the privacy or data settings of one AI tool you use.
@@ -174,15 +174,15 @@ Expect the answers to be in different places than you guessed. Repeat the check 
 Using a personal account for work documents. Assuming deleted chats vanish everywhere at once. Pasting a screenshot that contains tabs, names or messages you did not mean to share. When in doubt, ask yourself whether you would be comfortable if this text appeared in a stranger's inbox.
 
 ```resources
-docs | Anthropic Privacy Center | https://privacy.anthropic.com/ | Anthropic | How conversations are handled and how to control your data.
+docs | Anthropic Privacy Center | https://privacy.claude.com/ | Anthropic | How conversations are handled and how to control your data.
 docs | Data controls FAQ | https://help.openai.com/en/articles/7730893-data-controls-faq | OpenAI | Chat history, training opt-outs and temporary chats.
-article | AI Risk Management Framework | https://www.nist.gov/itl/ai-risk-management-framework | NIST | A reference for how organizations think about data and AI risk.
+article | AI Risk Management Framework | https://www.nist.gov/itl/ai-risk-management-framework | NIST | Optional, for readers at work: how organizations structure AI risk, including privacy.
 ```
 
 ```quiz
 Which of these should you keep out of a chat with an AI service? | A request for a simple chicken recipe with rice ; Passwords, ID numbers, private data of others ; A question about how volcanoes actually form ; A draft of a short poem you wrote yourself | 1 | Credentials, identity numbers and private information about others are risky to share, whatever the provider promises.
-You want help rewording a customer email. What is a safe way to do it? | Paste the real email and hope for the best ; Post it in a public forum and ask for edits ; Replace names and numbers with placeholders ; Send it through a free translation app first | 2 | Redacting the details loses nothing the model needs and keeps the sensitive parts with you.
-Where do you find out whether a service uses your chats to train its models? | The name of the app you happen to be using ; The color of the logo on the home screen ; The number of users the service has signed up ; The current privacy policy and your settings | 3 | Policies differ by service and plan and they change, so the current policy and your settings are the source of truth.
+An email says: "Dear Maria Lopez, order 4471 is late. As discussed at the Tuesday board meeting in Ghent, I will refund you." You replace the name and order number. What can still identify the customer? | Nothing, since the name was the only identifier ; The word Dear, because greetings are personal data ; The Tuesday board meeting in Ghent, which few people attended ; The refund, because every customer gets one | 2 | Rare details such as a small meeting, a place and a day can identify someone even after the name is gone.
+A friend says "this app never trains on your chats, it says so in its ad". What is the best next step? | Trust it, since ads must be accurate ; Assume it holds for free and paid plans alike ; Ask the chatbot, since it knows its own policy ; Read the privacy page and check your own plan and settings | 3 | An ad is not the policy, and terms differ by plan and change over time.
 ```
 
 ```story
@@ -203,20 +203,20 @@ flowchart TD
   Q -->|AI banned| D[Do the work without AI]
   Q -->|AI allowed| U[Use it and say how]
   U --> E{Can you explain every part?}
-  E -->|Yes| OK[Fine to submit]
-  E -->|No| B[Not your work yet]
+  E -->|Yes| OK[Learned it, and you followed the rule]
+  E -->|No| B[Not your work yet: go back and redo it yourself]
   class OK good
   class B bad
 ```
 
 ## Why detectors are not the answer
-Tools that claim to detect AI writing are unreliable. OpenAI launched its own text classifier in early 2023 and withdrew it a few months later because of its low accuracy. A 2023 Stanford study found that detectors wrongly flagged writing by non-native English speakers much more often. A flag is not proof, and false accusations can hurt real students. If you wrote it yourself, keep your notes and drafts, because they show your work.
+Tools that claim to detect AI writing are unreliable. OpenAI launched its own text classifier in early 2023 and withdrew it a few months later because of its low accuracy. A 2023 Stanford study tested seven detectors on essays that real students wrote. On essays by US eighth graders the detectors were almost always right. On essays by non-native English speakers (TOEFL test takers) they wrongly called 61% of them AI-written, on average. A flag is not proof, and false accusations can hurt real students. If you wrote it yourself, keep your notes and drafts, because they show your work.
 
 ## A worked example
 Two students write on the causes of the French Revolution. Student A pastes the prompt and submits the reply. Student B writes an outline, asks the model "what is missing from my argument?", rewrites two paragraphs herself, checks the dates, and adds a note: "I used an AI assistant to critique my outline." Student B can answer any follow-up question. Student A cannot answer the first one.
 
 ## Where the line sits
-Think of three levels. Allowed help is like asking a classmate to explain a topic or check your spelling. Gray help is like having someone restructure your essay. Not allowed is submitting work you cannot explain as yours. Your teacher decides where each task falls, so the same use can be fine in one class and cheating in another.
+Think of three levels. Allowed help is like asking a classmate to explain a topic or check your spelling. Gray help is like having someone restructure your essay. Over the line is handing in work you cannot explain, or using AI where the rule bans it, even if you could explain the result. Your teacher decides where each task falls, so the same use can be fine in one class and cheating in another. The explain test only tells you whether you learned. It never overrides the rule.
 
 ## A second example: a coding assignment
 You must write a function that sorts a list. A student asks a model for the code, pastes it in and passes the tests. In the next lesson the class builds on that function and the student is lost. Another student writes her own attempt, gets stuck, and asks the model to explain the error message. She fixes it herself. Both finished the task. Only one can now write the next one. The test is the same as before: could you redo it alone?
@@ -236,27 +236,28 @@ Assuming that because no one can see it, it is allowed. Using AI to skip the exa
 ```resources
 article | GPT detectors are biased against non-native English writers | https://arxiv.org/abs/2304.02819 | Liang et al. | The study showing that detectors misjudge non-native writing.
 article | New AI classifier for indicating AI-written text | https://openai.com/index/new-ai-classifier-for-indicating-ai-written-text/ | OpenAI | OpenAI's announcement, with its note that it later retired the tool for low accuracy.
-article | One Useful Thing | https://www.oneusefulthing.org/ | Ethan Mollick | Practical writing on how teachers and students are adapting to AI.
+article | One Useful Thing | https://www.oneusefulthing.org/ | Ethan Mollick | A newsletter on how AI is changing work and education (Mollick, Wharton).
 ```
 
 ```quiz
 What is a good test of whether you used AI to learn or to skip learning? | You can explain it all with the chat closed ; The assignment was handed in before the deadline ; The answer scored well on an AI-text detector ; The reply was much longer than your question | 0 | If you can explain and redo the work yourself, you learned it. If not, you only borrowed it.
-Why is it risky to accuse someone based on an AI detector? | Detectors are always right but take hours to run ; Detectors often err and can flag honest work ; The law forbids schools from using such tools ; They only work properly on very short texts | 1 | Evidence shows high error rates, so a flag alone is not proof.
-Your school has no clear rule for an assignment. What should you do? | Use it quietly and say nothing to anyone ; Skip the policy and assume it is fine ; Ask your teacher before you use it ; Ask the AI itself whether it is allowed | 2 | The person who set the assignment decides what is fair. Asking first protects you.
+Why is it risky to accuse someone based on an AI detector? | Detectors miss all AI text, so they prove nothing ; Detectors often err and can flag honest work ; Detectors only check spelling and grammar ; A low score on one detector clears you everywhere | 1 | Evidence shows high error rates, so a flag alone is not proof.
+Your school has no clear rule for an assignment. What should you do? | Use it quietly and say nothing to anyone ; Check whether a classmate got away with it ; Ask your teacher before you use it ; Ask the AI itself whether it is allowed | 2 | The person who set the assignment decides what is fair. Asking first protects you.
+A student pastes AI code, passes the tests, then cannot write the next function. What went wrong? | She broke the school's policy ; The tests were too easy ; The model gave wrong code ; She borrowed the result and did not learn the skill | 3 | Passing the tests showed the code worked, not that she could write it. The explain-and-redo test catches this.
 ```
 
 ```story
-A student's essay is flagged by a detector and she is called in. She opens her notes app and shows the outline, the three drafts and the sources she read, all with dates. The teacher reads the draft history and drops the matter. Keeping your own trail is the best defense, and a good learning habit anyway.
+A student's essay is flagged by a detector and she is called in. She opens her notes app and shows the outline, the three drafts and the sources she read, all with dates. The teacher reads the draft history and drops the matter. Keeping your own trail is a strong defense, and a good learning habit anyway.
 ```
 
 # copyright-and-deepfakes | Copyright, deepfakes and what is real | 1 | 14
 Two questions come up the moment you make or see AI content: who owns it, and is it real. Rules vary by country and are changing, so treat this as the basics.
 
 ## Who owns what an AI makes
-In the United States, the Copyright Office has said that copyright needs human authorship. Material produced purely by an AI is not protected, but your own writing, your selection and arrangement, and your edits can be. Other countries differ. Whether training models on copyrighted work is lawful is being decided in courts right now, with several large cases still open. For you, the practical rules are simple: do not claim AI output as hand-made work where it matters, do not present an AI image as a real photograph, and check the terms of the tool for commercial use.
+Copyright is the legal right to control who can copy and sell a piece of work. In the United States, the Copyright Office has said that copyright needs human authorship. Material produced purely by an AI is not protected, but your own writing, your selection and arrangement, and your edits can be. Typing a prompt, even a long and detailed one, is not enough on its own to count as authorship. Other countries differ. Whether training models on copyrighted work is lawful is being decided in courts right now, with several large cases still open. For you, the practical rules are simple: do not claim AI output as hand-made work where it matters, do not present an AI image as a real photograph, and check the terms of the tool for commercial use.
 
 ## Deepfakes
-A deepfake is fake audio, video or imagery that looks real. A few seconds of a person's voice can be cloned well enough to fool relatives. Common scams use a cloned voice to say "I'm in trouble, send money now". Defenses: hang up and call back on a number you already know, agree a family code word, and be slow when someone creates urgency. For images and video, look at the source before the picture. Some platforms and cameras attach Content Credentials, a standard (C2PA) that records where a file came from and how it was edited. It helps when present, but it can be stripped, so a missing label does not mean fake.
+A deepfake is fake audio, video or imagery that looks real. A few seconds of a person's voice can be cloned well enough to fool relatives. Common scams use a cloned voice to say "I'm in trouble, send money now". Defenses: hang up and call back on a number you already know. If they do not answer, call another relative or a friend who would know where they are, and do not send money until someone confirms. Also agree a family code word and be slow when someone creates urgency. For images and video, look at the source before the picture. Some platforms and cameras attach Content Credentials, a standard (C2PA) that records where a file came from and how it was edited. It helps when present, but it can be stripped, so a missing label does not mean fake.
 
 ## A worked example
 You receive a voicemail in your cousin's voice: "I lost my wallet abroad, please wire $800." The voice is perfect. You hang up and call your cousin's saved number. She is at home and answers right away. The voicemail was a clone. The check cost one minute.
@@ -265,7 +266,9 @@ You receive a voicemail in your cousin's voice: "I lost my wallet abroad, please
 flowchart TD
   V[Voicemail asks for money fast] --> H[Hang up]
   H --> C[Call their saved number]
-  C --> R{Did they send it?}
+  C --> N{Did they answer?}
+  N -->|No| A[Ask another relative]
+  N -->|Yes| R{Did they send it?}
   R -->|Yes| Ok[Real request]
   R -->|No| Cl[Likely a voice clone]
   class Cl bad
@@ -286,7 +289,7 @@ Two failures are common. One is believing a fake because it matches what you exp
 
 ## Try it yourself
 Agree on a code word with your family. Then pick a viral image from this week and trace it.
-1. Run a reverse image search with a search engine.
+1. Run a reverse image search: upload the picture to a search engine such as Google Lens or TinEye, and it lists other places the same image appears.
 2. Find the earliest post you can.
 3. Note whether a trusted outlet reports it.
 
@@ -304,7 +307,7 @@ article | Scammers use AI to enhance their family emergency schemes | https://co
 ```quiz
 You get an urgent voice message from a relative asking for money. What do you do? | Send the money fast because the voice sounds right ; Reply to that same message and ask for proof ; Wait a day to see if a second message comes ; Call back on a number you already know first | 3 | A cloned voice can sound perfect, so verify through a separate channel you already trust.
 In the US, who can hold copyright in an image made entirely by an AI? | Generally no one, as it lacks a human author ; The company that built the model, in every case ; The first person who posts it on the internet ; Whoever wrote the most detailed prompt for it | 0 | The US Copyright Office requires human authorship, so purely AI output is not protected, though human contributions can be.
-A video has no Content Credentials label. What does that tell you? | That it is definitely fake, with no doubt ; Very little, labels are often missing ; That it is definitely real, with no doubt ; That it was recorded by a physical camera | 1 | The standard helps when present, but most media do not have it, and it can be removed.
+A viral clip has no Content Credentials, but a news site you trust says it was filmed at the event. What is the best conclusion? | The clip is fake, because the label is missing ; The clip is probably real, and the trusted source counts more than the label ; The clip is real, because the news site said so ; The clip is real only if a detector tool agrees | 1 | Credentials help when present, but they are optional and can be removed, so a missing label proves nothing either way.
 ```
 
 ```story

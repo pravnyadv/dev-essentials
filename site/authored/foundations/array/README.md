@@ -1,6 +1,6 @@
 # Arrays
 
-An array stores items in one contiguous block of memory, so the position of item `i` is a single calculation. That is why reading `arr[i]` is O(1) and why almost every other structure is described by how it differs from an array.
+In the classic array model, items sit in one contiguous block of memory, so the position of item `i` is a single calculation. JavaScript engines usually store dense arrays this way, which is why reading `arr[i]` is O(1) and why almost every other structure is described by how it differs from an array.
 
 ## Operations and complexity
 

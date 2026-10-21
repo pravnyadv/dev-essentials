@@ -6,7 +6,7 @@ Scaling vertically (also called scaling up) means moving to a bigger machine: mo
 
 Vertical scaling is the easy first move. Nothing in your code changes. You stop the server, resize it, and start it again. The trouble shows up later. Prices tend to rise faster than power at the top end: the biggest machines carry a steep premium over a few mid-sized ones. There is also a hard ceiling, because no vendor sells a machine with ten thousand cores. And one big machine is still one machine, so if it dies or needs a reboot, your service is down.
 
-Horizontal scaling removes the ceiling and the single point of failure. It also fits the cloud well, where you can rent commodity machines by the hour. Scaling out with ordinary machines is usually cheaper than scaling up one special one, and it is easier to hire people who know the setup. The price is complexity. You now have many copies of your program, and several new problems appear.
+Horizontal scaling removes the ceiling and the web servers as a single point of failure: lose one copy and the others keep serving. The load balancer and the database still need their own spares. It also fits the cloud well, where you can rent commodity (ordinary, off-the-shelf) machines by the hour. Scaling out with ordinary machines is usually cheaper than scaling up one special one, and it is easier to hire people who know the setup. The price is complexity. You now have many copies of your program, and several new problems appear.
 
 ```mermaid Scaling up makes one box bigger, scaling out adds interchangeable boxes behind a balancer
 flowchart LR
@@ -33,12 +33,12 @@ Copies of your server must be interchangeable. That requires three things.
 There is a side effect too. When you add web servers, the database and cache behind them see more simultaneous connections. Scaling the front often just moves the bottleneck one layer back. The database tier has its own tools, covered in the [data chapter](/sd/docs/data/replication).
 
 ## How a system usually grows
-Real systems tend to follow a repeating loop: load test, profile to find the bottleneck, fix that one thing, repeat. The Primer walks through this for an imaginary service growing to millions of users, and our [practice lesson](/sd/docs/practice/scale-to-millions) follows it in full. In short:
+Real systems tend to follow a repeating loop: load test, profile (measure where the program spends its time) to find the bottleneck, fix that one thing, repeat. The Primer walks through this for an imaginary service growing to millions of users, and our [practice lesson](/sd/docs/practice/scale-to-millions) follows it in full. In short:
 
 1. One box runs the web server and the database. Scale up when needed.
 2. Split the database onto its own machine and move static files to object storage.
 3. Add a load balancer and several web servers, ideally across data centers or availability zones (separate buildings in one region).
-4. Add a cache, read replicas for the database, and a CDN.
+4. Add a cache, read replicas (copies of the database that only answer reads) for the database, and a CDN.
 5. Add autoscaling, which adds and removes servers based on load.
 
 You do not jump to step 5 on day one. Each step costs money and attention, so you take it when measurements say so.
@@ -48,9 +48,9 @@ All numbers here are invented. A web server has 4 CPU cores. Each request needs 
 
 Running at 100 percent is dangerous because queues explode, so assume a safe target of 60 percent. That gives 120 requests per second per server.
 
-Your peak traffic is 500 requests per second. Scaling up: a 16-core machine reaches 4 x 120 = 480, which is still short. Counting cores, you need about 17 (500 / 30 per core), and since machines come in fixed sizes that means the next one up, 32 cores. Scaling out: 500 / 120 = 4.17, so 5 servers. Add one more so the service survives losing a server, and you run 6 four-core machines.
+Your peak traffic is 500 requests per second. Scaling up: a 16-core machine is four 4-core servers' worth of power, so it reaches 4 x 120 = 480, which is still short. Per core that is 30 safe requests per second, so you need about 17 cores (500 / 30), and since machines come in fixed sizes that means the next one up, 32 cores. Scaling out: 500 / 120 = 4.17, so 5 servers. Add one more so the service survives losing a server, and you run 6 four-core machines.
 
-If a 32-core machine costs, say, 10 times what a 4-core one does (price curves vary by vendor, so treat this as an example), the vertical option costs 10 units against 6 for the horizontal one, and it dies all at once. The vertical option wins only while its price is low and your traffic is small, which is why it is the right start.
+If a 32-core machine costs, say, 10 times what a 4-core one does (price curves vary by vendor, so treat this as an example), the vertical option costs 10 units against 6 for the horizontal one, and it still has no spare: if it fails, everything is down. Vertical is cheaper only while one smaller machine is enough. That is why it is the right first move, and why the curve flips once you need the big sizes.
 
 ```mermaid Safe capacity of each option against the 500 requests per second peak (invented numbers from the example)
 xychart-beta
@@ -83,14 +83,14 @@ Adding servers before profiling. If the real limit is a slow query or a lock, te
 ```resources
 article | System Design Primer: Horizontal scaling | https://github.com/donnemartin/system-design-primer#horizontal-scaling | Donne Martin | Short summary of scaling out with commodity machines and the need for stateless servers.
 article | Design a system that scales to millions of users on AWS | https://github.com/donnemartin/system-design-primer/blob/master/solutions/system_design/scaling_aws/README.md | Donne Martin | Step by step evolution from one box to a load-balanced, cached, autoscaled system.
-article | Introduction to architecting systems for scale | https://lethain.com/introduction-to-architecting-systems-for-scale/ | Will Larson | Defines horizontal scalability as capacity growing linearly with added machines and failures costing only that much capacity.
+article | Introduction to architecting systems for scale | https://lethain.com/introduction-to-architecting-systems-for-scale/ | Will Larson | Defines horizontal scalability (capacity grows linearly as machines are added) and, separately, redundancy (losing a server costs only that server's share), both reached mostly through load balancing.
 article | Scaling Websites for Millions of Users | https://bytebytego.com/guides/how-to-scale-a-website-to-support-millions-of-users/ | ByteByteGo | A one-page diagram of a site moving from one server to separate services.
 ```
 
 ```quiz
-A server tops out at 120 safe requests per second. Peak is 500. How many servers do you need without a spare? | 4 servers ; 5 servers ; 6 or more servers | 1 | 500 divided by 120 is 4.17, which rounds up to 5.
-Which change is required before copies of a server can be interchangeable? | Buying faster disks for every server ; Giving each server its own domain name ; Moving sessions off a server's disk | 2 | A request can land on any copy, so no copy may hold data only it knows.
-You add web servers and pages get slower while web CPU is low. Where do you look first? | The database load ; The network cable between racks ; The browser cache settings and cookies | 0 | New servers often push the bottleneck to the shared database.
+A server tops out at 120 safe requests per second. Peak is 700 and you want to survive losing one server. How many servers? | 6 servers ; 7 servers ; 8 servers | 1 | 700 divided by 120 is 5.83, which rounds up to 6, plus one spare makes 7.
+Which change is required before copies of a server can be interchangeable? | Giving each server a faster disk ; Putting each server in a different country ; Moving sessions off a server's disk | 2 | A request can land on any copy, so no copy may hold data only it knows.
+You add web servers and pages get slower while web CPU is low. Where do you look first? | The database load ; The web servers' own CPU, which you just added ; The load balancer's CPU | 0 | New servers often push the bottleneck to the shared database.
 ```
 
 ```story
@@ -137,7 +137,7 @@ The balancer needs a rule for choosing.
 ## Health checks and failover
 The balancer probes each server, usually an HTTP request to a path like `/health` every few seconds. After a set number of failures it stops sending traffic there, and after successes it resumes. A weak check that only tests an open port can report "healthy" for a broken app. Better checks touch the real dependencies, but carefully: a check that fails whenever the database is slow can drain every server at once.
 
-The balancer itself must not be a single point of failure. In an active-passive pair, one balancer serves traffic while a standby watches it with heartbeats and takes over its address on failure. In an active-active pair both serve traffic, and DNS lists both addresses. Active-passive wastes a machine but is simpler. Active-active uses everything but must tolerate losing half its capacity.
+The balancer itself must not be a single point of failure. In an active-passive pair, one balancer serves traffic while a standby watches it with heartbeats and takes over its address on failure. In an active-active pair both serve traffic, and DNS lists both addresses. Clients that cached the dead balancer's address keep failing until the cached answer expires, so DNS failover is slower than an active-passive takeover. Active-passive wastes a machine but is simpler. Active-active uses everything but must tolerate losing half its capacity.
 
 For how to design the probe endpoint itself, see [Health Endpoint Monitoring](/sd/docs/cloud-architecture/bulkhead-throttling-health), which covers what a good health check should and should not test.
 
@@ -146,7 +146,7 @@ Invented numbers. Two servers, A and B. Requests arrive every 100 ms, alternatin
 
 Round robin deals requests out alternately, so server A receives every heavy request and server B every light one. A gets 5,000 ms of work and B gets 500 ms. At time 0.9 seconds, A holds 5 active requests and B holds none or one. A's queue grows, and users on A wait.
 
-Least connections looks at the live count. After A takes a heavy request, its count is 1 while B's is 0, so the next request goes to B. A server stuck on heavy work keeps a high count and is skipped. Over time the split ends up much closer to even. The lesson: round robin is fine when requests cost about the same, and falls apart when they do not.
+Least connections looks at the live count. After A takes a heavy request, its count is 1 while B's is 0, so the next request goes to B. A server stuck on heavy work keeps a high count and is skipped. Over time the split ends up much closer to even. The lesson: round robin counts requests, not work. It is fine when requests cost about the same. When some are much heavier, a server can end up with a run of them (here the alternating pattern sends every heavy one to A), and round robin has no way to notice. Least connections sees the pile-up because it looks at what each server is still working on.
 
 Both policies on the same ten requests. The active count column shows servers A and B (A / B) in the least connections run, and a request that ends at the moment of an arrival counts as finished. Ties go to A.
 
@@ -165,7 +165,7 @@ Both policies on the same ten requests. The active count column shows servers A 
 | Work given to A and B | | 5,000 ms and 500 ms | | 3,200 ms and 2,300 ms |
 
 ## What goes wrong: the check that lies
-A server runs out of memory and returns 500 errors on every request, but its port still accepts connections. The balancer's TCP check passes. The symptom is that one in N user requests fails, steadily, while the dashboard shows all servers healthy. Confirm it by comparing error rates per backend in the balancer logs. The fix is an HTTP health check that exercises the app, plus the balancer retrying a failed request on another server.
+A server runs out of memory and returns 500 errors on every request, but its port still accepts connections. The balancer's TCP check passes. The symptom is that one in N user requests fails, steadily, while the dashboard shows all servers healthy. With least connections it can be worse: a server that fails fast keeps a low connection count, so the balancer sees it as the least busy and sends it extra traffic. Confirm it by comparing error rates per backend in the balancer logs. The fix is an HTTP health check that exercises the app, plus the balancer retrying a failed request on another server.
 
 ```mermaid A port check passes while the app returns 500, so the balancer keeps sending traffic
 sequenceDiagram
@@ -183,7 +183,7 @@ sequenceDiagram
 With a single server you do not need one, though a [reverse proxy](/sd/docs/scaling/reverse-proxies-and-gateways) still helps. A balancer can also become a bottleneck if it lacks resources or is badly configured, and a single one is itself a single point of failure. Pairing them adds complexity. For traffic spread across continents, DNS-based routing or a [CDN](/sd/docs/scaling/cdn-and-edge) comes first.
 
 ## Common mistake
-Using round robin by default when request costs vary a lot, then blaming the servers for uneven load.
+Leaving the idle timeout on the app shorter than the idle timeout on the load balancer. Symptom: a trickle of 502 errors, one in a few hundred, with nothing wrong in the app logs. The app closes a quiet pooled link just as the balancer reuses it. Fix: set the app's keep-alive timeout longer than the balancer's.
 
 ```resources
 article | System Design Primer: Load balancer | https://github.com/donnemartin/system-design-primer#load-balancer | Donne Martin | Covers layer 4 and 7, algorithms, active-passive and active-active pairs and the drawbacks.
@@ -195,11 +195,11 @@ article | Top 6 Load Balancing Algorithms | https://bytebytego.com/guides/top-6-
 ```quiz
 Requests alternate heavy and light. Which algorithm piles all heavy ones on one of two servers? | Round robin ; Least connections ; Weighted least response time | 0 | Strict alternation sends every second request to the same server.
 A layer 7 balancer can route by URL path because it | Only sees IP addresses and ports ; Reads the request headers and path ; Runs inside the client's browser app | 1 | Layer 7 ends the connection and inspects headers and paths.
-Dashboard shows all servers healthy but 25 percent of requests fail with 500. What is a likely cause? | The balancer was given too many servers ; DNS records have expired for all clients ; A weak health check on one server | 2 | An open port can pass a TCP check while the app returns errors.
+Four servers sit behind a round robin balancer. The dashboard shows all four healthy, yet about 25 percent of requests fail with 500. What is the most likely cause? | The balancer has too many servers to track ; One server's app is broken but its port still accepts connections ; The balancer is using layer 7 instead of layer 4 | 1 | A TCP check only proves something is listening. A server whose app is broken still accepts connections, stays in rotation and takes its one quarter of the traffic.
 ```
 
 ```story
-An online store runs three servers behind a round robin balancer. One URL runs a heavy report, and by chance most reports land on server two. That server crawls while the others idle, and customers on it see timeouts. Switching to least connections spreads the heavy work, and the timeouts stop.
+An online store runs three servers behind a round robin balancer. A heavy report is requested every few seconds, and the turns happen to line up so most of them land on server two. That server crawls while the others idle, and customers on it see timeouts. Switching to least connections spreads the heavy work, and the timeouts stop.
 ```
 
 ```adapted
@@ -216,7 +216,7 @@ That single front door gives you several benefits.
 
 1. Security. Hide details about the backend servers, block bad IP addresses, limit connections per client.
 2. Flexibility. Because clients only know the proxy, you can add servers or change their setup behind it.
-3. SSL termination. The proxy handles HTTPS encryption so backends skip that CPU work and keep no certificates.
+3. TLS termination (often still called SSL termination). The proxy handles HTTPS encryption, so backends can skip that CPU work and keep no certificates if the hop behind the proxy stays on a trusted private network.
 4. Compression. The proxy compresses responses before sending them.
 5. Caching. It can return a stored copy of a response.
 6. Static content. It serves files like HTML, CSS, JS and photos directly, leaving the application servers to run code.
@@ -264,10 +264,10 @@ flowchart LR
 ```
 
 ## A worked example: bytes saved at the proxy
-Invented numbers. An API returns a 200 KB JSON response at 1,000 requests per second. That is 200 MB per second, about 1.6 gigabits per second out of the data center. Text compresses well. If gzip shrinks it to 40 KB (a plausible ratio for JSON, but measure yours), the proxy sends 40 MB per second, or 0.32 gigabits per second. Compression costs some CPU on the proxy, and in exchange the backends do no compression work and the network bill drops by 80 percent. The same logic applies to TLS: terminating it once at the proxy means ten backends need no certificate and no handshake work.
+Invented numbers. An API returns a 200 KB JSON response at 1,000 requests per second. That is 200 MB per second, about 1.6 gigabits per second out of the data center. Text compresses well. If gzip shrinks it to 40 KB (a plausible ratio for JSON, but measure yours), the proxy sends 40 MB per second, or 0.32 gigabits per second. Compression costs some CPU on the proxy, and in exchange the backends need no compression work and the network bill drops by 80 percent. The same logic applies to TLS: terminating it once at the proxy means ten backends need no certificate and no handshake work, as long as the hop behind the proxy stays plain.
 
 ## What goes wrong: the gateway becomes the bottleneck
-Every request now passes through one place. If the gateway is slow, everything is slow, and if it is down, everything is down. Imagine a gateway pod with a small connection limit. A traffic spike hits, and requests queue at the gateway while the backends sit idle. The symptom is rising latency at the edge with low CPU on every service behind it. Confirm by comparing gateway latency with backend latency in your metrics. The fix is running several gateways behind a balancer, tuning limits, and keeping the gateway's job small.
+Every request now passes through one place. If the gateway is slow, everything is slow, and if it is down, everything is down. Imagine a gateway instance with a small connection limit. A traffic spike hits, and requests queue at the gateway while the backends sit idle. The symptom is rising latency at the edge with low CPU on every service behind it. Confirm by comparing gateway latency with backend latency in your metrics. The fix is running several gateways behind a balancer, tuning limits, and keeping the gateway's job small.
 
 A second failure is slow creep. Teams add business rules to the gateway because it is convenient: data reshaping, pricing logic, special cases per customer. Soon the gateway is a god-object (one component that knows and does too much), every release touches it, and one team owns everyone's changes. Keep gateways to cross-cutting concerns such as authentication, limits, routing and logging.
 
@@ -279,15 +279,15 @@ Putting business logic in the gateway because it sees every request.
 
 ```resources
 article | System Design Primer: Reverse proxy (web server) | https://github.com/donnemartin/system-design-primer#reverse-proxy-web-server | Donne Martin | Lists the benefits of a reverse proxy and compares it with a load balancer.
-article | NGINX: Reverse proxy vs load balancer | https://www.nginx.com/resources/glossary/reverse-proxy-vs-load-balancer/ | F5 NGINX | Explains that both sit between clients and servers, a reverse proxy can direct requests by many parameters, and load balancing is a common job.
+article | What Is a Reverse Proxy? (F5) | https://www.f5.com/glossary/reverse-proxy | F5 | Explains that both sit between clients and servers, a reverse proxy can direct requests by many parameters, and a reverse proxy makes sense even with one server while a load balancer needs several.
 docs | What is Amazon API Gateway? | https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html | AWS | Describes a managed gateway handling traffic management, authorization, monitoring and version management.
 article | Reverse Proxy vs. API Gateway vs. Load Balancer | https://bytebytego.com/guides/reverse-proxy-vs-api-gateway-vs-load-balancer/ | ByteByteGo | Short visual comparison of the three roles.
 ```
 
 ```quiz
-Which fits a reverse proxy even when you run only one web server? | Spreading load across many servers ; Electing a new database primary ; Terminating TLS and compression | 2 | Those benefits need only one server behind the proxy.
+Which fits a reverse proxy even when you run only one web server? | Spreading load across many identical servers ; Failing over when one server dies ; Terminating TLS so the server skips that work | 2 | Those benefits need only one server behind the proxy.
 A JSON response shrinks from 200 KB to 40 KB at 1,000 requests per second. What outbound rate remains? | 40 MB per second ; 200 MB per second ; 8 MB per second | 0 | 40 KB times 1,000 requests is 40,000 KB, or 40 MB.
-Gateway latency is high while every backend CPU is idle. What does this suggest? | The databases behind it are slow ; The gateway is saturated ; Clients have slow phones | 1 | Requests are queueing at the shared front door before reaching any service.
+Gateway latency is high, but each backend reports fast responses and idle CPU. What does this suggest? | The databases behind it are slow ; The gateway is saturated ; Clients have slow phones | 1 | Backends answer quickly once they get a request, so the delay is the wait at the shared front door.
 ```
 
 ```story
@@ -309,7 +309,7 @@ A stateless server keeps no user-specific data in its own memory or disk between
 State still exists, but it lives elsewhere.
 
 1. Databases for durable records such as accounts and orders.
-2. A cache such as Redis or Memcached for sessions and hot data.
+2. A cache such as Redis or Memcached for sessions and hot data. Sessions need a store that does not quietly evict entries, so set it up as storage, not as a disposable cache.
 3. Object storage for files and images.
 4. The client, for things like a signed token.
 
@@ -328,7 +328,7 @@ The three designs on the same questions.
 | --- | --- | --- | --- |
 | Where the state lives | One server's memory | Redis or a database | In the token, on the client |
 | Lookup per request | None | One network call | None, the server checks the signature |
-| If a server crashes | Its users lose their sessions | Nothing is lost | Nothing is lost |
+| If a server crashes | Its users lose their sessions | No sessions are lost | No sessions are lost |
 | Cancelling one session | Delete it on that server | Delete the entry, works at once | Hard before expiry, needs a deny list |
 | Extra cost | Uneven load | The store becomes a critical dependency | Bigger payload, readable unless encrypted |
 
@@ -344,18 +344,19 @@ sequenceDiagram
 ```
 
 ## Why stateless pays off
-With no local state, autoscaling is easy: new servers start serving at once and old ones can be killed any time. Deploys become simple, because you can replace servers one at a time with no one losing a session. Failure is cheap too, since losing a server loses capacity, not data. This is why the Primer says servers should not hold user data such as sessions or profile pictures, and suggests a database or persistent cache for sessions.
+With no local state, autoscaling is easy: new servers start serving at once and old ones can be removed at any time once they finish their current requests. Deploys become simple, because you can replace servers one at a time with no one losing a session. Failure is cheap too, since losing a server loses capacity, not data. This is why the Primer says servers should not hold user data such as sessions or profile pictures, and suggests a database or persistent cache for sessions.
 
 ## A worked example: a sticky server dies
 Invented numbers. Four servers each hold the sessions of 5,000 logged-in users, 20,000 in total. One server crashes. Its 5,000 users are now logged out, and each must sign in again. Say a password check costs 100 ms of CPU, which is deliberate, since slow hashing resists password cracking. Total login work is 5,000 x 0.1 s = 500 CPU seconds. Three servers with 4 cores each have 12 cores, so even if every user returns at once, that is 500 / 12, about 42 seconds of fully busy CPU, which delays everyone else's normal requests. Some users also lose a half-filled cart.
 
-With a shared session store, the same crash costs nothing. The balancer sends those users to other servers, which look up the session id. Storage is small: 20,000 sessions of about 1 KB each is 20 MB, which fits comfortably in one Redis instance.
+With a shared session store, the same crash costs no logins. The balancer sends those users to other servers, which look up the session id. Any request that was in flight on the dead server still fails and is retried. Storage is small: 20,000 sessions of about 1 KB each is 20 MB, which fits comfortably in one Redis instance.
 
 ```mermaid With sticky sessions the crashed server takes its 5,000 sessions with it
 flowchart TD
   LB[Balancer] --> A[Server A, crashed]
   LB --> B[Server B, 5,000 sessions]
   LB --> C[Server C, 5,000 sessions]
+  LB --> D[Server D, 5,000 sessions]
   A -.-> X[5,000 users logged out]
   class A bad
   class X bad
@@ -374,12 +375,12 @@ Writing uploads or sessions to local disk "just for now" and finding out when th
 article | System Design Primer: Horizontal scaling | https://github.com/donnemartin/system-design-primer#horizontal-scaling | Donne Martin | States that servers should be stateless and sessions kept in a shared database or persistent cache.
 docs | Using HTTP cookies | https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies | MDN | Explains that HTTP is stateless by default, how cookies carry state, and the HttpOnly and SameSite attributes.
 paper | RFC 7519: JSON Web Token (JWT) | https://datatracker.ietf.org/doc/html/rfc7519 | IETF | The standard that defines JWT as a compact way to carry signed claims.
-article | Cookies vs Sessions vs JWT vs PASETO | https://bytebytego.com/guides/cookies-vs-sessions-vs-jwt-vs-paseto/ | ByteByteGo | Side-by-side overview of the main authentication state choices.
+article | Cookies vs Sessions vs JWT vs PASETO | https://bytebytego.com/guides/cookies-vs-sessions-vs-jwt-vs-paseto/ | ByteByteGo | Short summary of cookies with server sessions, JWT and PASETO, and the trade-off each makes between server control and scalability.
 ```
 
 ```quiz
-Sticky sessions have one clear weakness. What is it? | Cookies cannot be used at all ; Sessions die with that server ; Requests cannot be encrypted | 1 | The session lives only in one server's memory.
-Four servers hold 5,000 users each and one dies. Users must log in again at 100 ms CPU each. How much CPU work is that? | 500 CPU seconds ; 50 CPU seconds ; 5,000 CPU seconds | 0 | 5,000 logins times 0.1 second is 500 seconds.
+A server holding sticky sessions crashes. What happens to its users? | Their sessions move to another server automatically ; They are logged out and must sign in again ; Nothing, because the cookie still proves who they are | 1 | The session lived only in that server's memory, so it is gone.
+Five servers hold 4,000 users each and one dies. A login costs 50 ms of CPU. How much login work does the crash create? | 200 CPU seconds ; 20 CPU seconds ; 20,000 CPU seconds | 0 | 4,000 logins times 0.05 second is 200 seconds.
 What is the main cost of a signed token design? | Every request needs a database call ; Servers must share local disks ; Early revocation is hard | 2 | The server does not look anything up, so it cannot easily cancel a token before it expires.
 ```
 
@@ -402,7 +403,7 @@ It helps in two ways. Users get content from a data center near them, which cuts
 ## Push and pull
 Push CDN: you upload content to the CDN yourself whenever it changes and rewrite your URLs to point at it. You control expiry and updates. Content is uploaded only when new or changed, which minimizes traffic but uses more storage. This suits sites with little traffic or content that rarely changes.
 
-Pull CDN: you leave files on your own server and point URLs at the CDN. The first user to request a file makes the CDN fetch it from your origin, which makes that first request slower. After that it is cached. A time-to-live (TTL) decides how long. Pull CDNs use less storage but can create redundant traffic if files expire before they actually change. They suit high-traffic sites, since only recently requested content stays cached.
+Pull CDN: you leave files on your own server and point URLs at the CDN. The first user to ask an edge server for a file makes that server fetch it from your origin, so that request is slower. Each edge server fills its own cache, so the first user in each region pays this cost. After that, users near that edge get the cached copy. A time-to-live (TTL) decides how long. Pull CDNs use less storage but can create redundant traffic if files expire before they actually change. They suit high-traffic sites, since only recently requested content stays cached.
 
 ```mermaid A pull CDN fetches from the origin on the first request, then answers from its cache
 sequenceDiagram
@@ -422,7 +423,7 @@ A cache key is what the CDN uses to decide two requests want the same thing. By 
 
 Your origin controls caching with the `Cache-Control` header. `max-age=604800` marks a response fresh for one week. A shared cache such as a CDN can follow `s-maxage` instead, as RFC 9111 describes. `no-store` tells caches not to keep it at all, and `private` keeps personalized responses out of shared caches.
 
-For files that never change at one URL, use cache busting: put a content hash in the filename (`app.3f9a1c.js`) and send a long `max-age` with `immutable`. A change makes a new URL, so nothing needs purging. For things without versioned URLs, you either wait for the TTL or ask the CDN to purge, which usually takes some seconds to spread across all edge servers.
+For files that never change at one URL, use cache busting: put a content hash in the filename (`app.3f9a1c.js`) and send a long `max-age` with `immutable`. A change makes a new URL for the file, so the file never needs purging. The page that links to it keeps its URL, so give that page a short TTL or `no-cache`, otherwise users keep loading old HTML that points at the old file. For things without versioned URLs, you either wait for the TTL or ask the CDN to purge, which can take anywhere from seconds to a few minutes to spread across all edge servers, depending on the provider.
 
 Many CDNs now also run small pieces of your code at the edge (the CDN server nearest the user) for things like redirects, header rewrites and A/B tests. Keep that code short and stateless.
 
@@ -450,7 +451,7 @@ How it works, step by step:
 2. Point your pages at the storage URL (or at a CDN in front of it), so browsers fetch files from there.
 3. Keep the app servers for dynamic pages only.
 
-Watch the details. Public read access is needed, but public write access must be off, or strangers can upload content. When some content sits in storage and the rest on your servers, deploys get harder, so version code and content together. Pages must use the storage URL, since some services do not support custom domain names. When files move, keep old links working with URL rewriting or a redirect at the CDN. For private files, use a [valet key](/sd/docs/cloud-architecture/security-patterns), a short-lived signed link, instead of making them public. A CDN caches the files near users, and a separate storage account makes bandwidth and cost easy to measure apart from your compute bill.
+Watch the details. Public read access is needed, but public write access must be off, or strangers can upload content. When some content sits in storage and the rest on your servers, deploys get harder because the two are shipped separately. Give both a version, so a page never links to a script that is not in storage yet. Pages must use the storage URL, since some services do not support custom domain names. When files move, keep old links working with URL rewriting or a redirect at the CDN. For private files, use a [valet key](/sd/docs/cloud-architecture/security-patterns), a short-lived signed link, instead of making them public. A CDN caches the files near users, and a separate storage account makes bandwidth and cost easy to measure apart from your compute bill.
 
 ## A worked example: an image-heavy page
 Invented numbers. A page has 40 images of 150 KB each, so 6 MB. It gets 1 million views per day. That is 40 million image requests per day, or about 463 per second on average.
@@ -466,7 +467,7 @@ You fix a typo in `logo.png`, but users still see the old logo. The file has `ma
 
 ```mermaid A content hash in the filename makes each version a new URL, so nothing needs purging
 flowchart TD
-  H[index.html] -->|links to| J1[app.3f9a1c.js]
+  H[index.html, short TTL] -->|links to| J1[app.3f9a1c.js]
   H2[index.html after a deploy] -->|links to| J2[app.b72e08.js]
   J1 -.->|old URL stays cached, unused| E[Edge cache]
   J2 -->|new URL, first miss| E
@@ -479,7 +480,7 @@ A second failure is caching a personalized page by mistake. A CDN stores a respo
 Highly personalized or constantly changing data gets little benefit, since each response is unique. If all your users sit in one city near your servers, the latency gain is small. CDN bills can be significant with heavy traffic, though you should weigh them against the cost of serving that traffic yourself. Pages need URLs that point at the CDN, which is extra setup.
 
 ## Common mistake
-A long TTL on files whose URLs never change.
+Setting `max-age` to a year on `logo.png` and then replacing the file at the same URL. Either use a short TTL for files you edit in place, or rename the file whenever its content changes.
 
 ```resources
 article | System Design Primer: Content delivery network | https://github.com/donnemartin/system-design-primer#content-delivery-network | Donne Martin | Explains push and pull CDNs, TTLs and the drawbacks of cost and stale content.
@@ -490,9 +491,9 @@ docs | Hosting a static website using Amazon S3 | https://docs.aws.amazon.com/Am
 ```
 
 ```quiz
-A page is 100 KB of HTML plus 1 MB of static files. Moving the static files cuts server traffic by about how much? | About 10 percent ; About 50 percent ; 91 percent | 2 | The server then sends 0.1 MB instead of 1.1 MB, a drop of about 91 percent.
+A page is 100 KB of HTML plus 1 MB of static files. Moving the static files cuts server traffic by about how much? | About 9 percent ; About 100 percent ; About 91 percent | 2 | The server then sends 0.1 MB instead of 1.1 MB, a drop of about 91 percent.
 A page makes 40 million image requests a day at a 95 percent hit ratio. How many reach the origin? | 20 million ; 2 million ; 38 million | 1 | 5 percent of 40 million is 2 million.
-You fix a typo in an image but users still see the old one. Best long-term fix? | Hash the filename ; Lower the server's CPU usage by half ; Turn off HTTPS on the CDN | 0 | A new URL for each version means no purge is needed.
+You fix a typo in an image but users still see the old one. Best long-term fix? | Hash the filename ; Purge the CDN once and keep the same URL ; Lower the TTL on the CDN only | 0 | A purge does not reach browsers that already cached the file for a year, so only a new URL fixes every viewer.
 ```
 
 ```story
@@ -508,7 +509,7 @@ Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/
 Microservices split an application into small services that are deployed on their own and talk over the network. They solve team and scaling problems, and create new ones, so most teams should start with a monolith.
 
 ## Application layer and microservices
-Separating the web layer from the application layer (sometimes called the platform layer) lets you scale and configure each independently. A new API means adding application servers, not necessarily more web servers. The single responsibility principle says services should be small and autonomous, and small teams with small services can plan more aggressively for fast growth. Workers in the application layer also enable asynchronous work (see [message queues](/sd/docs/async/message-queues)).
+Many systems put the code that handles web requests (the web layer) on different servers from the code that holds the business rules (the application layer). That lets you add application servers when a new API needs more work, without adding web servers. Microservices push this further: each service does one job, such as profiles or search, so one small team can own it, change it and deploy it without waiting for anyone else. Workers in the application layer also enable asynchronous work (see [message queues](/sd/docs/async/message-queues)).
 
 Microservices are a suite of small, independently deployable services. Each runs its own process and communicates through a well-defined, lightweight mechanism to serve one business goal. Pinterest could have services for user profile, followers, feed, search and photo upload.
 
@@ -527,7 +528,7 @@ flowchart TD
 
 ## What you pay for
 1. Network calls replace function calls. They are slower and can fail, time out or arrive twice (see [timeouts and retries](/sd/docs/reliability/timeouts-and-retries)).
-2. Failures chain. If a request needs several services, it succeeds only when they all do.
+2. Failures chain. If a request needs several services and none has a fallback, it succeeds only when they all do.
 3. Data ownership. Each service should own its data. You lose joins and easy transactions across services.
 4. Operations. More deployments, dashboards, pipelines and on-call rotations.
 5. Testing a whole flow needs many services running together.
@@ -541,7 +542,7 @@ Two styles exist. In client-side discovery the caller asks the registry for the 
 
 Moving shared chores such as discovery, retries and TLS out of each service and into a helper process is the idea behind the [Sidecar and service mesh](/sd/docs/cloud-architecture/sidecar-and-ambassador) lesson.
 
-```mermaid Instances register themselves, the registry drops dead ones, callers look names up
+```mermaid Client-side discovery: instances register themselves, the registry drops dead ones, the caller looks a name up and picks an instance
 sequenceDiagram
   participant I as Orders instance
   participant R as Registry
@@ -553,6 +554,8 @@ sequenceDiagram
   R-->>C: 10.0.0.7:8080
   Note over R: Instance stops answering, so it is removed
 ```
+
+In server-side discovery, a load balancer sits between the caller and the registry and does the lookup.
 
 ## A worked example: availability of a chain
 Invented numbers. A request calls 5 services in sequence. Each is available 99.9 percent of the time, which allows about 43 minutes of downtime per 30-day month.
@@ -586,8 +589,8 @@ article | Is Microservice Architecture the Silver Bullet? | https://bytebytego.c
 
 ```quiz
 Five services in a chain are each 99.9 percent available. What is the chain's availability, roughly? | 99.5 percent ; 99.9 percent, same as one ; 99.0 percent or lower | 0 | 0.999 to the fifth power is about 0.995.
-In client-side service discovery, who picks the instance? | The load balancer in front of the service ; The DNS root servers ; The caller, after asking the registry | 2 | The client queries the registry and chooses for itself.
-Why did Segment's per-destination services become a burden? | Queues were too fast to monitor ; Each new one added more work ; Customers stopped sending events | 1 | More destinations meant more repos, queues and services to run.
+In client-side service discovery, who picks the instance? | The load balancer in front of the service ; The registry, which forwards the request ; The caller, after asking the registry | 2 | The client queries the registry and chooses for itself.
+Segment split one shared queue into a service per destination. What new problem did that create? | One slow destination still delayed every other one ; Shared libraries drifted apart across dozens of services ; Customers had to send each event to every destination | 1 | The split fixed head-of-line blocking, but every shared-library change then had to ship to dozens of services, so versions diverged.
 ```
 
 ```story

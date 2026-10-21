@@ -5,6 +5,8 @@ import Walkthrough from './Walkthrough.jsx'
 
 const A = [2, 5, 8, 12, 16, 23, 38]
 const TARGETS = [23, 5, 38, 7]
+// Step 6 searches answers instead of an array: "is speed s fast enough?" for s = 1 to 7.
+const ANSWERS = ['no', 'no', 'no', 'yes', 'yes', 'yes', 'yes']
 
 // Each look at the middle, recorded: { lo, hi, mid, note, found }. lo > hi means the target is not in the list.
 function framesOf(target) {
@@ -27,6 +29,7 @@ const GUIDED = [
   { lo: 4, hi: 6, note: '12 < 23, so keep only the right side' },
   { lo: 4, hi: 6, mid: 5, note: 'middle = (4 + 6) / 2 = 5, value 23', found: true },
   { lo: 4, hi: 6, mid: 5, note: 'found in 2 looks, not 6', found: true },
+  { lo: 0, hi: 6, mid: 3, note: 'speeds 1 to 7: the first yes is speed 4', found: true, values: ANSWERS },
 ]
 
 const STEPS = [
@@ -35,11 +38,12 @@ const STEPS = [
   '12 is smaller than 23, and the list is sorted, so 23 cannot be at or before 12. Throw away that whole half. Only positions 4 to 6 are left.',
   'Do the same thing on what is left. The middle of positions 4 to 6 is position 5, which holds 23. Found it.',
   'Two looks instead of up to seven. Every look halves what is left, so a million numbers need only about 20 looks. Halving the search area each time is called binary search.',
+  'The same loop works when there is no array. Ask "is speed s fast enough?" for s = 1, 2, 3 ... The answers are no, no, no, yes, yes, yes. Search for the first yes exactly like before: check the middle, and keep the left half if it says yes, the right half if it says no. That is binary search on the answer.',
   'Your turn. Pick a target and press Next to watch each look. Try 7: it is not in the list.',
 ].map(text => ({ text }))
 
 function Stage({ step, target, setTarget }) {
-  const live = step === 5
+  const live = step === 6
   const frames = useMemo(() => framesOf(target), [target])
   const [f, i, next, reset] = useFrames(frames)
   const g = live ? f : GUIDED[step]
@@ -48,7 +52,7 @@ function Stage({ step, target, setTarget }) {
   for (const [k, name] of [[g.lo, 'lo'], [g.hi, 'hi'], [g.mid, 'mid']]) if (k >= 0 && k < A.length) marks[k] = marks[k] ? `${marks[k]}, ${name}` : name
   return (
     <div className="w-full py-2">
-      <CellRow values={A} tone={k => (k === g.mid ? (g.found ? 'good' : 'pick') : k >= g.lo && k <= g.hi ? 'in' : 'idle')} gone={k => k < g.lo || k > g.hi} marks={marks} />
+      <CellRow values={g.values ?? A} tone={k => (k === g.mid ? (g.found ? 'good' : 'pick') : k >= g.lo && k <= g.hi ? 'in' : 'idle')} gone={k => k < g.lo || k > g.hi} marks={marks} />
       <div className="mt-2"><Line tone={g.found ? 'good' : g.missing ? 'bad' : ''}>{g.note}</Line></div>
       <div className="mt-2 flex min-h-8 flex-wrap justify-center gap-2">
         {live && <>

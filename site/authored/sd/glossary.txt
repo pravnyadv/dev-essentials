@@ -133,7 +133,7 @@ layer 4 [L4] | The transport layer of the network, where decisions use IP addres
 layer 7 [L7] | The application layer, where a balancer reads the HTTP request such as its path, headers and cookies.
 leader [master, primary] | The database copy that accepts writes and sends changes to followers.
 leader election [election, elections] | The process by which a group of servers picks one of themselves to coordinate, such as the leader that takes client writes.
-lease [leases] | A token a cache gives a reader on a miss, which must be presented when setting the value, so stale writes can be rejected.
+lease [leases] | A permission that expires on its own. A cache hands one to a reader so only that reader may fill the key, and a lock service hands one to a client so a crashed holder cannot keep the lock forever. Either way, a holder that is too slow can find its lease has lapsed.
 least connections | A balancing rule that sends each new request to the server with the fewest active connections.
 least privilege | Giving each user, service or key only the permissions it needs.
 LFU [least frequently used] | An eviction policy that removes the entry with the fewest reads.
@@ -187,7 +187,7 @@ ORM [ORMs, object-relational mapper] | A library that maps database rows to obje
 outbox pattern [transactional outbox, outbox] | Saving an event in a database table in the same transaction as the change, then a relay publishes it.
 pagination [paginate] | Returning a long list in small pages instead of all at once.
 partition [partitions] | One slice of a larger dataset or log, stored and served on its own. A database shard is a partition, and so is one ordered piece of a Kafka topic.
-percentile [percentiles, p50, p95, p99] | The value that a given share of measurements beat, for example p99 is slower than 99 percent of requests.
+percentile [percentiles, p50, p95, p99, 99th percentile] | The latency that a given share of requests come in at or under. The p95 is the time that 95 percent of requests meet or beat, so at most 1 in 20 is slower.
 pipes and filters [filter, filters, pipe, pipes] | A design that splits a job into small independent steps (filters) joined by channels (pipes) such as queues.
 poison message [poison messages] | A message that always makes the consumer fail, so it keeps returning to the queue unless a retry limit removes it.
 polling [poll, polls] | Asking again and again, at intervals, whether something has finished, instead of waiting to be told.
@@ -210,7 +210,7 @@ reducer [reducers] | The reduce step of MapReduce: code that receives all values
 refresh-ahead | A pattern where the cache reloads popular entries before they expire.
 relational database [RDBMS, SQL database, relational databases] | A database that stores data in tables of rows and columns, linked by keys, and queried with SQL.
 replication lag [lag] | The delay between a write on the leader and its arrival on a follower.
-request coalescing | Letting only one request rebuild a missing entry while the others wait for its result.
+request coalescing [coalesce, coalescing] | When many requests ask for the same missing item, letting one go to the database and the rest wait for its answer.
 resolver [resolvers, DNS resolver] | A helper server that looks up DNS answers on your device's behalf and caches them.
 REST | An API style built around named resources and the standard HTTP methods.
 retention | How long a log keeps events before deleting them.
@@ -299,3 +299,43 @@ quarantine [quarantine store] | A holding area where outside software is checked
 canary release [canary releases] | Sending a small share of traffic to a new version first, to catch problems before everyone gets it.
 thread pool [thread pools] | A fixed set of worker threads that take requests one at a time. When all threads are busy waiting, new requests queue or fail.
 commit wait | Spanner's pause before a transaction's data becomes visible, so that its commit timestamp is surely in the past.
+ETag | A version label a server sends with a response, so a client can ask 'has this changed?' and get a short 'no' instead of the full body.
+retry budget | A cap on how many retries a client may send, for example 10 percent of its normal traffic.
+consumer lag | How far a consumer's offset is behind the end of the log.
+rebalancing | Reassigning a topic's partitions among the consumers of a group when one joins or leaves.
+cold start [cold-start] | A cache that starts empty, or is lost, so every read goes to the database until the cache fills again.
+standby | An idle copy of the primary database that takes over if the primary fails; it does not answer queries.
+partition key | In a database like Cassandra, the field that decides which node stores a row. Rows with the same partition key are kept together.
+clustering key | The field that decides how rows are sorted inside one partition, such as a message id.
+signature [page signature, content signature] | A short fingerprint of a page's content, used to spot pages that are identical or nearly identical.
+Jaccard index [Jaccard similarity] | A score for how alike two sets are: the items they share divided by all items in either. Two pages sharing 90 of 100 word groups score 0.9.
+blue-green deployment [blue-green deployments, blue-green] | Running the old and new version side by side, then switching traffic from one to the other.
+pod | A small group of containers in Kubernetes that always run on the same machine and start and stop together.
+static stability | Designing a system with enough spare capacity in advance that it keeps working through a failure without launching anything new.
+sanitize [sanitizing] | Cleaning request data that passed validation, for example stripping script tags, before passing it on to a trusted service.
+Server-Sent Events [SSE, server-sent events] | A one-way connection where the server keeps one HTTP connection open and sends a stream of updates to the browser.
+303 See Other [303] | An HTTP status meaning the result is at a different address and the client should fetch it with a GET.
+concurrency check [optimistic concurrency, optimistic concurrency control] | A rule where each write says which version it expects the data to be at, and the store rejects the write if someone else changed it first.
+upcaster | A small function that converts old stored events to the current event format as they are read, so the stored events stay untouched.
+EXPLAIN | A command that shows how the database plans to run a query, including whether it will scan the whole table or use an index.
+query planner [planner] | The part of the database that picks how to run a query.
+log position [position, write position] | A place in a database's ordered log of changes, like a page number. A follower has reached a position once it has applied every change up to it.
+serialization anomaly | A result that could not have happened if the transactions had run one at a time. Write skew is one.
+deadlock | Two transactions each hold a lock the other needs, so both wait forever until the database aborts one.
+register | A single shared value that several clients read and write, used in consistency examples.
+garbage collection [GC, garbage collection pause] | When a language runtime pauses your program to free memory it no longer uses. The pause can last seconds, during which the program does nothing.
+partial order | An ordering where some pairs of events can be ranked and others cannot.
+total order | An ordering that ranks every pair of events, giving one single list of all operations that every observer agrees on.
+latency | The time one request takes from being sent to the answer coming back, usually measured in milliseconds.
+CPU [processor] | The part of a computer that runs program instructions. CPU use is the share of its capacity being used, so 5 percent means it is nearly idle.
+handshake | A short exchange of messages at the start of a connection where both sides agree how to talk before any real data is sent.
+certificate | A digital document, signed by a trusted authority, that says this public key belongs to this website.
+profiling [profile, profiled] | Measuring where a program or database spends its time, to find the real bottleneck.
+Dijkstra's algorithm [Dijkstra] | A shortest-path search that accounts for edge weights.
+refresh token | A longer-lived token kept by the client and sent only to the auth server to get a new short-lived access token; the server can refuse a revoked one.
+salt | A random value mixed into each password before hashing so equal passwords give different hashes.
+bottleneck | The one part of a system that limits how much the whole can handle.
+commodity machines [commodity] | Ordinary, off-the-shelf machines rather than special expensive hardware.
+edge server [edge, edge servers] | The CDN server closest to the user, which answers requests from its cache.
+purge | Telling a CDN to throw away its cached copy of a file before its TTL ends.
+cache busting | Putting a content hash in a filename so every change gets a new URL and old cached copies are simply never requested again.

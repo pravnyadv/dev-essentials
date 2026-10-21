@@ -10,6 +10,7 @@ const PATTERN_LIST = [
   { id: 'prefix-sum', core: true, name: 'Prefix Sum', signals: ['Many range-sum queries on a static array', 'Subarray sum equals k', 'Product or count of everything except self'],
     topics: ['foundations/array', 'algorithms/sets/maximum-subarray', 'data-structures/tree/fenwick-tree', 'data-structures/tree/segment-tree'],
     code: `// Running totals: prefix[i] = nums[0] + ... + nums[i - 1], with prefix[0] = 0.
+// (the walkthrough drops the leading 0, so its indexes sit one lower)
 const prefix = [0];
 for (const n of nums) prefix.push(prefix.at(-1) + n);
 const rangeSum = (start, end) => prefix[end + 1] - prefix[start]; // nums[start..end]
@@ -28,7 +29,7 @@ function subarraySum(nums, k) {
     problems: [P('E', 'running-sum-of-1d-array', 'Running Sum of 1d Array'), P('E', 'range-sum-query-immutable', 'Range Sum Query - Immutable'), P('E', 'find-pivot-index', 'Find Pivot Index'), P('E', 'find-the-highest-altitude', 'Find the Highest Altitude'),
       P('M', 'subarray-sum-equals-k', 'Subarray Sum Equals K'), P('M', 'product-of-array-except-self', 'Product of Array Except Self'), P('M', 'continuous-subarray-sum', 'Continuous Subarray Sum'), P('M', 'contiguous-array', 'Contiguous Array'),
       P('M', 'range-sum-query-2d-immutable', 'Range Sum Query 2D - Immutable'), P('M', 'subarray-sums-divisible-by-k', 'Subarray Sums Divisible by K'), P('M', 'maximum-size-subarray-sum-equals-k', 'Maximum Size Subarray Sum Equals k'), P('M', 'corporate-flight-bookings', 'Corporate Flight Bookings'),
-      P('M', 'car-pooling', 'Car Pooling'), P('M', 'maximum-subarray', 'Maximum Subarray'), P('H', 'count-of-range-sum', 'Count of Range Sum')] },
+      P('M', 'car-pooling', 'Car Pooling'), P('H', 'count-of-range-sum', 'Count of Range Sum')] },
 
   { id: 'two-pointers', core: true, name: 'Two Pointers', signals: ['Sorted array or string', 'Pair or triplet with a target sum', 'Palindrome check', 'Remove duplicates in place'],
     topics: ['foundations/array', 'foundations/string', 'algorithms/string/palindrome'],
@@ -44,22 +45,22 @@ function subarraySum(nums, k) {
     problems: [P('E', 'valid-palindrome', 'Valid Palindrome'), P('E', 'two-sum-ii-input-array-is-sorted', 'Two Sum II - Input Array Is Sorted'), P('E', 'remove-duplicates-from-sorted-array', 'Remove Duplicates from Sorted Array'), P('E', 'move-zeroes', 'Move Zeroes'),
       P('E', 'squares-of-a-sorted-array', 'Squares of a Sorted Array'), P('E', 'reverse-string', 'Reverse String'), P('E', 'merge-sorted-array', 'Merge Sorted Array'), P('E', 'remove-element', 'Remove Element'),
       P('M', '3sum', '3Sum'), P('M', '3sum-closest', '3Sum Closest'), P('M', 'container-with-most-water', 'Container With Most Water'), P('M', 'sort-colors', 'Sort Colors'),
-      P('M', 'remove-duplicates-from-sorted-array-ii', 'Remove Duplicates from Sorted Array II'), P('M', 'valid-palindrome-ii', 'Valid Palindrome II'), P('M', 'boats-to-save-people', 'Boats to Save People'), P('M', 'partition-labels', 'Partition Labels'),
+      P('M', 'remove-duplicates-from-sorted-array-ii', 'Remove Duplicates from Sorted Array II'), P('M', 'valid-palindrome-ii', 'Valid Palindrome II'), P('M', 'boats-to-save-people', 'Boats to Save People'),
       P('M', '4sum', '4Sum'), P('M', '3sum-smaller', '3Sum Smaller'), P('H', 'trapping-rain-water', 'Trapping Rain Water')] },
 
-  { id: 'sliding-window', core: true, name: 'Sliding Window', signals: ['Longest or shortest contiguous subarray or substring', 'Constraint on the window (at most k distinct, sum >= s)', 'Fixed size k window'],
+  { id: 'sliding-window', core: true, name: 'Sliding Window', signals: ['Longest or shortest contiguous subarray or substring', 'Constraint on the window (at most k distinct, or sum >= s when all numbers are positive)', 'Fixed size k window'],
     topics: ['foundations/array', 'foundations/string', 'data-structures/hash-table', 'data-structures/deque'],
     code: `function longestUnique(s) {
-  const seen = new Map();
+  const inWindow = new Set();
   let best = 0, left = 0;
   for (let right = 0; right < s.length; right++) {
-    if (seen.get(s[right]) >= left) left = seen.get(s[right]) + 1;
-    seen.set(s[right], right);
+    while (inWindow.has(s[right])) inWindow.delete(s[left++]); // shrink until the repeat is gone
+    inWindow.add(s[right]);
     best = Math.max(best, right - left + 1);
   }
   return best;
 }`,
-    problems: [P('E', 'best-time-to-buy-and-sell-stock', 'Best Time to Buy and Sell Stock'), P('E', 'maximum-average-subarray-i', 'Maximum Average Subarray I'), P('E', 'contains-duplicate-ii', 'Contains Duplicate II'), P('E', 'longest-nice-subarray', 'Longest Nice Subarray'),
+    problems: [P('E', 'best-time-to-buy-and-sell-stock', 'Best Time to Buy and Sell Stock'), P('E', 'maximum-average-subarray-i', 'Maximum Average Subarray I'), P('E', 'contains-duplicate-ii', 'Contains Duplicate II'), P('M', 'longest-nice-subarray', 'Longest Nice Subarray'),
       P('M', 'longest-substring-without-repeating-characters', 'Longest Substring Without Repeating Characters'), P('M', 'longest-repeating-character-replacement', 'Longest Repeating Character Replacement'), P('M', 'permutation-in-string', 'Permutation in String'), P('M', 'find-all-anagrams-in-a-string', 'Find All Anagrams in a String'),
       P('M', 'minimum-size-subarray-sum', 'Minimum Size Subarray Sum'), P('M', 'max-consecutive-ones-iii', 'Max Consecutive Ones III'), P('M', 'fruit-into-baskets', 'Fruit Into Baskets'), P('M', 'longest-substring-with-at-most-k-distinct-characters', 'Longest Substring with At Most K Distinct Characters'),
       P('M', 'subarray-product-less-than-k', 'Subarray Product Less Than K'), P('M', 'maximum-points-you-can-obtain-from-cards', 'Maximum Points You Can Obtain from Cards'), P('M', 'count-number-of-nice-subarrays', 'Count Number of Nice Subarrays'),
@@ -77,25 +78,26 @@ function subarraySum(nums, k) {
 }`,
     problems: [P('E', 'linked-list-cycle', 'Linked List Cycle'), P('E', 'middle-of-the-linked-list', 'Middle of the Linked List'), P('E', 'palindrome-linked-list', 'Palindrome Linked List'), P('E', 'happy-number', 'Happy Number'),
       P('M', 'linked-list-cycle-ii', 'Linked List Cycle II'), P('M', 'find-the-duplicate-number', 'Find the Duplicate Number'), P('M', 'remove-nth-node-from-end-of-list', 'Remove Nth Node From End of List'), P('M', 'reorder-list', 'Reorder List'),
-      P('M', 'sort-list', 'Sort List'), P('M', 'circular-array-loop', 'Circular Array Loop'), P('M', 'delete-the-middle-node-of-a-linked-list', 'Delete the Middle Node of a Linked List'), P('M', 'rotate-list', 'Rotate List'),
-      P('M', 'intersection-of-two-linked-lists', 'Intersection of Two Linked Lists')] },
+      P('M', 'sort-list', 'Sort List'), P('M', 'circular-array-loop', 'Circular Array Loop'), P('M', 'delete-the-middle-node-of-a-linked-list', 'Delete the Middle Node of a Linked List'), P('M', 'rotate-list', 'Rotate List')] },
 
-  { id: 'in-place-reversal', core: true, name: 'In-Place Reversal', signals: ['Reverse a linked list or part of it', 'Rewire pointers with O(1) extra space', 'Reverse in groups of k'],
+  { id: 'in-place-reversal', core: true, name: 'In-Place Reversal', signals: ['Reverse a linked list or part of it', 'Reverse in groups of k or in pairs'],
     topics: ['algorithms/linked-list/reverse-traversal', 'data-structures/linked-list'],
     code: `function reverseList(head) {
-  let prev = null;
-  while (head) {
-    [head.next, prev, head] = [prev, head, head.next];
+  let prev = null, cur = head;
+  while (cur) {
+    const next = cur.next; // save the way forward first
+    cur.next = prev;       // flip the arrow
+    prev = cur;
+    cur = next;
   }
   return prev;
 }`,
-    problems: [P('E', 'reverse-linked-list', 'Reverse Linked List'), P('E', 'merge-two-sorted-lists', 'Merge Two Sorted Lists'), P('E', 'remove-linked-list-elements', 'Remove Linked List Elements'), P('E', 'remove-duplicates-from-sorted-list', 'Remove Duplicates from Sorted List'),
-      P('M', 'reverse-linked-list-ii', 'Reverse Linked List II'), P('M', 'swap-nodes-in-pairs', 'Swap Nodes in Pairs'), P('M', 'add-two-numbers', 'Add Two Numbers'), P('M', 'odd-even-linked-list', 'Odd Even Linked List'),
-      P('M', 'partition-list', 'Partition List'), P('M', 'remove-duplicates-from-sorted-list-ii', 'Remove Duplicates from Sorted List II'), P('M', 'rotate-list', 'Rotate List'), P('M', 'swapping-nodes-in-a-linked-list', 'Swapping Nodes in a Linked List'),
-      P('H', 'reverse-nodes-in-k-group', 'Reverse Nodes in k-Group'), P('H', 'merge-k-sorted-lists', 'Merge k Sorted Lists')] },
+    problems: [P('E', 'reverse-linked-list', 'Reverse Linked List'), P('E', 'palindrome-linked-list', 'Palindrome Linked List'),
+      P('M', 'reverse-linked-list-ii', 'Reverse Linked List II'), P('M', 'swap-nodes-in-pairs', 'Swap Nodes in Pairs'), P('M', 'rotate-list', 'Rotate List'),
+      P('H', 'reverse-nodes-in-k-group', 'Reverse Nodes in k-Group')] },
 
-  { id: 'monotonic-stack', core: true, name: 'Monotonic Stack', signals: ['Next greater or smaller element', 'Nesting, brackets, undo', 'Largest rectangle or span problems'],
-    topics: ['data-structures/stack', 'algorithms/stack/valid-parentheses', 'algorithms/uncategorized/rain-terraces'],
+  { id: 'monotonic-stack', core: true, name: 'Monotonic Stack', signals: ['Next greater or smaller element to the left or right', 'Each item waits until something bigger or smaller arrives', 'Largest rectangle, stock span or "how many days until" problems'],
+    topics: ['data-structures/stack', 'algorithms/uncategorized/rain-terraces'],
     code: `function nextGreater(a) {
   const out = Array(a.length).fill(-1), st = [];
   for (let i = 0; i < a.length; i++) {
@@ -104,11 +106,11 @@ function subarraySum(nums, k) {
   }
   return out;
 }`,
-    problems: [P('E', 'valid-parentheses', 'Valid Parentheses'), P('E', 'next-greater-element-i', 'Next Greater Element I'), P('E', 'min-stack', 'Min Stack'), P('E', 'baseball-game', 'Baseball Game'),
-      P('E', 'remove-all-adjacent-duplicates-in-string', 'Remove All Adjacent Duplicates In String'), P('M', 'daily-temperatures', 'Daily Temperatures'), P('M', 'next-greater-element-ii', 'Next Greater Element II'), P('M', 'evaluate-reverse-polish-notation', 'Evaluate Reverse Polish Notation'),
-      P('M', 'decode-string', 'Decode String'), P('M', 'remove-k-digits', 'Remove K Digits'), P('M', 'online-stock-span', 'Online Stock Span'), P('M', 'car-fleet', 'Car Fleet'),
-      P('M', 'asteroid-collision', 'Asteroid Collision'), P('M', 'simplify-path', 'Simplify Path'), P('M', '132-pattern', '132 Pattern'), P('M', 'sum-of-subarray-minimums', 'Sum of Subarray Minimums'),
-      P('H', 'largest-rectangle-in-histogram', 'Largest Rectangle in Histogram'), P('H', 'maximal-rectangle', 'Maximal Rectangle'), P('H', 'trapping-rain-water', 'Trapping Rain Water'), P('H', 'basic-calculator', 'Basic Calculator')] },
+    problems: [P('E', 'next-greater-element-i', 'Next Greater Element I'), 
+      P('M', 'daily-temperatures', 'Daily Temperatures'), P('M', 'next-greater-element-ii', 'Next Greater Element II'), 
+      P('M', 'remove-k-digits', 'Remove K Digits'), P('M', 'online-stock-span', 'Online Stock Span'), P('M', 'car-fleet', 'Car Fleet'),
+      P('M', 'asteroid-collision', 'Asteroid Collision'), P('M', '132-pattern', '132 Pattern'), P('M', 'sum-of-subarray-minimums', 'Sum of Subarray Minimums'),
+      P('H', 'largest-rectangle-in-histogram', 'Largest Rectangle in Histogram'), P('H', 'maximal-rectangle', 'Maximal Rectangle'), P('H', 'trapping-rain-water', 'Trapping Rain Water'), ] },
 
   { id: 'top-k', core: true, name: 'Top K Elements', signals: ['K largest, smallest or most frequent', 'Merge k sorted inputs', 'Running median', 'You repeatedly need the current min or max'],
     topics: ['algorithms/ml/knn', 'data-structures/heap', 'data-structures/priority-queue', 'algorithms/sorting/heap-sort'],
@@ -128,6 +130,7 @@ function kthLargest(nums, k, MinHeap) {
     topics: ['algorithms/uncategorized/jump-game'],
     code: `function mergeIntervals(iv) {
   iv.sort((a, b) => a[0] - b[0]);
+  if (!iv.length) return [];
   const out = [iv[0]];
   for (const [s, e] of iv.slice(1)) {
     const last = out.at(-1);
@@ -137,14 +140,14 @@ function kthLargest(nums, k, MinHeap) {
 }`,
     problems: [P('E', 'meeting-rooms', 'Meeting Rooms'), P('E', 'summary-ranges', 'Summary Ranges'), P('M', 'merge-intervals', 'Merge Intervals'), P('M', 'insert-interval', 'Insert Interval'),
       P('M', 'non-overlapping-intervals', 'Non-overlapping Intervals'), P('M', 'meeting-rooms-ii', 'Meeting Rooms II'), P('M', 'minimum-number-of-arrows-to-burst-balloons', 'Minimum Number of Arrows to Burst Balloons'), P('M', 'interval-list-intersections', 'Interval List Intersections'),
-      P('M', 'my-calendar-i', 'My Calendar I'), P('M', 'car-pooling', 'Car Pooling'), P('M', 'remove-covered-intervals', 'Remove Covered Intervals'), P('M', 'employee-free-time', 'Employee Free Time'),
+      P('M', 'my-calendar-i', 'My Calendar I'), P('M', 'car-pooling', 'Car Pooling'), P('M', 'remove-covered-intervals', 'Remove Covered Intervals'), P('H', 'employee-free-time', 'Employee Free Time'),
       P('M', 'partition-labels', 'Partition Labels'), P('H', 'data-stream-as-disjoint-intervals', 'Data Stream as Disjoint Intervals'), P('H', 'the-skyline-problem', 'The Skyline Problem')] },
 
   { id: 'binary-search', core: true, name: 'Modified Binary Search', signals: ['Sorted or rotated input', 'Minimise the maximum or maximise the minimum', 'A yes/no check that flips once over a range'],
     topics: ['algorithms/search/linear-search', 'algorithms/search/jump-search', 'algorithms/search/interpolation-search', 'algorithms/search/binary-search', 'algorithms/math/square-root'],
-    code: `function firstTrue(lo, hi, ok) { // smallest x in [lo, hi] with ok(x)
+    code: `function firstTrue(lo, hi, ok) { // smallest x in [lo, hi] with ok(x); assumes ok(hi) is true, otherwise it returns hi
   while (lo < hi) {
-    const mid = (lo + hi) >> 1;
+    const mid = lo + Math.floor((hi - lo) / 2);
     ok(mid) ? (hi = mid) : (lo = mid + 1);
   }
   return lo;
@@ -156,7 +159,7 @@ function kthLargest(nums, k, MinHeap) {
       P('H', 'median-of-two-sorted-arrays', 'Median of Two Sorted Arrays'), P('H', 'split-array-largest-sum', 'Split Array Largest Sum'), P('H', 'find-minimum-in-rotated-sorted-array-ii', 'Find Minimum in Rotated Sorted Array II')] },
 
   { id: 'tree-traversal', core: true, name: 'Binary Tree Traversal', signals: ['Visit every node in a given order', 'Build or serialise a tree', 'Properties like depth, symmetry or equality'],
-    topics: ['data-structures/tree', 'data-structures/tree/avl-tree', 'data-structures/tree/red-black-tree', 'algorithms/tree/depth-first-search', 'algorithms/tree/breadth-first-search', 'data-structures/tree/binary-search-tree'],
+    topics: ['data-structures/tree', 'algorithms/tree/depth-first-search', 'algorithms/tree/breadth-first-search', 'data-structures/tree/binary-search-tree'],
     code: `function inorder(node, visit) {
   if (!node) return;
   inorder(node.left, visit);
@@ -169,7 +172,7 @@ function kthLargest(nums, k, MinHeap) {
       P('M', 'flatten-binary-tree-to-linked-list', 'Flatten Binary Tree to Linked List'), P('M', 'lowest-common-ancestor-of-a-binary-tree', 'Lowest Common Ancestor of a Binary Tree'), P('M', 'binary-search-tree-iterator', 'Binary Search Tree Iterator'), P('M', 'recover-binary-search-tree', 'Recover Binary Search Tree'),
       P('H', 'serialize-and-deserialize-binary-tree', 'Serialize and Deserialize Binary Tree'), P('H', 'binary-tree-maximum-path-sum', 'Binary Tree Maximum Path Sum')] },
 
-  { id: 'dfs', core: true, name: 'Depth-First Search', signals: ['Explore a path fully before backing up', 'Paths, depth, connected components', 'Anything recursive over a tree or graph'],
+  { id: 'dfs', core: true, name: 'Depth-First Search', signals: ['Explore a path fully before backing up', 'Paths, depth, connected components', 'Visit every node of a tree or graph, or follow one path to its end before trying another'],
     topics: ['algorithms/graph/articulation-points', 'algorithms/graph/bridges', 'algorithms/graph/strongly-connected-components', 'algorithms/graph/eulerian-path', 'algorithms/graph/depth-first-search', 'algorithms/tree/depth-first-search', 'data-structures/graph'],
     code: `function dfs(node, seen = new Set()) {
   if (!node || seen.has(node)) return;
@@ -180,12 +183,13 @@ function kthLargest(nums, k, MinHeap) {
     problems: [P('E', 'maximum-depth-of-binary-tree', 'Maximum Depth of Binary Tree'), P('E', 'path-sum', 'Path Sum'), P('E', 'diameter-of-binary-tree', 'Diameter of Binary Tree'), P('E', 'balanced-binary-tree', 'Balanced Binary Tree'),
       P('E', 'find-if-path-exists-in-graph', 'Find if Path Exists in Graph'), P('M', 'path-sum-ii', 'Path Sum II'), P('M', 'path-sum-iii', 'Path Sum III'), P('M', 'clone-graph', 'Clone Graph'),
       P('M', 'number-of-provinces', 'Number of Provinces'), P('M', 'all-paths-from-source-to-target', 'All Paths From Source to Target'), P('M', 'course-schedule', 'Course Schedule'), P('M', 'pacific-atlantic-water-flow', 'Pacific Atlantic Water Flow'),
-      P('M', 'count-good-nodes-in-binary-tree', 'Count Good Nodes in Binary Tree'), P('M', 'sum-root-to-leaf-numbers', 'Sum Root to Leaf Numbers'), P('M', 'reconstruct-itinerary', 'Reconstruct Itinerary'), P('M', 'is-graph-bipartite', 'Is Graph Bipartite?'),
+      P('M', 'count-good-nodes-in-binary-tree', 'Count Good Nodes in Binary Tree'), P('M', 'sum-root-to-leaf-numbers', 'Sum Root to Leaf Numbers'), P('H', 'reconstruct-itinerary', 'Reconstruct Itinerary'), P('M', 'is-graph-bipartite', 'Is Graph Bipartite?'),
       P('H', 'binary-tree-maximum-path-sum', 'Binary Tree Maximum Path Sum'), P('H', 'longest-increasing-path-in-a-matrix', 'Longest Increasing Path in a Matrix')] },
 
   { id: 'bfs', core: true, name: 'Breadth-First Search', signals: ['Shortest path in an unweighted graph or grid', 'Level-by-level processing', 'Minimum number of steps or moves'],
     topics: ['data-structures/queue', 'algorithms/graph/breadth-first-search', 'algorithms/tree/breadth-first-search'],
     code: `function levelOrder(root) {
+  // On a graph or grid, add a seen Set and skip neighbours already in it.
   const out = [], q = root ? [root] : [];
   while (q.length) {
     const level = [];
@@ -202,7 +206,7 @@ function kthLargest(nums, k, MinHeap) {
     problems: [P('E', 'minimum-depth-of-binary-tree', 'Minimum Depth of Binary Tree'), P('E', 'average-of-levels-in-binary-tree', 'Average of Levels in Binary Tree'), P('M', 'binary-tree-level-order-traversal', 'Binary Tree Level Order Traversal'), P('M', 'binary-tree-zigzag-level-order-traversal', 'Binary Tree Zigzag Level Order Traversal'),
       P('M', 'binary-tree-right-side-view', 'Binary Tree Right Side View'), P('M', 'populating-next-right-pointers-in-each-node', 'Populating Next Right Pointers in Each Node'), P('M', 'rotting-oranges', 'Rotting Oranges'), P('M', 'shortest-path-in-binary-matrix', 'Shortest Path in Binary Matrix'),
       P('M', 'open-the-lock', 'Open the Lock'), P('M', 'walls-and-gates', 'Walls and Gates'), P('M', '01-matrix', '01 Matrix'), P('M', 'perfect-squares', 'Perfect Squares'),
-      P('M', 'word-ladder', 'Word Ladder'), P('M', 'jump-game-iii', 'Jump Game III'), P('M', 'nearest-exit-from-entrance-in-maze', 'Nearest Exit from Entrance in Maze'), P('M', 'snakes-and-ladders', 'Snakes and Ladders'),
+      P('H', 'word-ladder', 'Word Ladder'), P('M', 'jump-game-iii', 'Jump Game III'), P('M', 'nearest-exit-from-entrance-in-maze', 'Nearest Exit from Entrance in Maze'), P('M', 'snakes-and-ladders', 'Snakes and Ladders'),
       P('H', 'word-ladder-ii', 'Word Ladder II'), P('H', 'shortest-path-visiting-all-nodes', 'Shortest Path Visiting All Nodes')] },
 
   { id: 'matrix', core: true, name: 'Matrix Traversal', signals: ['2D grid of cells', 'Islands, regions, flood fill', 'Spiral, diagonal or rotation walks'],
@@ -229,8 +233,8 @@ function kthLargest(nums, k, MinHeap) {
   const out = [], path = [];
   (function go(i) {
     if (i === nums.length) return out.push([...path]);
-    go(i + 1);                                  // skip
     path.push(nums[i]); go(i + 1); path.pop();  // take, then undo
+    go(i + 1);                                  // skip
   })(0);
   return out;
 }`,
@@ -252,10 +256,10 @@ function kthLargest(nums, k, MinHeap) {
     problems: [P('E', 'climbing-stairs', 'Climbing Stairs'), P('E', 'fibonacci-number', 'Fibonacci Number'), P('E', 'min-cost-climbing-stairs', 'Min Cost Climbing Stairs'), P('E', 'pascals-triangle', "Pascal's Triangle"),
       P('M', 'house-robber', 'House Robber'), P('M', 'house-robber-ii', 'House Robber II'), P('M', 'coin-change', 'Coin Change'), P('M', 'coin-change-ii', 'Coin Change II'),
       P('M', 'longest-increasing-subsequence', 'Longest Increasing Subsequence'), P('M', 'longest-common-subsequence', 'Longest Common Subsequence'), P('M', 'word-break', 'Word Break'), P('M', 'unique-paths', 'Unique Paths'),
-      P('M', 'unique-paths-ii', 'Unique Paths II'), P('M', 'minimum-path-sum', 'Minimum Path Sum'), P('M', 'jump-game', 'Jump Game'), P('M', 'partition-equal-subset-sum', 'Partition Equal Subset Sum'),
+      P('M', 'unique-paths-ii', 'Unique Paths II'), P('M', 'minimum-path-sum', 'Minimum Path Sum'), P('M', 'perfect-squares', 'Perfect Squares'), P('M', 'partition-equal-subset-sum', 'Partition Equal Subset Sum'),
       P('M', 'target-sum', 'Target Sum'), P('M', 'decode-ways', 'Decode Ways'), P('M', 'maximum-product-subarray', 'Maximum Product Subarray'), P('M', 'longest-palindromic-substring', 'Longest Palindromic Substring'),
       P('M', 'palindromic-substrings', 'Palindromic Substrings'), P('M', 'best-time-to-buy-and-sell-stock-with-cooldown', 'Best Time to Buy and Sell Stock with Cooldown'), P('M', 'triangle', 'Triangle'), P('M', 'maximal-square', 'Maximal Square'),
-      P('H', 'edit-distance', 'Edit Distance'), P('H', 'regular-expression-matching', 'Regular Expression Matching'), P('H', 'burst-balloons', 'Burst Balloons'), P('H', 'distinct-subsequences', 'Distinct Subsequences'),
+      P('M', 'edit-distance', 'Edit Distance'), P('H', 'regular-expression-matching', 'Regular Expression Matching'), P('H', 'burst-balloons', 'Burst Balloons'), P('H', 'distinct-subsequences', 'Distinct Subsequences'),
       P('H', 'longest-valid-parentheses', 'Longest Valid Parentheses'), P('H', 'best-time-to-buy-and-sell-stock-iv', 'Best Time to Buy and Sell Stock IV')] },
 
   // Extras beyond the 15.
@@ -276,7 +280,7 @@ function kthLargest(nums, k, MinHeap) {
 
   { id: 'topological', name: 'Topological Sort', signals: ['Prerequisites or dependencies', 'Build or task ordering', 'Detect an impossible ordering (cycle)'],
     topics: ['algorithms/graph/topological-sorting', 'algorithms/graph/detect-cycle'],
-    code: `function order(n, edges) { // Kahn's algorithm
+    code: `function order(n, edges) { // Kahn's algorithm. edge [a, b] means a must come before b. LeetCode's Course Schedule gives [course, prereq], so swap them.
   const adj = Array.from({ length: n }, () => []), indeg = Array(n).fill(0);
   for (const [a, b] of edges) { adj[a].push(b); indeg[b]++; }
   const q = [...indeg.keys()].filter(i => !indeg[i]), out = [];
@@ -287,27 +291,39 @@ function kthLargest(nums, k, MinHeap) {
   return out.length === n ? out : []; // [] means a cycle
 }`,
     problems: [P('M', 'course-schedule', 'Course Schedule'), P('M', 'course-schedule-ii', 'Course Schedule II'), P('M', 'find-eventual-safe-states', 'Find Eventual Safe States'), P('M', 'minimum-height-trees', 'Minimum Height Trees'),
-      P('M', 'sequence-reconstruction', 'Sequence Reconstruction'), P('M', 'parallel-courses', 'Parallel Courses'), P('M', 'all-ancestors-of-a-node-in-a-directed-acyclic-graph', 'All Ancestors of a Node in a DAG'), P('M', 'sort-items-by-groups-respecting-dependencies', 'Sort Items by Groups Respecting Dependencies'),
-      P('H', 'alien-dictionary', 'Alien Dictionary'), P('H', 'course-schedule-iv', 'Course Schedule IV')] },
+      P('M', 'sequence-reconstruction', 'Sequence Reconstruction'), P('M', 'parallel-courses', 'Parallel Courses'), P('M', 'all-ancestors-of-a-node-in-a-directed-acyclic-graph', 'All Ancestors of a Node in a DAG'), P('M', 'course-schedule-iv', 'Course Schedule IV'),
+      P('H', 'alien-dictionary', 'Alien Dictionary'), P('H', 'sort-items-by-groups-respecting-dependencies', 'Sort Items by Groups Respecting Dependencies')] },
 
   { id: 'shortest-path', name: 'Weighted Shortest Path', signals: ['Cheapest route with edge weights', 'Network delay or cheapest flights', 'Negative edges (Bellman-Ford)'],
-    topics: ['algorithms/graph/prim', 'algorithms/graph/dijkstra', 'algorithms/graph/bellman-ford', 'algorithms/graph/floyd-warshall'],
-    code: `// Dijkstra: expand the closest unvisited node using a priority queue.
-// See the Dijkstra topic for the full implementation on top of PriorityQueue.`,
+    topics: ['algorithms/graph/dijkstra', 'algorithms/graph/bellman-ford', 'algorithms/graph/floyd-warshall'],
+    code: `function dijkstra(n, edges, src) { // no negative costs; edges are [from, to, cost]
+  const adj = Array.from({ length: n }, () => []);
+  for (const [u, v, w] of edges) adj[u].push([v, w]);
+  const dist = Array(n).fill(Infinity), done = Array(n).fill(false);
+  dist[src] = 0;
+  for (let round = 0; round < n; round++) {
+    let u = -1; // the closest unfinished node (a priority queue finds it faster)
+    for (let i = 0; i < n; i++) if (!done[i] && (u < 0 || dist[i] < dist[u])) u = i;
+    if (dist[u] === Infinity) break;
+    done[u] = true;
+    for (const [v, w] of adj[u]) dist[v] = Math.min(dist[v], dist[u] + w);
+  }
+  return dist;
+}`,
     problems: [P('M', 'network-delay-time', 'Network Delay Time'), P('M', 'cheapest-flights-within-k-stops', 'Cheapest Flights Within K Stops'), P('M', 'path-with-minimum-effort', 'Path With Minimum Effort'), P('M', 'path-with-maximum-probability', 'Path with Maximum Probability'),
-      P('M', 'find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance', 'Find the City With the Smallest Number of Neighbors'), P('M', 'minimum-cost-to-reach-destination-in-time', 'Minimum Cost to Reach Destination in Time'), P('H', 'swim-in-rising-water', 'Swim in Rising Water'), P('H', 'minimum-cost-to-make-at-least-one-valid-path-in-a-grid', 'Minimum Cost to Make at Least One Valid Path in a Grid')] },
+      P('M', 'find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance', 'Find the City With the Smallest Number of Neighbors'), P('H', 'minimum-cost-to-reach-destination-in-time', 'Minimum Cost to Reach Destination in Time'), P('H', 'swim-in-rising-water', 'Swim in Rising Water'), P('H', 'minimum-cost-to-make-at-least-one-valid-path-in-a-grid', 'Minimum Cost to Make at Least One Valid Path in a Grid')] },
 
   { id: 'union-find', name: 'Union-Find', signals: ['Dynamic connectivity', 'Merging groups', 'Detect a cycle in an undirected graph', 'Minimum spanning tree'],
-    topics: ['algorithms/graph/kruskal', 'data-structures/disjoint-set', 'algorithms/graph/kruskal'],
-    code: `const parent = [];
-const find = x => (parent[x] === undefined || parent[x] === x ? (parent[x] = x) : (parent[x] = find(parent[x])));
-const union = (a, b) => { parent[find(a)] = find(b); };`,
+    topics: ['data-structures/disjoint-set', 'algorithms/graph/kruskal'],
+    code: `const parent = [], size = [];
+const find = x => { if (parent[x] === undefined) { parent[x] = x; size[x] = 1; } while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+const union = (a, b) => { a = find(a); b = find(b); if (a === b) return false; if (size[a] < size[b]) [a, b] = [b, a]; parent[b] = a; size[a] += size[b]; return true; };`,
     problems: [P('E', 'find-if-path-exists-in-graph', 'Find if Path Exists in Graph'), P('M', 'number-of-provinces', 'Number of Provinces'), P('M', 'redundant-connection', 'Redundant Connection'), P('M', 'accounts-merge', 'Accounts Merge'),
       P('M', 'graph-valid-tree', 'Graph Valid Tree'), P('M', 'number-of-connected-components-in-an-undirected-graph', 'Number of Connected Components in an Undirected Graph'), P('M', 'satisfiability-of-equality-equations', 'Satisfiability of Equality Equations'), P('M', 'most-stones-removed-with-same-row-or-column', 'Most Stones Removed with Same Row or Column'),
-      P('M', 'evaluate-division', 'Evaluate Division'), P('H', 'number-of-islands-ii', 'Number of Islands II'), P('H', 'min-cost-to-connect-all-points', 'Min Cost to Connect All Points'), P('H', 'swim-in-rising-water', 'Swim in Rising Water')] },
+      P('M', 'evaluate-division', 'Evaluate Division'), P('M', 'min-cost-to-connect-all-points', 'Min Cost to Connect All Points'), P('H', 'number-of-islands-ii', 'Number of Islands II'), P('H', 'swim-in-rising-water', 'Swim in Rising Water')] },
 
   { id: 'greedy', name: 'Greedy', signals: ['A locally best choice is globally safe', 'Reach, schedule or cover problems', 'Sorting first makes the choice obvious'],
-    topics: ['algorithms/math/pascal-triangle', 'algorithms/uncategorized/jump-game', 'algorithms/graph/kruskal', 'algorithms/graph/prim'],
+    topics: ['algorithms/uncategorized/jump-game', 'algorithms/graph/kruskal', 'algorithms/graph/prim'],
     code: `function canJump(nums) {
   let reach = 0;
   for (let i = 0; i < nums.length; i++) {
@@ -316,8 +332,8 @@ const union = (a, b) => { parent[find(a)] = find(b); };`,
   }
   return true;
 }`,
-    problems: [P('E', 'assign-cookies', 'Assign Cookies'), P('E', 'lemonade-change', 'Lemonade Change'), P('E', 'best-time-to-buy-and-sell-stock-ii', 'Best Time to Buy and Sell Stock II'), P('E', 'can-place-flowers', 'Can Place Flowers'),
-      P('M', 'jump-game', 'Jump Game'), P('M', 'jump-game-ii', 'Jump Game II'), P('M', 'gas-station', 'Gas Station'), P('M', 'hand-of-straights', 'Hand of Straights'),
+    problems: [P('E', 'assign-cookies', 'Assign Cookies'), P('E', 'lemonade-change', 'Lemonade Change'), P('E', 'can-place-flowers', 'Can Place Flowers'),
+      P('M', 'best-time-to-buy-and-sell-stock-ii', 'Best Time to Buy and Sell Stock II'), P('M', 'jump-game', 'Jump Game'), P('M', 'jump-game-ii', 'Jump Game II'), P('M', 'gas-station', 'Gas Station'), P('M', 'hand-of-straights', 'Hand of Straights'),
       P('M', 'task-scheduler', 'Task Scheduler'), P('M', 'queue-reconstruction-by-height', 'Queue Reconstruction by Height'), P('M', 'partition-labels', 'Partition Labels'), P('M', 'maximum-subarray', 'Maximum Subarray'),
       P('H', 'candy', 'Candy'), P('H', 'minimum-number-of-taps-to-open-to-water-a-garden', 'Minimum Number of Taps to Open to Water a Garden')] },
 
@@ -327,6 +343,7 @@ const union = (a, b) => { parent[find(a)] = find(b); };`,
   root = {};
   insert(w) { let n = this.root; for (const c of w) n = n[c] ??= {}; n.end = true; }
   startsWith(p) { let n = this.root; for (const c of p) if (!(n = n[c])) return false; return true; }
+  search(w) { let n = this.root; for (const c of w) if (!(n = n[c])) return false; return n.end === true; } // end marks a complete word, not just a prefix
 }`,
     problems: [P('E', 'longest-common-prefix', 'Longest Common Prefix'), P('M', 'implement-trie-prefix-tree', 'Implement Trie (Prefix Tree)'), P('M', 'design-add-and-search-words-data-structure', 'Design Add and Search Words Data Structure'), P('M', 'replace-words', 'Replace Words'),
       P('M', 'map-sum-pairs', 'Map Sum Pairs'), P('M', 'search-suggestions-system', 'Search Suggestions System'), P('M', 'maximum-xor-of-two-numbers-in-an-array', 'Maximum XOR of Two Numbers in an Array'), P('H', 'word-search-ii', 'Word Search II'),
@@ -334,11 +351,13 @@ const union = (a, b) => { parent[find(a)] = find(b); };`,
 
   { id: 'bits', name: 'Bit Manipulation', signals: ['Find the single or odd one out', 'Powers of two', 'Subset enumeration via masks', 'Constant-space tricks'],
     topics: ['algorithms/math/binary-floating-point', 'algorithms/math/bits', 'algorithms/math/is-power-of-two'],
-    code: `const single = nums => nums.reduce((a, b) => a ^ b, 0); // pairs cancel under XOR`,
+    code: `const single = nums => nums.reduce((a, b) => a ^ b, 0); // pairs cancel under XOR
+const isPowerOfTwo = n => n > 0 && (n & (n - 1)) === 0; // a power of two has one 1-bit; n - 1 flips it and all lower bits
+// Subsets of an n-item list: for (let mask = 0; mask < 1 << n; mask++), bit i of mask says whether item i is in.`,
     problems: [P('E', 'single-number', 'Single Number'), P('E', 'number-of-1-bits', 'Number of 1 Bits'), P('E', 'power-of-two', 'Power of Two'), P('E', 'counting-bits', 'Counting Bits'),
       P('E', 'reverse-bits', 'Reverse Bits'), P('E', 'missing-number', 'Missing Number'), P('E', 'hamming-distance', 'Hamming Distance'), P('M', 'single-number-ii', 'Single Number II'),
       P('M', 'single-number-iii', 'Single Number III'), P('M', 'sum-of-two-integers', 'Sum of Two Integers'), P('M', 'bitwise-and-of-numbers-range', 'Bitwise AND of Numbers Range'), P('M', 'subsets', 'Subsets'),
-      P('M', 'maximum-product-of-word-lengths', 'Maximum Product of Word Lengths'), P('H', 'maximum-xor-of-two-numbers-in-an-array', 'Maximum XOR of Two Numbers in an Array')] },
+      P('M', 'maximum-product-of-word-lengths', 'Maximum Product of Word Lengths'), P('M', 'maximum-xor-of-two-numbers-in-an-array', 'Maximum XOR of Two Numbers in an Array')] },
 
   { id: 'sort-first', name: 'Sort First', signals: ['Duplicates, closeness or ordering questions', 'Pairs of neighbours matter', 'Brute force compares every pair'],
     topics: ['foundations/array', 'algorithms/sorting/bubble-sort', 'algorithms/sorting/selection-sort', 'algorithms/sorting/insertion-sort', 'algorithms/sorting/shell-sort', 'algorithms/sorting/heap-sort', 'algorithms/sorting/counting-sort', 'algorithms/sorting/radix-sort', 'algorithms/sorting/bucket-sort'],
@@ -347,18 +366,18 @@ const hasDuplicate = nums => {
   const s = [...nums].sort((a, b) => a - b);
   return s.some((v, i) => i > 0 && v === s[i - 1]);
 };`,
-    problems: [P('E', 'contains-duplicate', 'Contains Duplicate'), P('E', 'valid-anagram', 'Valid Anagram'), P('E', 'meeting-rooms', 'Meeting Rooms'), P('E', 'merge-sorted-array', 'Merge Sorted Array'),
-      P('M', 'sort-colors', 'Sort Colors'), P('M', 'largest-number', 'Largest Number'), P('M', 'h-index', 'H-Index'), P('M', 'wiggle-sort-ii', 'Wiggle Sort II'),
-      P('M', 'sort-an-array', 'Sort an Array'), P('M', 'custom-sort-string', 'Custom Sort String'), P('M', 'insertion-sort-list', 'Insertion Sort List'), P('H', 'maximum-gap', 'Maximum Gap'), P('H', 'count-of-smaller-numbers-after-self', 'Count of Smaller Numbers After Self')] },
+    problems: [P('E', 'contains-duplicate', 'Contains Duplicate'), P('E', 'valid-anagram', 'Valid Anagram'), P('E', 'minimum-absolute-difference', 'Minimum Absolute Difference'), P('E', 'array-partition', 'Array Partition'), P('E', 'meeting-rooms', 'Meeting Rooms'),
+      P('M', '3sum', '3Sum'), P('M', 'k-diff-pairs-in-an-array', 'K-diff Pairs in an Array'), P('M', 'largest-number', 'Largest Number'), P('M', 'h-index', 'H-Index'), P('M', 'wiggle-sort-ii', 'Wiggle Sort II'), P('M', 'custom-sort-string', 'Custom Sort String')] },
 
-  { id: 'divide-conquer', name: 'Divide & Conquer', signals: ['Problem splits into independent halves', 'Combine step is cheap', 'Recurrence like T(n) = 2T(n/2) + n'],
+  { id: 'divide-conquer', name: 'Divide & Conquer', signals: ['Problem splits into independent halves', 'Solved pieces can be combined in one pass', 'You can write the cost as: time for two halves plus the cost of combining, e.g. 2 halves + n steps to merge'],
     topics: ['foundations/recursion', 'algorithms/sorting/merge-sort', 'algorithms/sorting/quick-sort', 'algorithms/math/fast-powering', 'algorithms/uncategorized/hanoi-tower', 'algorithms/search/binary-search'],
     code: `function mergeSort(a) {
   if (a.length < 2) return a;
   const mid = a.length >> 1, l = mergeSort(a.slice(0, mid)), r = mergeSort(a.slice(mid));
   const out = [];
-  while (l.length && r.length) out.push(l[0] <= r[0] ? l.shift() : r.shift());
-  return [...out, ...l, ...r];
+  let i = 0, j = 0;
+  while (i < l.length && j < r.length) out.push(l[i] <= r[j] ? l[i++] : r[j++]);
+  return out.concat(l.slice(i), r.slice(j));
 }`,
     problems: [P('E', 'majority-element', 'Majority Element'), P('E', 'convert-sorted-array-to-binary-search-tree', 'Convert Sorted Array to Binary Search Tree'), P('M', 'powx-n', 'Pow(x, n)'), P('M', 'sort-list', 'Sort List'),
       P('M', 'maximum-subarray', 'Maximum Subarray'), P('M', 'different-ways-to-add-parentheses', 'Different Ways to Add Parentheses'), P('M', 'construct-quad-tree', 'Construct Quad Tree'), P('M', 'kth-largest-element-in-an-array', 'Kth Largest Element in an Array'),
@@ -369,17 +388,31 @@ const hasDuplicate = nums => {
     code: `// Naive O(n * m). KMP, Rabin-Karp and Z do it in O(n + m): see their topics.
 const indexOf = (text, pat) => {
   for (let i = 0; i + pat.length <= text.length; i++)
-    if (text.startsWith(pat, i)) return i;
+  {
+    let j = 0;
+    while (j < pat.length && text[i + j] === pat[j]) j++; // up to m comparisons per start
+    if (j === pat.length) return i;
+  }
   return -1;
 };`,
     problems: [P('E', 'find-the-index-of-the-first-occurrence-in-a-string', 'Find the Index of the First Occurrence in a String'), P('E', 'repeated-substring-pattern', 'Repeated Substring Pattern'), P('E', 'is-subsequence', 'Is Subsequence'), P('E', 'rotate-string', 'Rotate String'),
-      P('M', 'longest-palindromic-substring', 'Longest Palindromic Substring'), P('M', 'palindromic-substrings', 'Palindromic Substrings'), P('M', 'repeated-string-match', 'Repeated String Match'), P('M', 'one-edit-distance', 'One Edit Distance'),
-      P('H', 'shortest-palindrome', 'Shortest Palindrome'), P('H', 'longest-happy-prefix', 'Longest Happy Prefix'), P('H', 'longest-duplicate-substring', 'Longest Duplicate Substring'), P('H', 'edit-distance', 'Edit Distance'), P('H', 'wildcard-matching', 'Wildcard Matching')] },
+      P('M', 'longest-palindromic-substring', 'Longest Palindromic Substring'), P('M', 'palindromic-substrings', 'Palindromic Substrings'), P('M', 'repeated-string-match', 'Repeated String Match'), P('M', 'one-edit-distance', 'One Edit Distance'), P('M', 'edit-distance', 'Edit Distance'),
+      P('H', 'shortest-palindrome', 'Shortest Palindrome'), P('H', 'longest-happy-prefix', 'Longest Happy Prefix'), P('H', 'longest-duplicate-substring', 'Longest Duplicate Substring'), P('H', 'wildcard-matching', 'Wildcard Matching')] },
 
   { id: 'number-theory', name: 'Number Theory', signals: ['GCD, LCM, divisibility, primes', 'Huge exponents or modular arithmetic', 'Digits and arithmetic without built-ins'],
     topics: ['algorithms/math/euclidean-algorithm', 'algorithms/math/least-common-multiple', 'algorithms/math/primality-test', 'algorithms/math/sieve-of-eratosthenes', 'algorithms/math/prime-factors', 'algorithms/math/fast-powering', 'algorithms/math/factorial', 'algorithms/math/horner-method', 'algorithms/math/square-root'],
     code: `const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
-const lcm = (a, b) => (a / gcd(a, b)) * b;`,
+const lcm = (a, b) => (a / gcd(a, b)) * b;
+const modPow = (b, e, m) => {
+  let r = 1n % m
+  b %= m
+  while (e > 0n) {
+    if (e & 1n) r = (r * b) % m
+    b = (b * b) % m
+    e >>= 1n
+  }
+  return r
+}`,
     problems: [P('E', 'greatest-common-divisor-of-strings', 'Greatest Common Divisor of Strings'), P('E', 'ugly-number', 'Ugly Number'), P('E', 'happy-number', 'Happy Number'), P('E', 'plus-one', 'Plus One'),
       P('E', 'add-binary', 'Add Binary'), P('E', 'excel-sheet-column-number', 'Excel Sheet Column Number'), P('M', 'count-primes', 'Count Primes'), P('M', 'powx-n', 'Pow(x, n)'),
       P('M', 'factorial-trailing-zeroes', 'Factorial Trailing Zeroes'), P('M', 'ugly-number-ii', 'Ugly Number II'), P('M', 'multiply-strings', 'Multiply Strings'), P('M', 'divide-two-integers', 'Divide Two Integers'),

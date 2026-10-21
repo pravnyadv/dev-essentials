@@ -47,7 +47,7 @@ Inserting in the middle is the costly case. Inserting `X` at index 1 of `A B C D
 | Write X at index 1 | `A X B C D` |
 
 # foundations/string | after Characters as numbers
-This trace runs `isAnagram("listen", "silent")` from the code tab. Each step adds one for a letter of the first word and subtracts one for the letter of the second word at the same index. Only letters with a non-zero count are listed. The words are anagrams because every count ends at zero.
+This trace runs `isAnagram("listen", "silent")` from the code tab. This version assumes the words contain only lowercase letters a to z: any other character lands outside the 26 slots and goes uncounted, so `isAnagram("A", "B")` wrongly returns true. For general text, count in a `Map` instead. Each step adds one for a letter of the first word and subtracts one for the letter of the second word at the same index. Only letters with a non-zero count are listed. The words are anagrams because every count ends at zero.
 
 | i | Letter of first word (+1) | Letter of second word (-1) | Non-zero counts after this step |
 | --- | --- | --- | --- |
@@ -97,7 +97,7 @@ Anti-diagonal id `r + c`:
 | **row 2** | 2 | 3 | 4 | 5 |
 
 # foundations/matrix-2d | after Moving around
-Checking the four neighbours of the cell at row 0, column 2 in the 3 by 4 grid. The top row has no cell above it, so that direction is skipped.
+Checking the four neighbours of the cell at row 0, column 2 in a grid with 3 rows and 4 columns (rows 0 to 2, columns 0 to 3). The top row has no cell above it, so that direction is skipped.
 
 | Direction | Neighbour (row, col) | Inside the grid? |
 | --- | --- | --- |

@@ -62,7 +62,7 @@ Avoid when | The services are slow or flaky enough that the gateway would wait o
 
 The problem: one screen needs data from many services. A phone that makes five separate calls over a slow mobile network pays the network round trip five times.
 
-Gateway Aggregation lets the client make one call. The gateway fans out to the services over the fast internal network, waits for the replies and returns one combined response. Where calls do not depend on each other, the gateway runs them in parallel. Use it when a client makes many chatty calls to separate services.
+Gateway Aggregation lets the client make one call. The gateway fans out to the services over the fast internal network, waits for the replies and returns one combined response. Where calls do not depend on each other, the gateway runs them in parallel. Use it when a client makes many chatty calls to separate services. If aggregation grows heavy, run it as its own service behind the gateway so it does not slow routing and offloading.
 
 ```mermaid Aggregation: one call from the phone, and the list calls run in parallel inside
 sequenceDiagram
@@ -113,17 +113,17 @@ flowchart LR
 ## A worked example: the home screen
 Invented numbers. A phone is 100 ms round trip from the data center. The home screen needs the user profile first (20 ms server time), then four lists that depend on the profile id: orders, offers, messages and recommendations. The four lists take 20 ms each. Inside the data center a hop costs about 2 ms.
 
-Without a gateway the phone makes five calls in sequence: 5 x (100 + 20) = 600 ms. With aggregation the phone makes one call. The gateway spends 2 + 20 on the profile, then 2 + 20 on the four lists in parallel, so 44 ms inside. Total: 100 + 44 = 144 ms. That is about four times faster, and the phone made one request instead of five.
+Without a gateway the phone calls the profile service (100 + 20 = 120 ms), then sends the four list calls in parallel (100 + 20 = 120 ms more): 240 ms, and five requests over the slow link. If it made them one after another it would be 5 x 120 = 600 ms. With aggregation the phone makes one call. The gateway spends 2 + 20 on the profile, then 2 + 20 on the four lists in parallel, so 44 ms inside. Total: 100 + 44 = 144 ms. Against the best the phone could do alone, that is 240 ms down to 144 ms, and five requests down to one. The slow link is crossed once instead of twice, and on a poor connection every extra request is another chance to fail.
 
-```mermaid Time until the home screen is ready, in milliseconds, with five calls from the phone against one aggregated call (invented numbers)
+```mermaid Time until the home screen is ready, in milliseconds: five calls in a row, five calls with the lists in parallel, and one aggregated call (invented numbers)
 xychart-beta
-  x-axis [Five calls from the phone, One call to the gateway]
+  x-axis [Five calls in a row, Phone sends lists in parallel, One call to the gateway]
   y-axis "milliseconds" 0 --> 600
-  bar [600, 144]
+  bar [600, 240, 144]
 ```
 
 ## What goes wrong: the slowest upstream sets your speed
-An aggregating gateway is only as fast as its slowest call. Suppose each of four services answers within 100 ms for 99 percent of calls. The chance that all four are fast is about $0.99^4 = 0.96$, so about 4 percent of home screens are slow, though no single service looks broken. Worse, if the gateway waits forever for one stuck service, threads pile up and the whole gateway stalls (see [circuit breakers](/sd/docs/reliability/circuit-breakers)).
+An aggregating gateway is only as fast as its slowest call. Suppose each of four services answers within 100 ms for 99 percent of calls. The chance that all four are fast is about $0.99^4 = 0.96$ (assuming the services are slow independently of each other), so about 4 percent of home screens are slow, though no single service looks broken. Worse, if the gateway waits forever for one stuck service, threads pile up and the whole gateway stalls (see [circuit breakers](/sd/docs/reliability/circuit-breakers)).
 
 ```mermaid Share of screens that wait on at least one slow call, when each service is slow 1 percent of the time
 xychart-beta
@@ -135,7 +135,7 @@ xychart-beta
 The symptom is a p99 at the gateway that is higher than every service's p99. Confirm it with a trace that shows one span per upstream call. The fix is a short timeout per upstream call and a partial answer: return the screen without recommendations rather than no screen.
 
 ## When a gateway layer is the wrong tool
-A single web app with one backend does not need four layers. Plain routing in your web server is enough. Do not offload business logic: the moment pricing rules live in the gateway, every team depends on its release train. Do not build a BFF per feature either, because many BFFs that copy the same logic must all be fixed when it changes. If two BFFs keep sharing code, pull that code into a service they both call.
+A single web app with one backend does not need four layers. Plain routing in your web server is enough. Do not offload business logic: the moment pricing rules live in the gateway, every team depends on its release train. Do not build a BFF per feature either, because many BFFs that copy the same logic all need fixing when it changes. Some duplication between BFFs is a fair price for keeping them independent. Sam Newman suggests extracting shared code, ideally into a service, around the third time you build the same thing.
 
 A gateway is also one more hop, so it adds some latency. It can become a single point of failure and a bottleneck: run several instances, load test it, and size it for peak traffic, not average. Offloaded checks protect nothing if clients can reach a backend directly, so let the backends accept traffic only from the gateway. For BFFs, Microsoft's page adds that if you already use GraphQL with client-specific resolvers, or an API gateway that is enough for your clients, a BFF may add little.
 
@@ -144,13 +144,15 @@ Using the gateway as a place for logic that "every client needs", until it is a 
 
 ```resources
 docs | Gateway Routing pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/gateway-routing | Azure Architecture Center | Describes routing requests to several services or instances through one endpoint, including version splits.
+docs | Gateway Offloading pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/gateway-offloading | Azure Architecture Center | Moves shared chores such as TLS termination, authentication and throttling into a gateway.
+docs | Gateway Aggregation pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/gateway-aggregation | Azure Architecture Center | One client request fans out through a gateway and comes back as one response, with advice on timeouts and partial results.
 docs | Backends for Frontends pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/backends-for-frontends | Azure Architecture Center | Explains separate backends per client type and the costs of running several.
 article | Pattern: Backends For Frontends | https://samnewman.io/patterns/architectural/bff/ | Sam Newman | Explains why one general-purpose API struggles with mobile and web, and proposes one backend per user experience owned by the UI team.
 repo | Backend For Frontend (BFF) pattern | https://github.com/karanpratapsingh/system-design#backend-for-frontend-bff-pattern | Karan Pratap Singh | Short section crediting Sam Newman and saying GraphQL works well as a BFF.
 ```
 
 ```quiz
-A phone makes 5 sequential calls at 100 ms round trip plus 20 ms server time each. How long do the calls take? | About 1,200 ms ; About 600 ms ; About 120 ms | 1 | Each call costs 100 + 20 = 120 ms, and 5 x 120 = 600 ms.
+A phone needs 5 calls to build a screen, each 100 ms on the slow link plus 20 ms of server time. A gateway could make the same 5 calls inside the data center at 2 ms plus 20 ms each, in parallel, after one call from the phone. Which part of the saving is the biggest? | The services do far less work in total ; The phone crosses the slow link once, not five times ; The data center network is faster than a CPU | 1 | The server work is the same either way. What shrinks is the number of slow-link round trips.
 Which pattern fits "the mobile and web clients need different data and ship on different schedules"? | Gateway Aggregation of the calls ; Gateway Offloading of the chores ; A BFF per client | 2 | A backend per client type, owned by the UI team, lets each change at its own pace.
 An aggregating gateway has a p99 higher than any service behind it. What is the likely reason? | It waits on the slowest of many calls ; The upstream services are cached too heavily ; Each client sends every request twice | 0 | The chance that all parallel calls are fast is lower than for any one, so tail latency grows.
 ```
@@ -178,9 +180,9 @@ The problem: apps need logging, monitoring, configuration and networking help. I
 
 The Sidecar pattern puts the helper in its own process or container on the same host, one helper per application instance. Like a motorcycle sidecar, it is attached to the main app and is created and retired with it. The app and sidecar talk over localhost or shared files, so the delay is tiny, and a Python app and a Go app can use the same sidecar.
 
-1. The platform starts the app and its sidecar together, in one pod or on one host.
+1. The platform starts the app and its sidecar together, on one host. In Kubernetes the shared unit is called a pod: a small group of containers that always run on the same machine and start and stop together.
 2. The app writes logs to a local file or port, and the sidecar ships them to the logging system.
-3. If the sidecar crashes, the platform restarts it, and the app's code is unaffected.
+3. If the sidecar crashes, the platform restarts it. The app's code does not crash with it, though calls that need the sidecar fail until it is back.
 4. To upgrade the log shipper, you roll out a new sidecar image and leave the app alone.
 
 ```mermaid Sidecar: the app and its helper share one host and one life cycle
@@ -230,7 +232,7 @@ flowchart TD
 ## A worked example: 40 services, 3 languages
 Invented numbers. A company has 40 services in Java, Go and Python. Each needs mutual TLS, retries and request metrics. With client libraries, that is 3 libraries to build and 40 services to redeploy for every fix. Say the retry bug fix takes 2 hours of work per service: 40 x 2 = 80 hours.
 
-With sidecars, there is one proxy image. The fix is one image rollout. The cost is memory: if each proxy uses 50 MB and there are 400 running instances, that is 400 x 50 MB = 20 GB of RAM across the fleet, plus a small added delay on each call. The sidecar wins when many services and languages share the chore. For three services in one language, a library costs less.
+With sidecars, there is one proxy image. The fix is one image rollout. The cost is memory: if each service runs 10 copies, that is 400 running instances. At 50 MB per proxy, 400 x 50 MB = 20,000 MB, about 20 GB of RAM across the fleet, plus a small added delay on each call. The sidecar wins when many services and languages share the chore. For three services in one language, a library costs less.
 
 | | Client libraries | One sidecar proxy |
 | --- | --- | --- |
@@ -240,7 +242,7 @@ With sidecars, there is one proxy image. The fix is one image rollout. The cost 
 | Extra delay per call | None | A local hop to the proxy |
 
 ## What goes wrong: the sidecar that starves its app
-The sidecar shares the host's CPU and memory. A log shipper that buffers too much, or a proxy under a traffic spike, can take the resources the app needs. The symptom is an app that slows or gets killed for memory while its own code looks fine. Confirm it by comparing resource use per container, not per pod, and by checking restart reasons. Set explicit CPU and memory limits for the sidecar. Also watch startup order: if the app starts before its proxy is ready, its first calls fail. Recent Kubernetes versions have native sidecar containers that start before the main container and stop after it, which removes this race.
+The sidecar shares the host's CPU and memory. A log shipper that buffers too much, or a proxy under a traffic spike, can take the resources the app needs. The symptom is an app that slows or gets killed for memory while its own code looks fine. Confirm it by comparing resource use per container, not per pod, and by checking restart reasons. Set explicit CPU and memory limits for the sidecar. Also watch startup order: if the app starts before its proxy is ready, its first calls fail. Kubernetes 1.33 and later have native sidecar containers that start before the main container and stop after it, which removes this race.
 
 ## When sidecars are the wrong tool
 A tiny system with a few services does not need a mesh or per-instance helpers. A shared library is simpler, has no extra hop and integrates more deeply with the language. A sidecar also suits poorly where every millisecond counts and the extra process hop matters, or where a helper needs to be shared by many apps and needs its own scaling. In that case a separate service is the better shape.
@@ -258,7 +260,7 @@ repo | Service mesh | https://github.com/karanpratapsingh/system-design#service-
 ```quiz
 What does a sidecar share with its main application? | Its programming language and runtime ; Its own private database copy ; Its life cycle | 2 | It is created and retired with the app, on the same host.
 40 services each need a retry fix at 2 hours of work per service. A shared sidecar needs one rollout. About how many hours of per-service work does the sidecar avoid? | About 80 hours ; About 40 hours in total ; About 2 hours in all | 0 | 40 services x 2 hours = 80 hours of separate work.
-Why is it risky for an ambassador to retry every failed request? | Retries always use too much memory ; Some calls are unsafe to repeat ; The app cannot see the local proxy | 1 | A non-idempotent call such as a payment can be applied twice.
+An ambassador retries any failed call up to 3 times. Which of the app's calls is it unsafe for? | Fetching a product page ; Charging a card ; Reading a user's name | 1 | A non-idempotent call such as a card charge can be applied twice, while reads give the same result when repeated.
 ```
 
 ```story
@@ -287,7 +289,7 @@ The problem: a big old system is risky to rewrite, but patching it forever is wo
 1. Put a facade, such as a proxy or gateway, in front of the legacy system. All clients now go through it. At first it forwards everything to the old system.
 2. Pick one small piece of behavior, for example "order history", and build it in the new system.
 3. Change a facade rule so that order-history requests go to the new system. The rest still go to the old one.
-4. Repeat, slice by slice. Roll back any slice by flipping its rule.
+4. Repeat, slice by slice. Roll back a slice by flipping its rule, as long as the old system still has the data that slice wrote. If the new system owns the data, keep a copy flowing back to the old one until you trust the slice.
 5. When the old system receives no traffic, switch it off. Then remove the facade, or keep it as an adapter for old clients.
 
 ```mermaid Strangler Fig: the facade sends one slice to the new system and the rest to the old one
@@ -339,7 +341,7 @@ A Messaging Bridge avoids that. It is a small component that connects to both sy
 
 1. The old app keeps sending to a designated queue on its own messaging system.
 2. The bridge reads each message and writes it, payload unchanged, to a queue on the other system.
-3. The new app reads from its own queue as usual. Neither app knows the other, or the bridge, exists.
+3. The new app reads from its own queue as usual. Ideally neither app knows the other, or the bridge, exists. The only setup is that the old app sends to a designated queue.
 
 ```mermaid Messaging Bridge: messages cross between two messaging systems and the apps never change
 flowchart TD
@@ -349,14 +351,14 @@ flowchart TD
   Q2 --> C[New app]
 ```
 
-Because each app keeps its own transport, you can move endpoints one at a time, on your own schedule. The price is that the bridged route gets only the features both systems share, and it must respect the tighter limit of the two. Microsoft's page gives an example of a 4 MB message limit on one system and 64 KB on another. If one side depends on distributed transactions for correctness, the bridge needs a de-duplication step, since delivery is at-least-once (see [delivery guarantees](/sd/docs/async/delivery-guarantees)). The bridge is also one more thing that must stay up, so scale it out with [Competing Consumers](/sd/docs/cloud-messaging/competing-consumers) where the load needs it.
+Because each app keeps its own transport, you can move endpoints one at a time, on your own schedule. The price is that the bridged route gets only the features both systems share, and it must respect the tighter limit of the two. Microsoft's page gives an example: a 4 MB limit in MSMQ against 64 KB in Azure Storage queues. Look up the limits of your own two products, since they differ. If one side relies on distributed transactions (a transaction that spans two systems and either commits in both or in neither) to avoid processing a message twice, the bridge must drop duplicates itself. A bridge can resend a message after a failure, so delivery is at-least-once (see [delivery guarantees](/sd/docs/async/delivery-guarantees)). The bridge is also one more thing that must stay up, so scale it out with [Competing Consumers](/sd/docs/cloud-messaging/competing-consumers) where the load needs it.
 
 Mind the in-flight messages. Messages already waiting on the old system, including those in an error queue waiting for a retry, must still reach their endpoint after it moves. Keep the bridge until those are delivered, and not only until the last endpoint has moved.
 
 ## A worked example: 10 slices, 20 months
 Invented numbers. A billing monolith has 10 features. The team estimates 2 months to move each. A full rewrite would show nothing for 20 months and then switch over in one night. With a strangler approach, slice 1 (invoice PDFs) goes live in month 2 for 5 percent of traffic, then 100 percent.
 
-Say a bug appears in slice 4, found when 10 percent of its traffic is on the new code. One rule change sends it back to the old system within minutes, and only 10 percent of one feature saw the bug. In the rewrite plan, the same bug would hit 100 percent of all features on the night of the switch. The strangler plan takes the same 20 months in total, but each month ships value and carries a small slice of the risk.
+Say a bug appears in slice 4, found when 10 percent of its traffic is on the new code. One rule change sends its requests back to the old system within minutes, and only 10 percent of one feature saw the bug (any records the new code wrote in that time have to be copied back or repaired). In the rewrite plan, the same bug would hit 100 percent of all features on the night of the switch. To keep the numbers simple, assume the strangler plan also takes 20 months. In real projects it often takes a bit longer, because of the facade and the temporary code, but each month ships value and carries a small slice of the risk.
 
 ```mermaid Share of the billing features running on the new system by month, for a strangler plan against a rewrite (invented numbers)
 xychart-beta
@@ -373,7 +375,7 @@ The common failure is stopping at 70 percent. The easy slices move, the hard, ta
 If the system is small, a clean rewrite may be faster than building a facade and sync paths. If requests cannot be intercepted, or you cannot change the legacy system at all (no source code and no other integration point such as its database), you cannot redirect or disable migrated features, and a different approach is needed. If the old system is being switched off for good because the business is ending, nothing needs migrating at all.
 
 ## Common mistake
-Letting the new system adopt the old data model "for now", so the legacy design is copied into the replacement. The same goes for messages: a bridge that passes the old payload shape through unchanged makes the new consumers learn the old format.
+Letting the new system adopt the old data model "for now", so the legacy design is copied into the replacement. The same goes for messages: the bridge moves bytes and does not translate them. If the old payload shape is confusing, do not let the new consumers learn it. Put an Anti-Corruption Layer in front of the new consumer (or a separate translating step after the bridge) so the bridge stays a plain relay.
 
 ```resources
 article | Strangler Fig | https://martinfowler.com/bliki/StranglerFigApplication.html | Martin Fowler | Tells the origin of the name and argues for gradual modernization over a one-shot replacement.
@@ -384,8 +386,9 @@ docs | Messaging Bridge pattern | https://learn.microsoft.com/en-us/azure/archit
 
 ```quiz
 A bridge joins a queue with a 4 MB message limit to one with a 64 KB limit. What is the safe maximum size on the bridged route? | 4 MB, the larger of the two ; 64 KB, the smaller of the two ; Any size, since the bridge splits messages | 1 | A message must fit both systems, so the tighter limit applies.
-A rewrite takes 20 months and the team ships nothing until then. What does the strangler approach change? | Ships slices as they finish ; Skips testing the data ; Shortens the total to 10 months | 0 | Total effort is similar, but value and risk arrive slice by slice.
-What is the job of an Anti-Corruption Layer? | Encrypting traffic between subsystems ; Spreading load across old servers ; Translating between two different models | 2 | It keeps the legacy model from leaking into the new design.
+A rewrite takes 20 months and the team ships nothing until then. What does the strangler approach change? | Ships slices as they finish ; Skips testing the data ; Shortens the total to 10 months | 0 | Total time is about the same in this example; the difference is that value and risk arrive slice by slice.
+The new billing service must read customer status from a legacy table where 'X' means closed. Where should the mapping from 'X' to 'closed' live? | In every new service that reads the table ; In one translation layer between the two systems ; In the legacy table, by renaming the value | 1 | One layer keeps the legacy meaning out of the new code; renaming the legacy value would need changes to a system you may not control.
+Both the old and new systems now write the invoices table during a migration. What is the usual fix? | Let both write and reconcile the table nightly ; Lock the table for the whole migration period ; Pick one owner per slice of data and copy from it | 2 | Two writers cause subtle corruption, so each slice of data gets one owner and the other side reads or copies.
 ```
 
 ```story
@@ -413,7 +416,7 @@ The Bulkhead pattern splits resources into isolated pools, like the sealed secti
 
 1. Pick the units that can fail separately: a dependency, a tenant, a priority class.
 2. Give each unit its own pool, queue or instance group with a hard cap.
-3. When a pool is full, requests to that unit wait briefly or fail fast. Others are unaffected.
+3. When a pool is full, requests to that unit wait briefly or fail fast. Other units keep their own pools. Only what you actually split is isolated: threads in one process still share CPU and memory, so use separate containers or instances when you need stronger walls.
 
 ```mermaid Bulkhead: the slow search backend can only exhaust its own pool
 flowchart LR
@@ -461,11 +464,11 @@ The mechanics of limits, such as the token bucket, are in [rate limiting](/sd/do
 ```card Health Endpoint Monitoring
 Problem | A process can be running and still broken, and a platform that only checks that it is alive keeps sending it traffic.
 Solution | Expose an endpoint such as /health that an outside tool calls on a schedule. A failing liveness check restarts the instance, and a failing readiness check only stops traffic.
-Use when | A load balancer or orchestrator must pull sick or not-ready instances out of rotation.
+Use when | A load balancer or orchestrator must pull sick or not-ready instances out of rotation (the set of instances that get traffic).
 Avoid when | The probe would run a deep test of the whole system every few seconds, which becomes a load of its own.
 ```
 
-The problem: a process can be running and still broken. A load balancer or orchestrator that only checks "is the process alive" keeps sending traffic to it.
+The problem: a process can be running and still broken. A load balancer, or an orchestrator (the platform that runs your containers and restarts them when they fail, such as Kubernetes), that only checks "is the process alive" keeps sending traffic to it.
 
 The Health Endpoint Monitoring pattern exposes an endpoint, such as `/health`, that an outside tool calls on a schedule. It returns a status code, and sometimes details. Kubernetes names three kinds of probe. A startup probe holds off the other two until a slow application has started. The two that matter most afterwards are liveness and readiness.
 
@@ -487,7 +490,7 @@ sequenceDiagram
 | Liveness | Is this process stuck beyond recovery? | The platform kills the container and restarts it (if the restart policy allows) |
 | Readiness | Can it serve traffic right now? | The platform stops sending it traffic and leaves it running |
 
-The Kubernetes documentation says a failing readiness probe removes the pod from the endpoints of its Services, and that readiness probes run for the container's whole life. That suits an app that is loading data or waiting on a dependency, where a restart would not help. The same documentation warns that badly designed liveness probes can cause cascading failures. Keep liveness checks shallow, such as "can the event loop respond", so a down database does not make every instance restart at once. Readiness may check dependencies, but should be cheap, cached for some seconds, and protected from outside callers.
+The Kubernetes documentation says a pod (one running group of containers) that fails its readiness probe gets no traffic through its Services, and that readiness probes run for the container's whole life. That suits an app that is loading data or waiting on a dependency, where a restart would not help. The Kubernetes concepts page on probes warns that badly designed liveness probes can cause cascading failures. Keep liveness checks shallow, such as "can the event loop respond", so a down database does not make every instance restart at once. Readiness may check dependencies, but should be cheap, cached for some seconds, and protected from outside callers. Be careful here. If every instance checks the same database, a database slowdown makes all of them report not ready together, and the load balancer then has no instance to send traffic to. Use short timeouts for dependency checks, and report a degraded status for a dependency the app can live without, so the instance stays in rotation.
 
 ## A worked example: pools and probes
 Invented numbers. A service has 100 worker threads. Search takes 70 threads at peak, and checkout needs 10 at most. Without bulkheads, a slow search backend can take all 100. With a pool of 80 for search and 20 for checkout, search can fail, and checkout still has 20 threads for its 10 needed.
@@ -520,12 +523,13 @@ docs | Bulkhead pattern | https://learn.microsoft.com/en-us/azure/architecture/p
 docs | Throttling pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/throttling | Azure Architecture Center | Describes limiting resource use by users or the app, with rejecting, delaying and degrading as responses.
 docs | Health Endpoint Monitoring pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/health-endpoint-monitoring | Azure Architecture Center | Covers exposing health endpoints that external tools check on a schedule.
 docs | Configure liveness, readiness and startup probes | https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/ | Kubernetes | States that a not-ready pod gets no Service traffic and that liveness failures lead to a restart.
+docs | Liveness, readiness and startup probes (concepts) | https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/ | Kubernetes | Warns that incorrect liveness probes can lead to cascading failures.
 ```
 
 ```quiz
 What should happen when a readiness check fails? | The whole process restarts at once ; The database is marked as unhealthy ; Traffic stops but it stays up | 2 | Not ready means keep it alive and stop routing requests to it.
-Pools: 80 threads for search and 20 for checkout. Search hangs. How many threads can checkout still use? | 20 threads ; 100 threads ; 80 threads | 0 | The bulkhead caps the damage at search's own 80 threads.
-Why can a liveness probe that queries the database be harmful? | It makes probes run too rarely ; A slow database may restart every instance ; It hides the status code from the platform | 1 | One shared failure then triggers a fleet-wide restart that adds more load.
+Pools: 80 threads for search and 20 for checkout. Search hangs. How many threads can checkout still use? | 20 threads ; 100 threads ; 80 threads | 0 | Checkout has its own pool of 20, and search cannot borrow from it, so a hanging search backend can only tie up search's 80.
+Why can a liveness probe that queries the database be harmful? | It makes probes run too rarely ; A slow database may restart every instance ; It stops the platform from running readiness checks | 1 | One shared failure then triggers a fleet-wide restart that adds more load.
 ```
 
 ```story
@@ -537,7 +541,7 @@ Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/
 ```
 
 # stamps-and-geodes | Deployment Stamps and Geodes | 3 | 12
-Deployment Stamps copy a whole self-contained copy of your system for a group of customers. Geodes spread identical copies around the world so any one can serve any user. Both limit the blast radius, which is how much breaks when something fails.
+Deployment Stamps copy a whole self-contained copy of your system for a group of customers. Geodes spread identical copies around the world so any one can serve any user. Both limit the blast radius (how much breaks when something fails), but of different failures. Stamps contain a bad release or a noisy customer to one group of tenants. Geodes contain the loss of a region, but because they replicate data, a bad write can still reach every geode.
 
 ## Deployment Stamps
 ```card Deployment Stamps
@@ -570,7 +574,7 @@ flowchart TD
 A stamp should not call into another stamp's data. The shared global piece stays small, since it is the one thing that can still hurt everyone. Microsoft's page lists "cell" as another name for a stamp, so cell-based designs are the same idea.
 
 ## Blast radius and shuffle sharding
-With $N$ equal stamps and one failure confined to a stamp, about $1/N$ of customers are affected. Amazon's Builders' Library describes the same logic for ordinary sharding: splitting a fleet into four shards of workers limits the impact of a bad customer to one quarter. It then describes shuffle sharding, where each customer gets a small virtual shard, such as two of eight workers. A problem affecting one customer hits only that pair of workers. With 8 workers there are 28 possible pairs, and most other customers share at most one worker with the affected pair, so they still have a healthy worker. This is useful when you cannot afford one stamp per customer.
+With $N$ equal stamps and one failure confined to a stamp, about $1/N$ of customers are affected. Amazon's Builders' Library describes the same logic for ordinary sharding: splitting a fleet into four shards of workers limits the impact of a bad customer to one quarter. It then describes shuffle sharding, where each customer gets a small virtual shard, such as two of eight workers. A problem affecting one customer hits only that pair of workers. With 8 workers there are 28 possible pairs. If each customer has its own pair, any other customer shares at most one worker with the affected pair, so it still has a healthy worker. The bad customer's impact is about 1/28 of the service, against 1/4 with four ordinary shards. This is useful when you cannot afford one stamp per customer.
 
 ```mermaid Share of customers hit by a bad release caught in one stamp, by the number of equal stamps
 xychart-beta
@@ -624,14 +628,14 @@ The hard part is data. For any user to be served anywhere, writes in one region 
 | Each copy serves | A fixed group of tenants | Any user, in any region |
 | Main goal | Scale limits, isolation | Latency and regional survival |
 | Data | Stays inside the stamp | Replicated across geodes |
-| Failure of one | Its tenants are hit | Traffic shifts to the others |
+| Failure of one | Its tenants are hit | Traffic shifts to the others (a bad write can still spread) |
 
 ## A worked example: 20 stamps and a bad release
 Invented numbers. A SaaS product has 10,000 customers in 20 stamps of 500. A release has a bug that corrupts invoices.
 
 With one big deployment, all 10,000 customers get the bug at once. With stamps, the team deploys to stamp 1 (500 customers, 5 percent). Alerts fire in 20 minutes. They halt the rollout: 500 customers affected, 9,500 untouched. The blast radius is 1/20, or 5 percent.
 
-For geodes, take 3 geodes with 100 ms of latency from far-away users reduced to about 20 ms by routing to a near one. If one geode fails, the other two must carry 50 percent more load each (3 units of load over 2 geodes, 1.5x), so each must have enough spare capacity to take on half again its normal load. Running 3 geodes at 60 percent utilization is a safe design for one failure, since 60 x 1.5 = 90 percent. At 80 percent, losing one geode would ask the others for 120 percent of their capacity, and the overload could take them down too.
+For geodes, say 3 equal geodes serve users worldwide. A user far from a single region sees about 100 ms of latency; routed to a nearby geode, the same user sees about 20 ms (invented numbers). Now the failure case. If one geode fails, the other two must carry 50 percent more load each (3 units of load over 2 geodes, 1.5x), so each must have enough spare capacity to take on half again its normal load. Running 3 geodes at 60 percent utilization is a safe design for one failure, since 60 x 1.5 = 90 percent. At 80 percent, losing one geode would ask the others for 120 percent of their capacity, and the overload could take them down too. Keeping this spare room in advance, instead of launching new capacity after a failure, is called static stability (see the Builders' Library article below).
 
 ```mermaid Load on each of the two remaining geodes after one of three fails, by how busy each was before
 xychart-beta
@@ -660,10 +664,11 @@ article | Static stability using Availability Zones | https://aws.amazon.com/bui
 20 equal stamps hold the customers, and a bug is caught in the first stamp. What share of customers is affected? | About 5 percent ; About 20 percent ; About 50 percent | 0 | One stamp of 20 is 1/20, or 5 percent.
 3 geodes share load equally and one fails. How much more load does each remaining geode carry? | Exactly double the old load ; Half as much again ; No change in load at all | 1 | Three units spread over two is 1.5 times, so 50 percent more.
 What is the key difference between a stamp and a geode? | Geodes keep all of their data in a single place ; Stamps must always sit together in one region ; A stamp owns tenants, a geode serves anyone | 2 | A geode is one of many equal copies that each can serve any user, and a stamp serves its own set of tenants.
+A team runs 6 stamps but all of them use one shared message queue. The queue goes down. What happens? | Only one stamp is affected by it ; All 6 stamps fail together, since the queue is shared ; Nothing, since each stamp has its own database | 1 | The stamps share the queue, so it is a single point of failure that undoes the isolation.
 ```
 
 ```story
-A SaaS company grows to ten thousand customers on one database, and each release is a coin toss that could hurt everyone. They split into twenty stamps of five hundred customers and roll out one stamp at a time. A bad invoice bug reaches 500 customers instead of ten thousand. Later, the largest customers ask for a copy in their own continent, and a new stamp is cut from the same template.
+A SaaS company grows to ten thousand customers on one database, and each release is a coin toss that could hurt everyone. They split into twenty stamps of five hundred customers and roll out one stamp at a time. A bad invoice bug reaches 500 customers instead of ten thousand. Later, the largest customers ask for a copy in their own continent. A new stamp is cut from the same template in that region, and moving their data over takes planned work because each stamp keeps its own database.
 ```
 
 ```adapted
@@ -671,7 +676,7 @@ Azure Architecture Center (Microsoft) | https://learn.microsoft.com/en-us/azure/
 ```
 
 # config-and-consolidation | External Configuration Store and Compute Resource Consolidation | 2 | 10
-An External Configuration Store moves settings out of the deployed package into one shared place you can change without redeploying. Compute Resource Consolidation does the opposite for hosting: it packs several small tasks into one unit so you stop paying for idle machines.
+An External Configuration Store moves settings out of the deployed package into one shared place you can change without redeploying. Compute Resource Consolidation is a separate idea about hosting: it packs several small tasks into one unit so you stop paying for idle machines.
 
 ## External Configuration Store
 ```card External Configuration Store
@@ -707,14 +712,14 @@ Design points: the store must be highly available and backed up, since apps may 
 ## Compute Resource Consolidation
 ```card Compute Resource Consolidation
 Problem | Many small components each run on their own server or plan, and each costs money while idle.
-Solution | Group several tasks with similar scaling, lifetime and load shape into one computational unit.
+Solution | Group several tasks with similar scaling and lifetime, and demands that do not collide, into one computational unit.
 Use when | Units sit mostly idle, tasks talk to each other a lot, or management overhead is the main cost.
 Avoid when | Tasks need different security boundaries, scaling or release timing, or one is critical and another experimental.
 ```
 
 The problem: a system is built from many small components, each deployed on its own server, container group or app plan. Each costs money when idle. A job that runs 5 minutes an hour still holds a whole machine.
 
-The pattern groups several tasks into one computational unit. Good candidates have similar scaling needs, lifetime and load shape. Bad candidates differ: one task polls an almost empty queue, and another handles large bursts of traffic. Scaling them together wastes resources, since the quiet task would scale too. There are also hidden risks, since tasks in one unit share CPU, memory and failures.
+The pattern groups several tasks into one computational unit. Good candidates have similar scaling needs and lifetime, and demands on resources that do not collide, such as tasks that peak at different times or one that needs CPU beside one that needs memory. Two heavy tasks of the same kind should not share a unit. Bad candidates differ in scaling: one task polls an almost empty queue, and another handles large bursts of traffic. Scaling them together wastes resources, since the quiet task would scale too. There are also hidden risks, since tasks in one unit share CPU, memory and failures.
 
 ```mermaid Compute Resource Consolidation: several quiet tasks share one unit instead of one each
 flowchart LR
@@ -735,7 +740,7 @@ Use it when units sit mostly idle, when tasks talk to each other a lot, or when 
 ## A worked example: five tasks, one box
 Invented numbers. Five background tasks each run on their own small instance at $40 per month, which is $200 per month. Each uses about 10 percent CPU on average. They peak at different hours, so the combined peak is about 60 percent of one small instance. Moving all five to two medium instances at $70 each costs $140 per month and also gives failover. The saving is $60 per month, 30 percent. The price is lost isolation and some coordination in releases.
 
-For configuration, say 50 instances read one feature flag. Polling the store every 30 seconds is 50 / 30, about 1.7 reads per second. That is trivial. Change events or a longer interval would be wasted effort, but at 5,000 instances the same polling is about 167 per second, and a cache layer or push model starts to make sense.
+For configuration, say 50 instances read one feature flag. Polling the store every 30 seconds is 50 / 30, about 1.7 reads per second. That is trivial. At this size, change events or a longer interval would not reduce the load in any way that matters, but the interval still sets how fast a change reaches every instance. At 5,000 instances the same polling is about 167 per second, and a cache layer or push model starts to make sense.
 
 | Instances, each polling every 30 seconds | Reads per second on the store |
 | --- | --- |
@@ -752,7 +757,7 @@ A consolidation failure looks different. One memory leak in a task takes down th
 Do not use a remote store for values that never change or that must exist before the store is reachable, such as the store's own address and credentials. Do not read configuration on every request, because that makes the store a hot path. Do not consolidate tasks that need different security boundaries, different scaling or independent release timing. Do not consolidate when one task is critical and another is experimental, since a crash in the second hurts the first.
 
 ## Common mistake
-Making the config store a hard dependency with no local cache, so a store outage prevents apps from starting.
+Autoscaling launches new servers during a short outage of the config service, and each one crashes on boot with a timeout. Old servers look healthy, so the fleet cannot grow exactly when traffic is high. Fix it by baking a recent snapshot into the image and falling back to it when the first fetch fails.
 
 ```resources
 docs | External Configuration Store pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/external-configuration-store | Azure Architecture Center | Describes moving settings out of the deployment package into central storage, with caching and access control considerations.
@@ -760,9 +765,9 @@ docs | Compute Resource Consolidation pattern | https://learn.microsoft.com/en-u
 ```
 
 ```quiz
-Five tasks cost $40 each per month on separate instances. Two shared instances at $70 host them all. What is the monthly saving? | $60 ; $130 ; $200 | 0 | Separate cost is $200, shared cost is $140, so the saving is $60.
-Why keep a local cached copy of config values? | To skip the access checks ; So apps start when the store is down ; To never have to change a setting again | 1 | A last known good copy keeps apps running through a store outage.
-Which pair of tasks suits being placed together? | A queue poller with a bursty web handler ; A critical service with an experiment ; Two quiet jobs with similar load | 2 | Similar scaling and lifetime make sharing safe and efficient.
+Four tasks cost $30 each per month on their own instances. Two shared instances at $50 host them all. What is the monthly saving? | $20 ; $70 ; $120 | 0 | Separate cost is 4 x $30 = $120, shared cost is 2 x $50 = $100, so the saving is $20.
+Why keep a cached copy of config values in memory? | So the store never needs backups ; So running apps keep working in a store outage ; So changes in the store reach apps instantly | 1 | A memory cache covers a short outage while the app is running. It is empty on a fresh start, so starting during an outage also needs a last known good copy saved to disk or shipped with the deploy.
+Which pair of tasks suits being placed together? | A queue poller with a bursty web handler ; A critical service with an experiment ; Two quiet jobs with similar load | 2 | Two quiet jobs with similar scaling and lifetime cost little to share and are unlikely to starve each other. Mixing a queue poller with a bursty handler forces both to scale together, and a critical service should not share fate with an experiment.
 ```
 
 ```story
@@ -813,12 +818,14 @@ Two standards cover most cases. OpenID Connect (OIDC) is, in its own spec's word
 Problem | The code that handles internet requests is the most exposed, and if it also holds credentials, one attack hands over everything.
 Solution | A small front component validates and sanitizes requests and holds no secrets. Only it may call the trusted service, over a locked-down channel.
 Use when | The attack surface is large or the data is sensitive.
-Avoid when | The service is internal and already sits behind your own gateway, or you cannot afford one more hop.
+Avoid when | The back-end service already meets your security needs with built-in platform controls, or you cannot afford one more hop.
 ```
 
 The problem: the code that handles internet requests is the most exposed. If one service validates input, checks identity and also holds database credentials and storage keys, one successful attack hands over everything.
 
 The Gatekeeper is a dedicated front component that validates and sanitizes requests, then passes clean ones to the trusted service. The two are separate, so the front holds no secrets and has limited rights. If an attacker breaks the gatekeeper, they find no keys, and the trusted side only accepts calls from the gatekeeper over a locked-down channel.
+
+Validating means rejecting what is malformed, such as a 5 MB name field or a missing id. Sanitizing means cleaning what is left, such as stripping script tags. The gatekeeper holds no database password or storage key. It holds only the right to call the trusted service's private address, and that address accepts nobody else.
 
 ```mermaid Gatekeeper: the exposed front holds no keys, and the trusted side accepts only its calls
 flowchart TD
@@ -894,7 +901,7 @@ flowchart TD
 Keep the trusted and untrusted stores apart with identity and network controls, and automate the whole path, since checks can take time. Passing quarantine is only a first check. Keep scanning later, because an artifact that was clean today may have a vulnerability found next month. Microsoft's page also says you can outsource the work to a specialist and should compare that cost with building your own.
 
 ## A worked example: uploads through the app or direct
-Invented numbers. Users upload 50 MB videos, 200 per minute. Through the app that is $200 \times 50 = 10{,}000$ MB per minute, about 167 MB per second, passing through your servers twice if you also forward it on. If one server handles 20 MB per second of uploads, you need 167 / 20, about 9 servers just to move bytes.
+Invented numbers. Users upload 50 MB videos, 200 per minute. Through the app that is $200 \times 50 = 10{,}000$ MB per minute, about 167 MB per second. If one server handles 20 MB per second of uploads, you need 167 / 20, about 9 servers just to move bytes.
 
 With a valet key, the app handles 200 small requests per minute to issue URLs. The 10,000 MB per minute goes straight to storage, which is built for that. You need one or two app servers. The new risks are that anyone with a URL can upload within its life, and that you do not control content until it arrives. Check what your store lets you restrict: a plain signed PUT URL generally does not cap the upload size, while some stores offer signed upload policies with size conditions. Scan the file after upload.
 
@@ -906,26 +913,27 @@ xychart-beta
 ```
 
 ## What goes wrong: the URL that lived too long
-A team issues presigned download URLs valid for 7 days (the SDK maximum) and puts them in emails. A user forwards the email, and the link ends up on a public forum. For a week, anyone can download the private file, and logs show valid signatures, so nothing looks wrong. The symptom is traffic from unknown addresses on files that should be private. Confirm it from storage access logs, grouped by IP and object. Issue URLs for minutes, not days, tie each to one object, and generate a fresh one on each click instead of storing it.
+A team issues presigned download URLs valid for 7 days (the maximum when signed with an IAM user's keys) and puts them in emails. A user forwards the email, and the link ends up on a public forum. For a week, anyone can download the private file, and logs show valid signatures, so nothing looks wrong. The symptom is traffic from unknown addresses on files that should be private. Confirm it from storage access logs, grouped by IP and object. Issue URLs for minutes, not days, tie each to one object, and generate a fresh one on each click instead of storing it. To kill a leaked URL before it expires, delete or deactivate the credential that signed it. That also breaks every other URL it signed, which is one more reason to keep lifetimes short.
 
 ## When these patterns are the wrong tool
-Federated login is a poor fit when you must work offline or when users have no account with any provider you can trust. A gatekeeper adds little to an internal service that sits behind your own network and already has a gateway. A valet key is wrong when you must inspect or transform data before it is stored, or when the data must never touch the client. Choose proxying through the app in those cases.
+Federated login is a poor fit when you must work offline or when users have no account with any provider you can trust. A gatekeeper adds little when the service's own platform controls already validate and limit requests well enough. An existing gateway only counts if it is also small, holds no secrets and is the only way to reach the trusted side. A valet key is wrong when you must inspect or transform data before it is stored, or when the data must never touch the client. Choose proxying through the app in those cases.
 
 ## Common mistake
-Treating a signed URL as secret forever, when it works for anyone who has it until it expires.
+Treating a signed URL as if it were checked per user. It is not: whoever has the link can use it until it expires, so never put one in an email, log line or public page unless you are happy for anyone to have the file.
 
 ```resources
 docs | Federated Identity pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/federated-identity | Azure Architecture Center | Explains delegating authentication to a trusted identity provider that returns tokens with claims, and single sign-on.
 docs | Gatekeeper pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/gatekeeper | Azure Architecture Center | Describes a dedicated broker that validates and sanitizes requests to limit the attack surface.
 docs | Valet Key pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/valet-key | Azure Architecture Center | Describes giving clients restricted direct access to a resource to offload data transfer from the application.
-docs | Sharing objects with presigned URLs | https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html | AWS | States what a presigned URL contains and that it works for anyone holding it until it expires.
+docs | Download and upload objects with presigned URLs (AWS) | https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html | AWS | States what a presigned URL contains and that it works for anyone holding it until it expires.
 docs | Quarantine pattern | https://learn.microsoft.com/en-us/azure/architecture/patterns/quarantine | Azure Architecture Center | Describes verifying third-party artifacts in a separate store before marking them trusted, and keeping up checks after they pass.
 ```
 
 ```quiz
-An image passes quarantine and moves to the trusted store. What should happen next? | It is trusted for good and never rescanned ; It keeps getting scanned for new issues ; It is deleted from the trusted store after a day | 1 | Passing is a first check, and new vulnerabilities can be found later.
+An image passes quarantine and moves to the trusted store. What should happen next? | It is trusted for good and never rescanned ; It keeps getting scanned for new issues ; It is rescanned only if a consumer reports a problem | 1 | Passing is a first check, and new vulnerabilities can be found later.
 200 uploads of 50 MB arrive each minute. How much data per minute would pass through your app without a valet key? | About 10,000 MB ; About 250 MB total ; About 1,000 MB total | 0 | 200 x 50 MB is 10,000 MB per minute.
-Why should a presigned URL expire quickly? | Short links are faster to sign ; The file gets smaller to send ; Whoever holds it can use it | 2 | A leaked URL works for whoever has it, so a short life limits the damage.
+A link to a private report is pasted in a public chat. It was signed with a role session that has 2 hours left, and the URL says 7 days. How long can strangers download it? | For 7 days ; For about 2 hours ; For one download only | 1 | The URL stops working when the credentials that signed it expire, whichever comes first.
+Your app gets a signed token from the identity provider. What does your app still decide? | Which provider signed them in ; Whether the password is right ; What the user may do | 2 | The provider proves who the user is. The app still owns authorization.
 ```
 
 ```story

@@ -2,7 +2,7 @@
 Applied AI means using models that already exist to solve a real problem for real people. The hard part is rarely the model. It is choosing a problem where a model helps and measuring whether it did.
 
 ## What it is
-Research AI builds new models and methods. Applied AI takes a model, connects it to data and tools, tests it and fits it into a job someone already does. Most of the AI work in the world is applied.
+Research AI builds new models and methods. Applied AI takes a model, connects it to data and tools, tests it and fits it into a job someone already does. Most people who work with AI today use existing models rather than build new ones.
 
 Most applied problems fall into a few kinds of task. Predict a number (next month's sales). Sort things into groups (fraud or not fraud). Rank things (which video to show next). Read or write language. Understand images or sound. Choose actions in the physical world (a robot arm). Each kind has its own tools, covered in the lessons that follow.
 
@@ -10,7 +10,7 @@ Most applied problems fall into a few kinds of task. Predict a number (next mont
 Ask four questions. How often does the task happen? A task done once a year is not worth automating. What does a mistake cost? A wrong movie suggestion costs nothing, a wrong drug dose costs a lot. Do you have data, or can you get it? Can you tell if the answer was right? If you cannot measure success, you cannot improve it.
 
 ## A worked example: start with a baseline
-A shop wants to predict which customers will cancel. Before any model, write the simplest rule: "customers who have not logged in for 30 days will cancel". Say it catches 40 of the 100 who cancel. That rule is your baseline. A model is only worth its cost if it beats the baseline by enough to matter. Many projects find that the rule gets most of the value.
+A shop wants to predict which customers will cancel. Before any model, write the simplest rule: "customers who have not logged in for 30 days will cancel". Say it finds 40 of the 100 who cancel, meaning 40 of the real cancellers are on its list. That rule is your baseline. A model is only worth its cost if it beats the baseline by enough to matter. Google's Rules of Machine Learning suggests a simple rule often gets you about half of the gain a model would, so measure the baseline before you spend on a model.
 
 ## Scoring a task before you build
 Count the hours first. Frequency times minutes per case gives the yearly or monthly load. Tagging 300 support tickets a month at 2 minutes each is 10 hours. Reviewing 40 contracts a month at 90 minutes each is 60 hours. The second is the bigger prize, but a mistake there costs more and needs a lawyer to check. Neither wins on size alone.
@@ -48,21 +48,21 @@ flowchart TD
 A store wants to flag refunds over $500 for a manager. That is a threshold, not a prediction. One line of code does it, never tires and can be explained to an auditor. A model adds cost and uncertainty with nothing to gain. Use learned models when the pattern is too fuzzy to write down, such as spotting a likely cancellation from dozens of weak signals.
 
 ## What goes wrong: a good score nobody can use
-A shop's cancellation model is better than the 30 day rule. It catches 55 of the 100 who cancel, against 40. But the retention team can phone only 50 customers a month. What matters is how many real cancellations sit in the 50 names the model ranks highest, not the overall score. To confirm, rank by the model's score, take the top 50, and count the real cancellations among them. Test against the capacity you actually have.
+A shop's cancellation model is better than the 30 day rule. Across all customers it finds 55 of the 100 who cancel, against 40 for the rule. But the retention team can phone only 50 customers a month, so only the 50 names at the top of each list matter. To check, rank customers by the model's score, take the top 50, and count the real cancellations among them. Do the same for the rule's 50 names, then compare those two counts. Test against the capacity you actually have.
 
 ## Common mistake
 Starting with "we should use AI" instead of "this task costs us 200 hours a month". A tool searching for a problem usually finds a demo, not a result.
 
 ```resources
-article | Rules of Machine Learning | https://developers.google.com/machine-learning/guides/rules-of-ml | Google | Practical advice, starting with "do not be afraid to launch without machine learning".
+article | Rules of Machine Learning | https://developers.google.com/machine-learning/guides/rules-of-ml | Google | Practical advice from Martin Zinkevich, starting with Rule #1: "Don't be afraid to launch a product without machine learning."
 article | People + AI Guidebook | https://pair.withgoogle.com/guidebook/ | Google PAIR | How to decide whether and how AI fits a product.
 article | Stanford AI Index | https://hai.stanford.edu/ai-index | Stanford HAI | Yearly data on how AI is used across industries.
 course | Kaggle Learn | https://www.kaggle.com/learn | Kaggle | Short free lessons with code on applied machine learning.
 ```
 
 ```quiz
-Which task is the best first candidate for AI? | A rare task where every mistake is very costly ; A one-off task with no way to measure the result ; A frequent task with data and a success test | 2 | Frequent, measurable tasks with data are where a model can be tested and improved.
-Why write a simple rule before building a model? | It sets a baseline the model must beat ; It makes the model train faster overall ; It removes the need to collect any data | 0 | Without a baseline you cannot tell whether the model adds value.
+A team spends 20 hours a month on task A (100 cases, 12 minutes each, a wrong output is easy to fix) and 30 hours on task B (10 cases, 3 hours each, a wrong output costs a client). They have 80 past cases with right answers for A and none for B. Which first? | Task B, because 30 hours is the bigger prize ; Task B, because a costly mistake needs the most help ; Task A, because answers exist to test it and mistakes are cheap | 2 | With no past answers for B you cannot tell if a model works, and A lets you measure results at low risk.
+Why write a simple rule before building a model? | It sets a baseline the model must beat ; It makes the model train faster overall ; It removes the need to collect any data | 0 | The rule gives you a number to beat. A model that scores 55 against a rule that scores 40 has earned its cost, and one that scores 41 probably has not.
 A team says "let us add AI" with no problem named. What is the risk? | The model will be too expensive to ever run ; They build a demo that solves nothing ; They will run out of training data too soon | 1 | A solution without a problem has no way to measure success.
 ```
 
@@ -94,7 +94,7 @@ flowchart TD
 ```
 
 ## What goes wrong
-The cold start problem: a new user or a new item has no history, so there is nothing to match. Systems fall back to popular items or ask a few questions. A feedback loop: if you only show what people already click, you never learn what else they would like. The target matters too: optimizing clicks can promote sensational items, while optimizing "watched to the end" rewards something different.
+The cold start problem: a new user or a new item has no history, so there is nothing to match. Systems fall back to popular items or ask a few questions. A feedback loop: if you only show what people already click, the system learns very little about what else they would like. The target matters too: optimizing clicks can promote sensational items, while optimizing "watched to the end" rewards something different.
 
 ## How collaborative filtering finds a match
 Three users and four movies. Ana liked movies 1 and 2. Ben liked 1, 2 and 3. Cy liked only 4. Ben shares both of Ana's likes, Cy shares none. So Ben is Ana's nearest neighbor, and the system suggests movie 3 to Ana, which Ben liked and she has not seen. Embeddings do the same job with numbers and scale to millions of users.
@@ -131,7 +131,7 @@ The table ranks the two videos by count and by rate.
 | Y | 100 | 50 | Second | 50 percent |
 
 ## How to tell a new ranking is better
-Split 20,000 users in two equal groups. Version A gets a click rate of 4.0 percent and version B 4.3 percent. The random wobble in the difference between two groups of 10,000 is about 0.28 percentage points. The measured gap is 0.3, barely more than one wobble, so it could be luck. You would need more users or a longer test before shipping B.
+Split 20,000 users in two equal groups. Version A gets a click rate of 4.0 percent and version B 4.3 percent. Even if both versions were truly equal, two random groups of 10,000 would differ by about 0.28 percentage points just by chance (statisticians call this the standard error). A gap needs to be around twice that, roughly 0.6 points, before you should trust it. Ours is 0.3, about one standard error, so it could be luck. You would need more users or a longer test before shipping B.
 
 ## Common mistake
 Measuring only accuracy on past data. What counts is what happens when real users see the new ranking, so teams run A/B tests that compare two versions on live traffic.
@@ -145,18 +145,18 @@ article | System Design for Recommendations and Search | https://eugeneyan.com/w
 ```quiz
 What does collaborative filtering rely on? | Overlap in what people have liked ; The text description of every item ; A hand-written list of rules for taste | 0 | It only needs the record of who interacted with which items.
 A brand new user opens the app. Which problem appears? | Overfitting, since there is too much data ; Cold start, as there is no history yet ; Latency, since the model is too large | 1 | With no past behavior, the system has nothing to compare.
-Why do big systems use a candidate stage first? | It lets them skip the ranking step altogether ; It is cheaper than using a vector database ; It avoids slow ranking of every single item | 2 | A fast filter narrows millions to hundreds so a careful model can rank them.
+Why do big systems use a candidate stage first? | It lets them skip the ranking step altogether ; It makes the final ranking more accurate by seeing more items ; It avoids slow ranking of every single item | 2 | A fast filter narrows millions to hundreds so a careful model can rank them.
 ```
 
 ```story
-In 2006 Netflix offered one million dollars to anyone who could improve its movie predictions by 10 percent. A team won in 2009 with a blend of many models. Netflix later said it never ran the full winner, because the engineering cost was too high for the gain. Simple and good enough often beats best on paper.
+In 2006 Netflix offered one million dollars to anyone who could improve its movie predictions by 10 percent. A team won in 2009 with a blend of many models. Netflix reportedly never ran the full winner, because the engineering cost was too high for the gain. Simple and good enough often beats best on paper.
 ```
 
 # forecasting-and-fraud | Forecasting, fraud and anomaly detection | 2 | 15
 Many valuable AI systems predict a number or flag the odd one out. They use classical machine learning on tables, not chatbots.
 
 ## What it is
-Forecasting predicts a future value from past values: sales, energy use, traffic. A good forecast starts with a naive guess such as "same as last week" and then adds patterns like trend and season. Classification sorts cases into labels, such as fraud or not. Anomaly detection finds cases that look unlike normal ones when you have few or no labeled examples of the bad kind.
+Forecasting predicts a future value from past values: sales, energy use, traffic. A good forecast starts with a naive guess such as "same as last week" and then adds patterns like trend (a steady rise or fall) and season (a shape that repeats, such as busy weekends). Classification sorts cases into labels, such as fraud or not. Anomaly detection finds cases that look unlike normal ones when you have few or no labeled examples of the bad kind.
 
 For tables of numbers, simple models (linear models, decision trees, boosted trees) often match or beat large neural networks, train in seconds and are easier to explain.
 
@@ -164,7 +164,7 @@ For tables of numbers, simple models (linear models, decision trees, boosted tre
 Actual sales over three days: 100, 120, 110. Forecast: 105, 115, 120. Errors: 5, 5, 10. The mean absolute error is (5 + 5 + 10) / 3 = 6.7 units a day. The naive "same as yesterday" forecast can only be scored on days 2 and 3: it predicts 100 and 120, so it is off by 20 and 10, a mean of 15. On those same two days the model is off by 5 and 10, a mean of 7.5, so it beats the baseline.
 
 ## A worked example: rare events
-Out of 100,000 card payments, 100 are fraud. A model that always says "not fraud" is 99.9 percent accurate and catches nothing. This is class imbalance. Use precision (of the cases flagged, how many were right) and recall (of the real cases, how many were found). Say a model flags 200 payments and 80 are truly fraud. Precision is 80 / 200 = 40 percent. Recall is 80 / 100 = 80 percent. Which matters more depends on what a miss costs against what a false alarm costs. Try it in the demo above: slide the threshold and watch the false alarms rise as you catch every fraud.
+Out of 100,000 card payments, 100 are fraud. A model that always says "not fraud" is 99.9 percent accurate and catches nothing. This is class imbalance. Use precision (of the cases flagged, how many were right) and recall (of the real cases, how many were found). Say a model flags 200 payments and 80 are truly fraud. Precision is 80 / 200 = 40 percent. Recall is 80 / 100 = 80 percent. Which matters more depends on what a miss costs against what a false alarm costs. Try it in the demo above: slide the threshold, the score above which a payment is flagged, and watch the false alarms rise as you catch every fraud.
 
 The table lays out the four outcomes for the 100,000 payments.
 
@@ -174,7 +174,7 @@ The table lays out the four outcomes for the 100,000 payments.
 | Not flagged | 20 missed | 99,780 correct passes |
 
 ## A second example: a better naive forecast
-Shop sales last week, Monday to Sunday, were 80, 90, 85, 95, 140, 200, 120. This week they were 84, 92, 88, 100, 150, 210, 126. Forecast Tuesday to Sunday two ways. "Same as yesterday" is off by 8, 4, 12, 50, 60 and 84, an average of 36.3. "Same day last week" is off by 2, 3, 5, 10, 10 and 6, an average of 6.0. The weekly pattern is the signal, so repeat the season, not the last value. Any model must beat 6.0.
+Shop sales last week, Monday to Sunday, were 80, 90, 85, 95, 140, 200, 120. This week they were 84, 92, 88, 100, 150, 210, 126. Forecast Tuesday to Sunday (Monday has no earlier day in this week to copy) two ways. "Same as yesterday" is off by 8, 4, 12, 50, 60 and 84, an average of 36.3. "Same day last week" is off by 2, 3, 5, 10, 10 and 6, an average of 6.0. The weekly pattern is the signal, so repeat the season, not the last value. Any model must beat 6.0.
 
 ```mermaid Two weeks of shop sales: the weekly shape repeats, so the same day last week is a strong guess
 xychart-beta
@@ -195,7 +195,7 @@ xychart-beta
 | Average error | | | 36.3 | | 6.0 |
 
 ## How an anomaly score works
-A customer's daily spending over five days was 30, 45, 38, 52 and 35 dollars. The mean is 40 and the standard deviation, a measure of typical spread, is about 7.7. A payment of 130 sits (130 - 40) / 7.7 = 11.7 spreads above the mean, a clear outlier. A payment of 55 sits 1.9 spreads away and is normal. The threshold is a choice. Flag everything beyond 3 spreads and, if spending were bell-shaped, about 0.3 percent of ordinary payments still trip it. On 100,000 payments that is roughly 270 false alarms.
+A customer's total spending on five days was 30, 45, 38, 52 and 35 dollars. The mean is 40 and the standard deviation, a measure of typical spread, is about 7.7 (found by dividing by 5, the number of days). A day with 130 dollars of spending sits (130 - 40) / 7.7 = 11.7 spreads above the mean, a clear outlier. A day with 55 sits 1.9 spreads away and is normal. Five days is too little history to trust in real life; real systems learn from months. The threshold is a choice. Flag everything beyond 3 spreads and, if spending were bell-shaped, about 0.3 percent of ordinary days still trip it. Across 100,000 days that is roughly 270 false alarms.
 
 ## What goes wrong: information from the future
 A model reports 99 percent recall on test data, then collapses live. One cause is leakage: a feature that is only known after the answer. For fraud, a field like "chargeback filed" is filled in after fraud is found, so the model just reads it. Symptom: one feature dominates and the score is too good. To confirm, drop that feature and watch the score fall. Ask of each column, "would I know this at the moment I must decide?"
@@ -220,12 +220,13 @@ course | Kaggle Learn: Intro to Machine Learning | https://www.kaggle.com/learn/
 
 ```quiz
 A model says "not fraud" every time and is 99.9 percent accurate. What does this show? | Accuracy misleads on rare events ; The model is nearly perfect already ; The dataset is too big to be useful | 0 | With rare positives, always guessing the common label looks accurate while finding nothing.
-Why compare a forecast against "same as last week"? | It is the cheapest method to compute ; It proves the data is free of errors ; It sets a bar any model must beat | 2 | A forecast is only worth its cost if it beats the simple guess.
-When is anomaly detection a good fit? | You have thousands of labeled examples of each case ; You have few labeled examples of bad cases ; You need to sort items into known categories | 1 | It finds cases that differ from normal without needing labels for the rare kind.
+Why compare a forecast against a simple guess like "same as last week"? | It guarantees the model will be accurate ; It proves the data is free of errors ; It sets a bar any model must beat | 2 | A forecast is only worth its cost if it beats the simple guess.
+When is anomaly detection a good fit? | You have thousands of labeled examples of each case ; You have few or no labeled examples of bad cases ; You need to sort items into known categories | 1 | It finds cases that differ from normal without needing labels for the rare kind.
+A fraud model flags 50 payments and 30 are real fraud, out of 60 real frauds in total. What is its recall? | 60 percent ; 50 percent ; 30 percent | 1 | Recall is real cases found divided by all real cases: 30 / 60 = 50 percent. Precision would be 30 / 50.
 ```
 
 ```story
-In 2021 the real estate company Zillow shut down its house-buying business after its pricing models paid more for homes than it could resell them for, losing hundreds of millions of dollars. Home prices moved faster than its forecasts, which is the risk of every prediction about the future.
+In 2021 the real estate company Zillow shut down its house-buying business after its pricing models paid more for homes than it could resell them for, losing hundreds of millions of dollars. Home prices moved faster than its forecasts, which is the risk of every prediction about the future. That is a forecasting failure. The same lesson applies to fraud: patterns shift, so a model must be checked on recent data.
 ```
 
 # computer-vision-in-practice | Computer vision in practice | 2 | 14
@@ -235,10 +236,10 @@ Computer vision means models that work with images and video. In practice, the h
 The main jobs are classification (what is in this image), detection (where are the objects, drawn as boxes), segmentation (which pixels belong to which object) and reading text (OCR). Modern systems start from a model pretrained on millions of images and fine-tune it on a few hundred of your own, which makes small projects possible. Vision-language models can also answer questions about an image in plain words, which is often enough for simple cases.
 
 ## Where it is used
-Factories check parts for defects on a conveyor belt. Farms spot diseased plants from drone photos. Hospitals use models that flag suspicious areas on scans for a doctor to review. Banks read cheques and invoices. Phones unlock with a face. In each case a human usually reviews the uncertain cases.
+Factories check parts for defects on a conveyor belt. Farms spot diseased plants from drone photos. Hospitals use models that flag suspicious areas on scans for a doctor to review. Banks read cheques and invoices. Phones unlock with a face. In high-stakes cases such as scans and defect checks, a human usually reviews the uncertain results.
 
 ## A worked example: a screening test
-A hospital screens 1,000 scans. Ten show disease. The model finds 9 of the 10 (recall 90 percent) and raises 50 false alarms. It flagged 59 scans, of which 9 are real, so precision is 9 / 59, about 15 percent. That can still be a good screening tool, because a doctor reviews 59 scans instead of 1,000 and only 1 case was missed. The numbers decide whether it helps, not the headline accuracy.
+A hospital screens 1,000 scans. Ten show disease. The model finds 9 of the 10 (recall 90 percent) and raises 50 false alarms. It flagged 59 scans, of which 9 are real, so precision is 9 / 59, about 15 percent. That can still be a good screening tool, because a doctor reviews 59 scans instead of 1,000 and only 1 case was missed. The numbers decide whether it helps, not the headline accuracy. Accuracy here is (9 + 940) / 1,000 = 94.9 percent, yet a model that flagged nothing would score 99 percent and miss every sick patient.
 
 The table sorts the 1,000 scans into the four outcomes.
 
@@ -264,7 +265,7 @@ The table works out the overlap and union for the two boxes.
 | IoU | | | 50 / 150 = 0.33 |
 
 ## Routing by confidence
-A model gives each image a score between 0 and 1. Invented example with 1,000 images: 800 score above 0.9 and pass automatically, of which 4 are wrong (0.5 percent). The other 200 go to a person, and 30 of them are wrong, which the person fixes. People handle 20 percent of the load, and, if the reviewer catches every error, the final error rate is 0.4 percent. The catch is calibration: whether a score of 0.9 really means 90 percent right. To check, group past predictions by score and compare each group's true accuracy with its score. Models are often too sure of themselves.
+A model gives each image a score between 0 and 1. Invented example with 1,000 images: 800 score above 0.9 and pass automatically, of which 4 are wrong (0.5 percent). The other 200 go to a person, and 30 of them are wrong, which the person fixes. People handle 20 percent of the load, and, if the reviewer catches every error, the final error rate is 0.4 percent. The catch is calibration: whether a score of 0.9 really means 90 percent right. To check, group past predictions by score and compare each group's true accuracy with its score. In this example the top group is right 99.5 percent of the time (796 of 800), so the model is under-confident there. Real models more often go the other way, saying 0.9 when they are right only 75 percent of the time.
 
 ```mermaid A confidence cutoff sends most images through and the unsure ones to a person
 flowchart TD
@@ -293,7 +294,7 @@ course | Practical Deep Learning for Coders | https://course.fast.ai/ | fast.ai 
 ```quiz
 What does object detection return? | One label for the whole image ; Boxes around each object found ; The text written inside the image | 1 | Detection says what is in the image and where it is.
 Why can a model with low precision still help in screening? | Staff review far fewer cases than before ; It guarantees it never misses a real case ; It removes every false alarm before review | 0 | A human checks the flagged few, which saves time if recall stays high.
-A model works in the lab but fails on the factory floor. A likely cause? | The factory has fewer total images to check ; The model was written in the wrong language ; Lighting and cameras differ from the lab | 2 | A change in conditions between training and use breaks learned shortcuts.
+A model scores 98 percent on day-shift photos, then misses defects on night-shift photos. What first? | Test it on night-shift photos and add some to training ; Train a much bigger model on the same day photos ; Lower the cutoff so it flags more of everything | 0 | The conditions changed, so check and cover the new conditions before changing the model.
 ```
 
 ```story
@@ -332,7 +333,7 @@ Lined up word by word, the two errors are easy to see.
 | 7 | kitchen | kitchen | correct |
 
 ## A worked example: the delay budget
-Transcribing takes 0.3 seconds, the model 0.6 and speech 0.3. Total 1.2 seconds before the user hears anything. People notice gaps in talk quickly, so teams stream everything: start speaking the first sentence while the model writes the second, and stop the voice at once if the user interrupts.
+Transcribing takes 0.3 seconds, the model 0.6 and speech 0.3. That is 1.2 seconds of processing after the system knows you have finished (a later section adds the wait to decide that). People notice gaps in talk quickly, so teams stream everything. Streaming means passing partial results along as soon as they exist, instead of waiting for each step to finish: start speaking the first sentence while the model writes the second, and stop the voice at once if the user interrupts.
 
 ## Where it is used
 Meeting notes and captions, call-centre assistants, voice control in cars, language practice, and tools that read text aloud for people with low vision. Accents, background noise, and names are the usual failures, so test with the speakers you will actually serve.
@@ -344,7 +345,7 @@ WER counts every word equally. "Take fifteen milligrams twice a day" heard as "t
 Invented numbers: 80 speakers have a WER of 6 percent and 20 speakers with a regional accent have 18 percent. Overall: 0.8 × 6 + 0.2 × 18 = 8.4 percent. That looks fine, yet one in five users has a poor experience. To confirm, split your test audio by accent, microphone and noise, and compute WER for each group.
 
 ## The wait before the delay budget
-The 1.2 second budget starts after the user stops talking, but the system must first decide they have stopped. It waits for a pause, typically a fraction of a second (say 0.7 seconds). Add that and the total becomes 1.9 seconds. A shorter wait makes the assistant talk over people who pause to think. A longer wait feels slow. Streaming helps the other end: if speech starts when the model has written its first sentence, say 0.2 seconds into its 0.6, the first sound arrives 0.3 + 0.2 + 0.1 = 0.6 seconds after the pause ends, or 1.3 seconds after the user stopped talking. The 0.1 second speaking start-up is invented.
+The 1.2 second budget starts after the user stops talking, but the system must first decide they have stopped. It waits for a pause, typically a fraction of a second (say 0.7 seconds). Add that and the total becomes 1.9 seconds. A shorter wait makes the assistant talk over people who pause to think. A longer wait feels slow. Streaming helps the other end: if speech starts when the model has written its first sentence, say 0.2 seconds into its 0.6, the first sound arrives 0.3 + 0.2 + 0.1 = 0.6 seconds after the pause ends, or 1.3 seconds after the user stopped talking. Speech takes 0.3 seconds in total for the whole reply, but the first sound comes after only 0.1 seconds of start-up (invented numbers).
 
 ```mermaid The wait for a pause comes before the delay budget starts, which raises the total from 1.2 to 1.9 seconds
 flowchart TD
@@ -364,7 +365,7 @@ xychart-beta
 ```
 
 ## Common mistake
-Testing with clean studio audio. Real users talk in cars and kitchens, and the error rate there can be several times higher.
+Testing with clean studio audio. Real users talk in cars and kitchens, and error rates in noisy rooms can be several times those on clean audio (the Whisper paper shows how rates rise as noise increases).
 
 ```resources
 repo | Whisper | https://github.com/openai/whisper | OpenAI | Open speech recognition model for many languages.
@@ -373,9 +374,9 @@ paper | Robust Speech Recognition via Large-Scale Weak Supervision | https://arx
 ```
 
 ```quiz
-What does word error rate measure? | How fast the system answers a question ; How many words in the audio are wrong ; How natural the voice sounds to people | 1 | WER counts substitutions, deletions and insertions against the true words.
+The speaker says 10 words and the system gets 2 wrong. What is the WER? | 20 percent, since 2 errors over 10 true words ; 2 percent, since only 2 words were wrong ; 8 percent, since 8 words were right | 0 | 2 errors over 10 true words is 0.2, or 20 percent.
 Why do voice assistants stream their output? | It makes the transcript more accurate in noise ; It lets them store the audio for later use ; It speaks before the whole answer exists | 2 | Streaming overlaps the steps, which cuts the wait the user feels.
-A demo works in a quiet room. What should you do next? | Test with noise, accents and real names ; Launch it, since the demo proves it works ; Switch to a bigger language model first | 0 | Real conditions raise error rates, so test in them before launch.
+A demo works in a quiet room. What should you do next? | Check WER on the names and numbers that matter, using clean audio ; Check WER per accent and noise level on real recordings ; Switch to a bigger language model first | 1 | Averages hide groups: 6 percent for most speakers and 18 percent for one accent can look fine overall, so split the results.
 ```
 
 ```story
@@ -383,7 +384,7 @@ A clinic records doctor visits so notes write themselves. In the quiet demo the 
 ```
 
 # robotics-and-automation | Robotics and process automation | 2 | 13
-AI in the physical world is harder than AI on a screen, because the world pushes back. Process automation, which only moves data, is far easier and far more common.
+AI in the physical world is harder than AI on a screen, because the world pushes back. Process automation, which only moves data, is usually easier, and many more companies run it than run robots.
 
 ## What it is
 A robot works in a loop: sense (cameras, touch), decide, act (move motors), and repeat many times a second. Older robots followed fixed programs and needed a controlled setting, like a car factory line. Newer approaches learn from demonstrations or from trial and error in simulation, and some models take camera images and an instruction in words and output motor actions.
@@ -407,7 +408,7 @@ A robot completes each of 10 steps in a task with 95 percent success. All ten su
 Warehouse picking, vacuum robots, surgical assistance under a surgeon's control, crop harvesting, and automated invoice handling in finance teams. Start with the cases where the environment is controlled and a person can step in.
 
 ## Retries change the multiplication
-The worked example assumes one failed step ruins the task. If the robot can notice a failed grasp and try once more, a 95 percent step succeeds with probability 1 - 0.05 × 0.05 = 0.9975. Over ten steps that gives 0.9975 to the power 10, about 0.975, instead of 0.60. This holds only if failures are independent and detectable. A robot that does not know it dropped the part cannot retry, so sensors that check each step are worth as much as better arms.
+The worked example assumes one failed step ruins the task. If the robot can notice a failed grasp and try once more, a 95 percent step succeeds with probability 1 - 0.05 × 0.05 = 0.9975. Over ten steps that gives 0.9975 to the power 10, about 0.975, instead of 0.60. This holds only if failures are independent (a failed first try does not make a second failure more likely) and detectable. If the cause is shiny packaging that confuses the camera every time, the retry fails the same way and 0.05 × 0.05 is far too optimistic. A robot that does not know it dropped the part cannot retry, so sensors that check each step are worth as much as better arms.
 
 ```mermaid A robot that can notice a failed step and retry once fails far less often
 flowchart TD
@@ -447,7 +448,7 @@ paper | Domain Randomization for Transferring Deep Neural Networks from Simulati
 ```quiz
 What is the sim-to-real gap? | A simulation differs from the real world ; Real robots cost much more than simulated ones ; Robots move more slowly than their software | 0 | Friction, light and wear in the real world are not captured in simulation.
 A task has 10 steps, each 95 percent reliable. About how often does it fully succeed? | About 95 percent of the time ; About 60 percent of the time ; Roughly 10 percent of the time | 1 | 0.95 multiplied ten times is about 0.60, because errors compound.
-Why is invoice automation easier than a warehouse robot? | The invoices have fewer words to process ; Robots cannot read printed text or labels ; Mistakes are cheap and easy to undo | 2 | Software tasks are reversible and cheap to retry, unlike physical movement.
+Why is invoice automation easier than a warehouse robot? | The invoices have fewer words to process ; Invoices are always in one fixed template ; A wrong result can be caught and corrected before harm | 2 | Software mistakes can be caught by a check, like comparing line items to the total, and fixed. A dropped part or a collision cannot be undone.
 ```
 
 ```story
@@ -463,22 +464,22 @@ Each field picks the tasks that are frequent, data-rich and checkable, and keeps
 Healthcare: reading scans, writing visit notes, finding patients at risk. Regulators treat many of these as medical devices and expect evidence. Finance: fraud detection, credit scoring, document reading, customer chat. Decisions about credit must be explainable to the customer, and rules limit unfair bias. Law: searching cases and drafting. Lawyers remain responsible for every filing. Education: tutoring, feedback on drafts, lesson planning. The aim is learning, not finished homework. Retail: demand forecasts, recommendations, price tests, support chat.
 
 ## A worked example: choosing the control
-Rate each task on two lines: cost of a mistake, and how easily a person can check it. Summarizing a meeting: low cost, easy to check, so automate and sample. Drafting a contract clause: medium cost, checkable by a lawyer, so AI drafts and a lawyer approves. Approving a loan: high cost, affects a person's life, so a model may assist but rules, explanations and a human appeal must exist. The more a mistake costs, the more control stays with a person.
+Rate each task on two lines: cost of a mistake, and how easily a person can check it. Summarizing a meeting: low cost, easy to check, so automate it and spot-check a random handful of outputs each week. Drafting a contract clause: medium cost, checkable by a lawyer, so AI drafts and a lawyer approves. Approving a loan: high cost, affects a person's life, so a model may assist but rules, explanations and a human appeal must exist. The more a mistake costs, the more control stays with a person. If a task is high cost and hard to check, keep a person in charge from the start. If it is high cost but easy to check, a quick human check can be enough.
 
 ```mermaid The more a mistake costs, the more control stays with a person
 flowchart TD
   T[Task] --> Q{Cost of a mistake?}
-  Q -->|Low, easy to check| A[Automate and sample]
+  Q -->|Low, easy to check| A[Automate and spot-check]
   Q -->|Medium, checkable| B[AI drafts, expert approves]
   Q -->|High| C[Model assists, human can appeal]
   class C warn
 ```
 
 ## What goes wrong
-Bias in data becomes bias in decisions. In 2018 Reuters reported that Amazon dropped a hiring tool trained on past resumes, because it had learned to mark down resumes that mentioned women's groups. In 2023 two New York lawyers and their firm were fined $5,000 after submitting a brief with court cases a chatbot had invented. Neither failure was about intelligence. Amazon's team tested the tool, found it was biased and shut the project down. The lawyers did not check their citations.
+Bias in data becomes bias in decisions. In 2018 Reuters reported that Amazon dropped a hiring tool trained on past resumes, because it had learned to mark down resumes that mentioned women's groups. In 2023 two New York lawyers and their firm were fined $5,000 after submitting a brief with court cases a chatbot had invented. Neither failure was about intelligence. Amazon's engineers found it marked down resumes mentioning women's groups, could not make it neutral, and dropped the project. The lawyers did not check their citations.
 
 ## How a bias check works
-Take 1,000 loan applicants in each of two groups. The model approves 600 in group A (60 percent) and 420 in group B (42 percent). The ratio is 42 / 60 = 0.70. A gap this size does not prove unfairness, since the groups may differ in income or debts. It is a prompt to look closer. Compare applicants with similar finances: if group B is still approved less often at the same income and debt, the model is treating them differently and the data needs inspection. Ask which inputs act as stand-ins for the group, such as a postcode.
+Take 1,000 loan applicants in each of two groups. The model approves 600 in group A (60 percent) and 420 in group B (42 percent). The ratio is 42 / 60 = 0.70. Reviewers often use 0.80 as a flag: below it, look closer. 0.70 is below that line, so it earns a closer look, not a verdict. A gap this size does not prove unfairness, since the groups may differ in income or debts. It is a prompt to look closer. Compare applicants with similar finances: if group B is still approved less often at the same income and debt, the model is treating them differently and the data needs inspection. Ask which inputs act as stand-ins (proxies) for the group. A postcode is the classic case: the model never sees the group, but where people live can tell it almost the same thing, so dropping the group column does not remove the gap.
 
 The table compares the two groups from the 1,000 applicants each.
 
@@ -508,15 +509,15 @@ flowchart TD
 Copying a success from another industry without its safeguards. A tool that is fine for retail support is not automatically fine for medicine.
 
 ```resources
-article | AI-enabled medical devices | https://www.fda.gov/medical-devices/artificial-intelligence-enabled-medical-devices/list-artificial-intelligence-enabled-medical-devices | US FDA | The official list of AI devices cleared in the United States.
+article | AI-enabled medical devices | https://www.fda.gov/medical-devices/artificial-intelligence-enabled-medical-devices/list-artificial-intelligence-enabled-medical-devices | US FDA | FDA's list of AI-enabled medical devices authorized for marketing in the United States (not a complete list).
 article | Stanford AI Index | https://hai.stanford.edu/ai-index | Stanford HAI | Data on adoption by industry.
 article | AI Risk Management Framework | https://www.nist.gov/itl/ai-risk-management-framework | NIST | A US government framework for judging and managing AI risk.
 ```
 
 ```quiz
-Which factor should set how much human control a task needs? | How impressive the model looks in demos ; The cost of mistakes and how checkable ; How expensive each model call is to run | 1 | High-cost, hard-to-check decisions need a person in charge.
+Which factor should set how much human control a task needs? | How impressive the model looks in demos ; How costly a mistake is and how easily a person can check it ; How expensive each model call is to run | 1 | High-cost, hard-to-check decisions need a person in charge.
 Why did Amazon drop its resume screening tool? | It reproduced bias from past hiring data ; It was too slow for large applicant pools ; It could not read the resume formats | 0 | Learning from biased history teaches the model the same bias.
-What went wrong in the court brief case? | The model's answer was in the wrong format ; Nobody checked the cited cases were real ; The court did not allow any typed filings | 1 | The tool made up cases and no person verified them before filing.
+A reviewer catches 60 percent of errors. An assistant writes 1,000 summaries and 50 are wrong. How many wrong summaries reach users? | 10 of them ; 20 of them ; 30 of them | 1 | 50 x 0.4 = 20 are missed, and 30 are caught.
 ```
 
 ```story
@@ -567,10 +568,10 @@ The table sweeps the share of tickets handled, with $1,500 a month of fixed cost
 | 20 percent | $4,000 | $1,500 | $2,500 |
 | 30 percent | $6,000 | $1,500 | $4,500 |
 
-## Putting error bars on the shadow-mode result
-Run the assistant in shadow mode on 200 past tickets and see 60 drafts need no edits, which is 30 percent. With only 200 tickets the result has a margin of about 6 points either way (roughly 2 × sqrt(0.3 × 0.7 / 200), the sampling-error formula from the benchmarks lesson). The true rate could be 24 or 36 percent. At 24 percent the net saving is $3,300 a month and payback takes 9.1 months. At 36 percent it is $5,700 and payback takes 5.3 months. The monthly result is above break-even across the whole range. Whether a 5 to 9 month payback is acceptable is a separate decision. A range that crosses 7.5 percent would mean testing more tickets.
+## Putting error bars on the test result
+Test the assistant on 200 past tickets and see 60 drafts need no edits, which is 30 percent. With only 200 tickets the result is uncertain. One standard error (a typical size of the sampling error) is sqrt(0.3 × 0.7 / 200) = sqrt(0.00105), about 3.2 points. Going two of those either way covers most cases, so the margin is about 6 points. The true rate could be 24 or 36 percent. At 24 percent the net saving is $3,300 a month and payback takes 9.1 months. At 36 percent it is $5,700 and payback takes 5.3 months. The monthly result is above break-even across the whole range. Whether a 5 to 9 month payback is acceptable is a separate decision. A range that crosses 7.5 percent would mean testing more tickets.
 
-The table turns the shadow-mode range into payback, for the $30,000 build cost.
+The table turns that test range into payback, for the $30,000 build cost.
 
 | Share handled | Net per month | Payback |
 |---|---|---|
@@ -579,22 +580,22 @@ The table turns the shadow-mode range into payback, for the $30,000 build cost.
 | 36 percent | $5,700 | 5.3 months |
 
 ## What goes wrong: costs the estimate misses
-The example counts the 30 percent of tickets drafted well. The other drafts cost time too. Suppose 20 percent of all drafts are wrong, and each takes an extra minute to read and discard. That is 10,000 × 0.2 × 1 minute = 2,000 minutes, about $1,000 a month, which cuts the net saving to $3,500. The symptom is that drafts get accepted but tickets handled per hour barely moves. Confirm by measuring total handling time per ticket before and after, not how many drafts were accepted.
+The example counts the 30 percent of tickets drafted well. The other drafts cost time too. Suppose 20 percent of all drafts are wrong, and each takes an extra minute to read and discard. That is 10,000 × 0.2 × 1 minute = 2,000 minutes, about $1,000 a month, which cuts the net saving to $3,500. That also moves the break-even. Fixed costs are now $2,500 a month, so the assistant must handle 2,500 / 200 = 12.5 percent of tickets, not 7.5 percent, before it pays for itself. (Edited drafts are left out here to keep the number simple.) The symptom is that drafts get accepted but tickets handled per hour barely moves. Confirm by measuring total handling time per ticket before and after, not how many drafts were accepted.
 
 ## Common mistake
 Declaring victory after a demo. Adoption, review time and drift decide the real return.
 
 ```resources
 article | Rules of Machine Learning | https://developers.google.com/machine-learning/guides/rules-of-ml | Google | Launch, monitor and iterate advice from experience.
-paper | Hidden Technical Debt in Machine Learning Systems | https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html | Sculley et al. | Why running a model costs more than building it.
+paper | Hidden Technical Debt in Machine Learning Systems | https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html | Sculley et al. | Why ML systems carry large ongoing maintenance costs beyond the model itself.
 article | Patterns for Building LLM-based Systems | https://eugeneyan.com/writing/llm-patterns/ | Eugene Yan | Evals, guardrails and feedback loops in production.
 ```
 
 ```quiz
-Which cost is most often forgotten in an AI project estimate? | Staff time spent reviewing outputs ; The per-token price of each model call ; The monthly fee for the cloud servers | 0 | Review and monitoring time can outweigh model call costs.
+In the worked example, which monthly cost is larger? | The model calls, $500 a month ; The human spot-checks, $1,000 a month ; They cost the same each month | 1 | Spot-checking 500 tickets at $2 each costs twice what 10,000 model calls do, so review time is easy to miss.
 What is shadow mode? | Hiding the system from all of the users ; Training the model without using real data ; Running beside staff, taking no action | 2 | It lets you compare AI output to real decisions with no risk.
 Scores drop six months after launch with no code change. What is a likely cause? | The model weights decayed over the months ; The users typed faster than before ; Data drift, since real inputs changed | 2 | Real inputs move away from the data the system was tested on.
-Fixed costs are $1,500 a month and each percent of tickets handled saves $200. When does the project break even? | At 7.5 percent of tickets handled ; At 15 percent of tickets handled ; At 30 percent of tickets handled | 0 | 1,500 / 200 = 7.5 percent. Below that it loses money each month.
+Fixed costs are $2,000 a month and each percent of tickets handled saves $250. When does the project break even? | At 8 percent of tickets handled ; At 12.5 percent of tickets handled ; At 25 percent of tickets handled | 0 | 2,000 / 250 = 8 percent. Below that it loses money each month.
 ```
 
 ```story

@@ -7,14 +7,14 @@ A relational database (also called RDBMS or SQL database) keeps data in tables o
 Relational databases promise a set of properties called ACID for each transaction, which is a group of changes treated as one unit.
 
 1. Atomicity: a transaction is all or nothing.
-2. Consistency: a transaction moves the database from one valid state to another, so rules like "balance cannot be negative" always hold.
+2. Consistency: a transaction moves the database from one valid state to another, and rules you have declared, like "balance cannot be negative", are never broken by a committed transaction.
 3. Isolation: running transactions at the same time gives the same result as running them one by one.
 4. Durability: once a transaction is committed, it stays committed, even after a crash.
 
 The last lesson in this chapter, [Transactions and Isolation](/sd/docs/data/transactions-and-isolation), shows what these promises cost and where they bend.
 
 ## The four NoSQL families
-NoSQL is a loose label for databases that are not relational tables. Data is usually denormalized, which means copies of facts are stored together so that you rarely need joins. Joins, when you need them, happen in application code. Most NoSQL stores skip full ACID transactions and lean toward eventual consistency, where all copies agree after a short delay. A common summary is BASE: basically available, soft state, eventually consistent. See [CAP and PACELC](/sd/docs/distributed/cap-and-pacelc) for why.
+NoSQL is a loose label for databases that are not relational tables. Data is usually denormalized, which means copies of facts are stored together so that you rarely need joins. Joins, when you need them, happen in application code. Many NoSQL stores skip full ACID transactions, or limit them to a single record. Some, like MongoDB and DynamoDB, now offer transactions across records, usually at a cost in speed. Most lean toward eventual consistency, where all copies agree after a short delay. This is a different meaning from the C in ACID, which is about rules, not about copies agreeing. A common summary is BASE: basically available, soft state, eventually consistent. See [CAP and PACELC](/sd/docs/distributed/cap-and-pacelc) for why.
 
 | Family | Mental model | Real example | Good fit |
 | --- | --- | --- | --- |
@@ -53,7 +53,7 @@ The honest tie-breaker is the access pattern: the list of queries your app runs,
 ## A worked example: a shopping cart both ways
 Feature: show a user their cart. Invented load: 5,000 cart reads per second, 500 writes per second, carts that expire after 30 days.
 
-Relational model, three tables: `users`, `carts` (one per user) and `cart_items` (cart_id, product_id, quantity). Showing a cart is a join of `cart_items` with `products` to get names and prices. That is one SQL query, and ACID keeps the stock count and cart in step when the user checks out. Cost: every read does a join and several index lookups.
+Relational model, three tables: `users`, `carts` (one per user) and `cart_items` (cart_id, product_id, quantity). Showing a cart is a join of `carts`, `cart_items` and `products` to get names and prices. That is one SQL query, and ACID keeps the stock count and cart in step when the user checks out. Cost: every read does a join and several index lookups.
 
 Document model: one document per user in a store like MongoDB, keyed by user id. It holds the item list with product name and price copied in. Showing a cart is one lookup by key, with no join. Cost: if a product's price changes, the copies inside carts are stale until you update them. For a cart that is acceptable. For an invoice it would not be.
 
@@ -65,7 +65,7 @@ The cart example on the same points.
 
 | | Relational | Document | Key-value |
 | --- | --- | --- | --- |
-| Show the cart | Join cart_items with products | One lookup by user id | One lookup of cart:42 |
+| Show the cart | Join carts, cart_items and products | One lookup by user id | One lookup of cart:42 |
 | Strength | ACID keeps stock and cart in step, and reports across carts and orders work | No join, one read | Cheapest and fastest, 30 day expiry comes free |
 | Cost | Every read does a join and several index lookups | Copied prices go stale until updated | Cannot ask which carts hold product 9 without scanning everything |
 
@@ -84,10 +84,10 @@ sequenceDiagram
   Note over Job,P: One extra query per order, and no join to save them
 ```
 
-A team moves orders to a document store because "it scales". Months later finance asks for revenue by product category by week. Orders hold product ids, categories live in another collection, and there is no join. The code fetches every order and loops. The symptom is a report job that takes hours and grows with data size. You confirm it by looking at the query log: one query per order, thousands of them. The fix is a pre-computed summary, a second database for analytics, or going back to SQL for this data.
+A team moves orders to a document store because "it scales". Months later finance asks for revenue by product category by week. Orders hold product ids, and categories live in another collection. This store has no join (or only a slow, limited one), so the code fetches every order and asks for the category one order at a time. The symptom is a report job that takes hours and grows with data size. You confirm it by looking at the query log: one query per order, thousands of them. The fix is a pre-computed summary, a second database for analytics, or going back to SQL for this data.
 
 ## When NoSQL is the wrong tool
-Skip it when your data is relational and you need transactions across several rows, like money moving between accounts. Skip it when requirements are still unknown, because ad hoc SQL queries are the cheapest way to explore. Skip it when your data fits on one machine. A single PostgreSQL or MySQL server handles far more than most products will ever need, and it is simpler to run.
+Skip it when your data is relational and you need transactions across several rows, like money moving between accounts. Skip it when requirements are still unknown, because ad hoc SQL queries are the cheapest way to explore. Skip it when your data fits on one machine. A single PostgreSQL or MySQL server handles more than many products ever need, and it is simpler to run. Measure your own load before assuming you have outgrown it.
 
 ## Common mistake
 Choosing NoSQL because it sounds more scalable, without writing down the queries. Relational databases scale with the tools in the next lessons, and a wrong choice here is expensive to undo.
@@ -100,7 +100,7 @@ paper | Dynamo: Amazon's Highly Available Key-value Store | https://www.allthing
 ```
 
 ```quiz
-Your app only ever reads a shopping cart by user id and carts expire after 30 days. Which fits best? | A key-value store with an expiry on each key ; A graph database with a node for each cart ; A relational database with five joined tables | 0 | One lookup by key with built-in expiry matches the whole access pattern.
+Your app only ever reads a shopping cart by user id and carts expire after 30 days. Which fits best? | A key-value store with an expiry on each key ; A graph database with a node for each cart ; A relational database that joins tables on every cart read | 0 | A lookup by one key with a built-in expiry matches the whole access pattern. A relational cart works but pays for a join on every read that this access pattern never needed.
 Which need is the strongest reason to stay relational? | Storing petabytes of clickstream logs quickly ; Keeping a leaderboard of scores in memory ; Moving money between two accounts atomically | 2 | Multi-row transactions with ACID are the classic strength of a relational database.
 In the cart example, a product price changes. What happens with the document model? | Copies inside existing carts stay stale until updated ; The database rewrites every cart on its own ; Every read automatically joins to the product | 0 | Denormalized copies are not kept in sync for you.
 ```
@@ -119,12 +119,12 @@ An index is an extra sorted structure that lets a database find rows without rea
 ## What an index is
 Without an index, the database reads a table row by row until it finds matches. This is a full table scan. The PostgreSQL manual compares an index to the alphabetic index at the back of a non-fiction book: you look the term up and flip to the right page.
 
-The index is a separate structure that stores the indexed values in sorted order, with a pointer to each row. The author of Use The Index, Luke calls it pure redundancy: it takes its own disk space and holds a copy of some table data. Creating it does not change the table. The database updates it automatically on every insert, update and delete.
+The index is a separate structure that stores the indexed values in sorted order, with a pointer to each row. The author of Use The Index, Luke calls it pure redundancy: it takes its own disk space and holds a copy of some table data. Creating it does not change the table. The database keeps it up to date automatically when rows are inserted, updated or deleted.
 
 Indexes are usually B-trees. A B-tree is a balanced tree with many keys in each node, so it is wide and shallow, and every leaf sits at the same depth. This is the default index type in PostgreSQL. Lookups, inserts and deletes all take a number of page reads that grows with the logarithm of the row count.
 
 ## How a B-tree lookup works
-Take `SELECT * FROM users WHERE id = 8,123,456`.
+The database reads data in fixed-size blocks called pages (often 8 KB), and each node of the tree is one page. Take `SELECT * FROM users WHERE id = 8123456`, in a table of 10 million rows.
 
 1. The database reads the root node, a page holding many keys (this lesson uses 100 to keep the maths easy). It finds the range that contains the id and follows that pointer.
 2. It reads a branch node one level down and repeats.
@@ -145,7 +145,7 @@ Each level multiplies the reach by the fanout, the number of keys per node. So t
 $$ \text{depth} \approx \lceil \log_{f}(n) \rceil $$
 
 ## Composite indexes and column order
-An index on several columns is called composite or concatenated. It sorts by the first column, then by the second inside ties, like a phone book sorted by last name and then first name. A phone book does not help you find everyone named "Anna", and the index does not help a query on only the second column.
+An index on several columns is called composite or concatenated. It sorts by the first column, then by the second inside ties, like a phone book sorted by last name and then first name. A phone book does not help you find everyone named "Anna", and an index barely narrows a query on only the second column: the database still has to walk most of the index.
 
 The PostgreSQL manual says a multicolumn B-tree is most efficient with constraints on the leading columns. Put equality columns first, then the range column. PostgreSQL 18 added an optimization called skip scan that can sometimes help, but the planner generally picks it only when the first column has few distinct values. Do not count on it.
 
@@ -159,10 +159,10 @@ Which queries an index on (country, created_at) can use.
 | ORDER BY created_at with no filter | No, the index is sorted by country first |
 
 ## Covering indexes
-A normal index lookup also fetches the row from the table, often a random read far from the index entries. If the index holds every column the query needs, the database can answer from the index alone. PostgreSQL calls this an index-only scan, and B-tree indexes support it. A query that selects a column not in the index cannot use it. In PostgreSQL there is a second condition: the table pages must be marked as fully visible in a visibility map, so rarely changed tables benefit most.
+A normal index lookup also fetches the row from the table, often a random read far from the index entries. If the index holds every column the query needs, the database can answer from the index alone. PostgreSQL calls this an index-only scan, and B-tree indexes support it. A query that selects a column not in the index cannot use it. In PostgreSQL the table must also be mostly unchanged since its last cleanup, so rarely changed tables benefit most.
 
 ## The write cost
-Every index must be updated on every write. A table with five indexes means each insert changes six structures. The Primer's SQL tuning advice says the same: indexes need extra space, may slow writes, and when bulk loading it can be faster to drop indexes, load, and rebuild. Add an index for a query you actually run, and remove ones nobody uses. Before and after, benchmark and profile, for example with the slow query log, instead of guessing.
+Every insert and delete must update every index, and so must any update that changes an indexed column. A table with five indexes means each insert changes six structures. The Primer's SQL tuning advice says the same: indexes need extra space, may slow writes, and when bulk loading it can be faster to drop indexes, load, and rebuild. Add an index for a query you actually run, and remove ones nobody uses. Before and after, benchmark and profile, for example with the slow query log, instead of guessing.
 
 ## A worked example: 10 million rows
 Table `orders` has 10,000,000 rows. Query: find the order with a given `order_id`. Invented figure: a node holds 100 keys. Real 8 KB pages often hold a few hundred entries, so real trees are often one level shallower.
@@ -190,13 +190,13 @@ flowchart TD
   class I good
 ```
 
-A team has an index on `(country, created_at)`. The slow query is `WHERE created_at > '2026-01-01'`. The index starts with `country`, so the query cannot narrow the scan by date. Dev data is small, so nothing was noticed. In production, the page takes seconds. To confirm, run `EXPLAIN` on the query and look for a sequential scan instead of an index scan. The fix is a second index starting with `created_at`, or reordering to match the real query.
+A team has an index on `(country, created_at)`. The slow query is `WHERE created_at > '2026-01-01'`. The index starts with `country`, so the query cannot narrow the scan by date. Dev data is small, so nothing was noticed. In production, the report takes seconds to load. To confirm, run `EXPLAIN` on the query and look for a sequential scan instead of an index scan. The fix is a second index starting with `created_at`, or reordering to match the real query.
 
 ## When an index is the wrong tool
 A table with a few hundred rows is faster to scan. A query that returns most of the table is faster with a full scan, because reading blocks in order beats following many pointers. Columns with very few distinct values, like a yes or no flag, help little. Write-heavy tables with many indexes pay a lot for each one. For search over text, use a search engine or a text index type instead.
 
 ## Common mistake
-Adding an index on every column "just in case". Each one slows every write and uses memory, and a composite index in the wrong order is never used.
+Adding an index on every column "just in case". Each one slows every write and uses memory, and a composite index in the wrong order often cannot narrow the search, so the planner skips it.
 
 ```resources
 article | System Design Primer: SQL tuning | https://github.com/donnemartin/system-design-primer#sql-tuning | Donne Martin | Lists using good indices and their costs: more space, slower writes.
@@ -207,9 +207,9 @@ docs | PostgreSQL manual: Index-Only Scans and Covering Indexes | https://www.po
 ```
 
 ```quiz
-A table has 10 million rows and a B-tree with 100 keys per node. About how many index levels does a lookup read? | 4 ; 40 ; 400 | 0 | 100 cubed is one million, 100 to the fourth is 100 million, so four levels cover 10 million.
+A table has 10 million rows and a B-tree with 100 keys per node. About how many index levels does a lookup read? | 4 ; 5 ; 7 | 0 | 100 cubed is one million, 100 to the fourth is 100 million, so four levels cover 10 million.
 You have an index on (country, created_at). Which query can use it well? | WHERE created_at is in the last week ; WHERE country is one value and created_at is recent ; ORDER BY created_at with no filter | 1 | The leading column must be constrained first for the sorted order to narrow the search.
-What is the main cost of adding more indexes to a table? | Reads get slower on every query ; The table needs more rows to be valid ; Every insert and update touches each index | 2 | Each write must keep every index in sorted order.
+What is the main cost of adding more indexes to a table? | Reads on columns without an index get much slower ; Lookups on the indexed column itself get slower over time ; Every insert and delete touches each index, and so do updates to indexed columns | 2 | Each write that changes indexed data must keep every affected index in sorted order.
 ```
 
 ```story
@@ -224,7 +224,7 @@ The System Design Primer | https://github.com/donnemartin/system-design-primer |
 Replication keeps copies of the same data on several machines. It spreads reads across copies and lets the system survive a machine failure, at the price of copies that can lag behind each other.
 
 ## Leader and followers
-In leader-follower replication (the Primer calls it master-slave), one database is the leader. It takes all writes and sends each change to one or more followers, which serve reads only. Followers can in turn feed other followers in a tree. If the leader goes offline, the system can run in read-only mode until a follower is promoted or a new leader is provisioned.
+In leader-follower replication (the Primer calls it master-slave), one database is the leader. It takes all writes and sends each change to one or more followers, which serve reads only. The leader records every change in an ordered log and ships that log to followers. A position is a place in that log, like a page number. Followers can in turn feed other followers in a tree. If the leader goes offline, the system can run in read-only mode until a follower is promoted or a new leader is provisioned.
 
 ```mermaid Leader-follower: all writes go to the leader, which ships changes to followers that serve reads
 flowchart LR
@@ -257,7 +257,7 @@ Replication can be synchronous, where the leader waits for the follower to confi
 | | Synchronous | Asynchronous |
 | --- | --- | --- |
 | Write latency | Higher, waits for follower | Low |
-| If leader dies | No acknowledged write lost | Recent writes may be lost |
+| If leader dies | No acknowledged write is lost as long as the synchronous follower survives | Recent writes may be lost |
 | If follower is down | Writes can stall | Writes continue |
 
 PostgreSQL's streaming replication is asynchronous by default, and the manual says the amount of data lost at failover is proportional to the replication delay at that moment. Many teams use one synchronous follower and the rest asynchronous.
@@ -265,10 +265,10 @@ PostgreSQL's streaming replication is asynchronous by default, and the manual sa
 ## Replication lag and read-your-writes
 Replication lag is the delay between a write on the leader and its arrival on a follower. Normally it is milliseconds. Under load or a network problem it can reach seconds or minutes.
 
-Because of lag, a user may not see their own write. Read-your-writes consistency means a user always sees their own changes. Common fixes: read from the leader for a short time after that user writes, or read from the leader for data the user owns, or remember the position of the user's last write and only read from followers that have reached it. See [consistency models](/sd/docs/distributed/consistency-models) for a wider view.
+Because of lag, a user may not see their own write. Read-your-writes consistency means a user always sees their own changes. Common fixes: read from the leader for a short time after that user writes, or read from the leader for data the user owns, or remember the log position of the user's last write and only read from followers that have reached that position. See [consistency models](/sd/docs/distributed/consistency-models) for a wider view.
 
 ## Failover
-Failover means promoting a follower to leader when the old one fails. The steps are to detect the failure, choose the most up-to-date follower, point clients to it, and make the old leader rejoin as a follower. Hazards: with asynchronous replication, the chosen follower may be missing the last writes. And if the old leader comes back believing it is still the leader, you get two leaders, a split brain. Adds hardware and complexity, as the Primer puts it, and you should rehearse it.
+Failover means promoting a follower to leader when the old one fails. The steps are to detect the failure, choose the most up-to-date follower, point clients to it, and make the old leader rejoin as a follower. Hazards: with asynchronous replication, the chosen follower may be missing the last writes. And if the old leader comes back believing it is still the leader, you get two leaders, a split brain. Replication adds hardware and complexity, as the Primer puts it. Failover is the part that goes wrong most often, so rehearse it before you need it.
 
 ## A worked example: a user edits a profile and reads a stale replica
 Invented setup: one leader, two followers. Writes go to the leader. Reads go to a random follower. Replication lag is 800 milliseconds right now.
@@ -292,13 +292,13 @@ sequenceDiagram
   Note over L,B: Until 800 ms, B is behind
 ```
 
-Fix: after a write, send that user's reads to the leader for the next 5 seconds (more than the lag you normally see). Cost: the leader gets a slice of read traffic from recent writers only. If 2 percent of users wrote in the last 5 seconds, the leader serves 2 percent of reads, which is fine.
+Fix: after a write, send that user's reads to the leader for the next 5 seconds (more than the lag you normally see). Cost: the leader gets a slice of read traffic from recent writers only. If 2 percent of users wrote in the last 5 seconds, the leader serves 2 percent of reads, which is fine. A fixed window only works while lag stays below it. If lag grows past 5 seconds, Priya is back to stale reads, which is why the position-based fix is safer.
 
 ## What goes wrong: lag grows without anyone noticing
-A bulk job writes millions of rows to the leader. In many setups followers replay writes with little parallelism, so they fall minutes behind. Customers see old order statuses, and support tickets arrive. The symptom is data that is right on the leader and wrong on replicas. Confirm it by measuring lag: in PostgreSQL, compare the leader's current write position with the position the follower last received, as the manual describes. Alert on lag, and throttle bulk jobs.
+A bulk job writes millions of rows to the leader. In many setups followers replay writes with little parallelism, so they fall minutes behind. Customers see old order statuses, and support tickets arrive. The symptom is data that is right on the leader and wrong on replicas. Confirm it by measuring lag: in PostgreSQL, compare the leader's current log position with the position the follower last received, as the manual describes. Alert on lag, and throttle bulk jobs.
 
 ## When replication is the wrong tool
-Replication helps reads and availability. It does not help when writes are the bottleneck, because every follower must still apply every write. For that you need [sharding](/sd/docs/data/sharding). It is also not a backup: a bad DELETE replicates to every copy within milliseconds. Keep real backups too.
+Replication helps reads and availability. It does not help when writes are the bottleneck, because every follower must still apply every write. For that you need [sharding](/sd/docs/data/sharding). It is also not a backup: a bad DELETE replicates to every copy, usually within seconds and often much faster. Keep real backups too.
 
 ## Common mistake
 Sending every read to followers, including right after a write, and treating lag as a rare edge case. Design for read-your-writes from the start.
@@ -307,12 +307,12 @@ Sending every read to followers, including right after a write, and treating lag
 article | System Design Primer: Master-slave replication | https://github.com/donnemartin/system-design-primer#master-slave-replication | Donne Martin | Base text for leader-follower and the multi-leader section that follows it.
 article | System Design Primer: Master-master replication | https://github.com/donnemartin/system-design-primer#master-master-replication | Donne Martin | Lists the downsides of multi-leader: routing, loose consistency and conflict resolution.
 docs | PostgreSQL manual: Log-Shipping Standby Servers | https://www.postgresql.org/docs/current/warm-standby.html | PostgreSQL Global Development Group | Says streaming replication is asynchronous by default and that data loss at failover is proportional to the delay.
-article | Scalability, availability, stability, patterns (Jonas Boner) | http://www.slideshare.net/jboner/scalability-availability-stability-patterns/ | Jonas Boner | The slide deck the Primer takes its replication diagrams from.
+article | Scalability, availability, stability, patterns | http://www.slideshare.net/jboner/scalability-availability-stability-patterns/ | Jonas Boner | The slide deck the Primer takes its replication diagrams from.
 ```
 
 ```quiz
 Priya saves a profile on the leader and the next page shows the old name. What is the most likely cause? | The follower that served the read had not caught up yet ; The leader rejected the write silently ; The index on the name column was stale | 0 | Asynchronous followers can lag behind by the replication delay.
-Replication lag is 800 ms and a user wrote 3 seconds ago. After reading from the leader for 5 seconds, which reads still go to followers? | Reads from users who wrote in the last 5 seconds ; Reads from users who have not written recently ; Reads that happen after a leader failure | 1 | Only recent writers need the leader, so everyone else keeps using followers.
+Reads from a user go to the leader for 5 seconds after that user writes. Whose reads still go to followers? | Reads from users who wrote in the last 5 seconds ; Reads from users who have not written recently ; Reads from a user who wrote 2 seconds ago | 1 | Only recent writers need the leader, so everyone else keeps using followers.
 Why is replication a poor fix for a write-bound database? | It makes each write cheaper on the leader ; Each follower must still apply every write ; It blocks reads from reaching followers | 1 | Writes are copied to all nodes, so the total write load does not fall.
 ```
 
@@ -342,14 +342,14 @@ Avoid when | One server still copes, or your queries and transactions constantly
 
 Sharding distributes data across several databases, called shards, so each holds only a subset. As users grow, you add shards. Like federation, sharding gives less traffic, less replication and more cache hits per shard, and smaller indexes, which usually speeds queries. If one shard goes down the others still work, though you want replication to avoid data loss ([replication](/sd/docs/data/replication) and sharding are combined in practice).
 
-Downsides: application logic must work with shards, and queries get complex. Data can become lopsided. Rebalancing is hard. Joining data across shards is complex. It adds hardware and complexity.
+Downsides: application logic must work with shards, and queries get complex. Data can become lopsided. Rebalancing is hard. Joining data across shards is complex. It adds hardware and complexity. Adding shards means moving rows; the worked example below shows how logical shards keep that move small.
 
 ## Choosing a shard key
 The shard key is the column that decides which shard holds a row. There are three common schemes.
 
 | Scheme | How it works | Good | Bad |
 | --- | --- | --- | --- |
-| Range | Rows with keys A to F on shard 1, G to M on shard 2 | Range queries stay on one shard | Hot spots: one range may get most traffic |
+| Range | Rows with keys A to F on shard 1, G to M on shard 2 | Range queries that fall inside one slice stay on one shard | Hot spots: one range may get most traffic |
 | Hash | shard = hash(key) mod number of shards | Even spread | Range queries hit all shards, and resizing moves data (see [consistent hashing](/sd/docs/data/consistent-hashing)) |
 | Directory | A lookup table maps each key to a shard | Fully flexible | The table is an extra component and a bottleneck |
 
@@ -375,10 +375,10 @@ Denormalization improves read speed at the cost of some write speed. You store r
 Downsides: data is duplicated, keeping copies in sync is more design work, and under heavy writes a denormalized database can perform worse than a normalized one.
 
 ## A worked example: sizing shard count
-Invented numbers. A users and posts dataset is 3 TB today and grows 50 percent per year. Operations says a table should stay under 500 GB (Notion's post sets that same upper bound per table) and that shards should be at most 70 percent full, so the target is 350 GB per shard.
+Invented numbers. A users and posts dataset is 3 TB today and grows 50 percent per year. Operations says a table should stay under 500 GB and that shards should be at most 70 percent full, so the target is 70 percent of 500 GB, which is 350 GB per shard. (Notion's post sets 500 GB per table; we apply the same figure to a whole shard to keep the example simple.)
 
 1. Plan 3 years ahead. Data is $3 \times 1.5^3 = 10.1$ TB, about 10,100 GB.
-2. Shards for size: $10{,}100 / 350 = 28.9$, so 29, which rounds up to 30.
+2. Shards for size: $10{,}100 / 350 = 28.9$, so 29 shards. Round up to 30 to leave a little headroom and to split into 120 logical shards evenly (4 per host).
 3. Check writes. Peak is 60,000 writes per second and one host handles about 3,000. That needs 20 shards, fewer than 30, so size decides.
 4. Pick logical shards. Create 120 logical shards (databases or schemas) and put 4 on each of the 30 hosts.
 
@@ -416,13 +416,13 @@ article | An Unorthodox Approach to Database Design: The Coming of the Shard | h
 ```
 
 ```quiz
-Which choice is federation? | Separate databases for users, products and forums ; One users table cut by the hash of the id ; Three copies of the same database | 0 | Federation splits by function, so each feature gets its own database.
-Data is 3 TB growing 50 percent a year, 350 GB per shard target. About how many shards for 3 years of growth? | 10 ; 90 ; 30 | 2 | 3 x 1.5^3 is about 10.1 TB, and 10,100 GB divided by 350 is about 29, rounded up.
-You shard orders by month and one host is overloaded. What is the likely cause? | The hash function spreads keys too evenly ; Too many logical shards on each host ; Every new write goes to the current month shard | 2 | Range keys that grow with time send all new writes to one shard.
+A team moves billing tables to their own database while users stay put. What is this? | Sharding ; Federation ; Replication | 1 | Federation splits by function, so each feature gets its own database.
+Data is 3 TB growing 50 percent a year, 350 GB per shard target. About how many shards for 3 years of growth? | 10 ; 90 ; 30 | 2 | 3 x 1.5^3 is about 10.1 TB, and 10,100 GB divided by 350 is about 29. Rounding up a little for headroom gives 30.
+You shard orders by month and one host is overloaded. What is the likely cause? | Orders are hashed by id, so the load is uneven ; Older months are queried more than the current one ; Every new write goes to the current month shard | 2 | Range keys that grow with time send all new writes to one shard.
 ```
 
 ```story
-A social app shards its posts by user id and everything looks balanced. Then a pop star with 30 million followers joins, and the shard that holds their account runs at 100 percent while the rest idle. Rebalancing that one shard means moving live data, so the team spends a month on it. A plan for celebrity accounts from day one would have cost a week.
+Imagine a social app that shards its posts by user id and everything looks balanced. Then a pop star with 30 million followers joins, and the shard that holds their account runs at 100 percent while the rest idle. Rebalancing that one shard means moving live data, so the team spends weeks on it. Planning for celebrity accounts from day one would have cost far less.
 ```
 
 ```adapted
@@ -433,7 +433,7 @@ The System Design Primer | https://github.com/donnemartin/system-design-primer |
 Consistent hashing places servers and keys on a ring so that adding or removing a server moves only a small share of the keys. Plain `hash mod N` moves almost all of them.
 
 ## The problem with hash mod N
-The simplest way to spread keys across N servers is `server = hash(key) mod N`. It is even and cheap. But when N changes, because you add a server or one dies, nearly every key maps to a different server. Caches suddenly miss, databases must move most of their data, and the extra load can take the system down. Sharding schemes in [Sharding](/sd/docs/data/sharding) face exactly this.
+The simplest way to spread keys across N servers is `server = hash(key) mod N`. Here `mod` means the remainder after division, so `17 mod 5 = 2`. A hash function turns any key into a whole number, and the same key always gives the same number. The scheme is even and cheap. But when N changes, because you add a server or one dies, nearly every key maps to a different server. Caches suddenly miss, databases must move most of their data, and the extra load can take the system down. Sharding schemes in [Sharding](/sd/docs/data/sharding) face exactly this.
 
 ## The ring
 Consistent hashing was introduced in a 1997 paper by David Karger and five co-authors, written to relieve hot spots on web caches. Two of those authors, Tom Leighton and Daniel Lewin, went on to found the CDN company Akamai. The idea:
@@ -443,7 +443,7 @@ Consistent hashing was introduced in a 1997 paper by David Karger and five co-au
 3. Hash each key to a position as well.
 4. A key belongs to the first server found by walking clockwise from the key's position.
 
-```mermaid The ring: each key belongs to the first server clockwise from it
+```mermaid The ring: each key belongs to the first server clockwise from it (drawn as a line: the last arrow wraps back to the first server)
 flowchart TD
   K1[key a] -->|clockwise| SA[Server A]
   K2[key b] -->|clockwise| SB[Server B]
@@ -453,7 +453,7 @@ flowchart TD
   SC -->|wraps around| SA
 ```
 
-Each server owns the arc between it and its predecessor. When a server is added, it takes over part of one neighbor's arc, and only those keys move. When a server leaves, its keys go to the next server clockwise, and nobody else is affected. The Dynamo paper states the advantage this way: the departure or arrival of a node only affects its immediate neighbors.
+Each server owns the arc between it and its predecessor. When a server is added, it takes over part of one neighbor's arc, and only those keys move. When a server leaves, its keys go to the next server clockwise. No other keys move, though that neighbor now carries extra load (see the cascade below). The Dynamo paper states the advantage this way: the departure or arrival of a node only affects its immediate neighbors.
 
 ## Virtual nodes
 With a few servers at random positions, arcs have uneven length, so some servers get much more data. The Dynamo paper also notes the basic algorithm ignores differences in machine power. The fix is virtual nodes: each physical server gets many positions on the ring (Dynamo calls them tokens). Load evens out because many small arcs average out. A bigger machine gets more virtual nodes. When a server dies, its many small arcs are picked up by many different neighbors, so no single server takes all the extra load. Cassandra also assigns each node tokens on a ring and walks the ring to find a key's owner.
@@ -473,7 +473,12 @@ With `hash mod N`, a key stays in place only if `h mod 4 = h mod 5`. Look at has
 | mod 4 | 0 | 1 | 2 | 3 | 0 | 1 | 2 | 3 | 0 | 1 |
 | mod 5 | 0 | 1 | 2 | 3 | 4 | 0 | 1 | 2 | 3 | 4 |
 
-Only h = 0, 1, 2 and 3 match. Work out h = 10 to 19 the same way and you will find the two remainders always differ from 4 to 19, so 4 of 20 keys stay and 16 of 20 move. In general, going from N to N+1 servers keeps only 1 key in N+1 under hash mod N. That is 80 percent. With 1 million cached keys, 800,000 miss at once.
+| h | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| mod 4 | 2 | 3 | 0 | 1 | 2 | 3 | 0 | 1 | 2 | 3 |
+| mod 5 | 0 | 1 | 2 | 3 | 4 | 0 | 1 | 2 | 3 | 4 |
+
+Only h = 0, 1, 2 and 3 match, so 4 of 20 keys stay and 16 of 20 move. In general, going from N to N+1 servers keeps only 1 key in N+1 under hash mod N, so N out of N+1 keys move. For 4 to 5 servers that is 80 percent moving. With 1 million cached keys, 800,000 miss at once.
 
 With a ring and one new server of five equal servers, the new server takes about one fifth of the ring from its neighbors. About 20 percent of keys move, 200,000 of 1 million, and all of them go to the new server. The expected share is $1/N$ for the new count N.
 
@@ -516,9 +521,9 @@ article | ByteByteGo: Consistent Hashing Explained | https://bytebytego.com/guid
 ```
 
 ```quiz
-You grow from 4 to 5 servers with hash mod N. About what share of keys move? | 20 percent ; 50 percent ; 80 percent | 2 | Only hashes 0 to 3 of every 20 keep their server, so 16 of 20 move.
+You grow a cache from 9 to 10 servers with hash mod N. About what share of keys move? | 10 percent ; 50 percent ; 90 percent | 2 | Only 1 key in 10 keeps its server, so 9 of 10 move.
 You grow from 4 to 5 servers on a ring with balanced arcs. What share of keys move? | About 20 percent, all to the new server ; About 80 percent, spread over four servers ; None, if virtual nodes are used | 0 | The new server takes about one fifth of the ring and nothing else changes.
-What do virtual nodes fix? | They remove the need for a hash function ; They even out load across servers ; They copy data to more places | 1 | Many small arcs per server average out uneven random positions.
+What do virtual nodes fix? | They stop one hot key overloading a server ; They even out load across servers ; They let range queries span servers | 1 | Many small arcs per server average out uneven random positions.
 ```
 
 ```story
@@ -600,9 +605,9 @@ The SQL standard defines four levels, from weakest to strongest: read uncommitte
 
 Many databases also offer snapshot isolation. Each transaction sees a consistent snapshot of the data from when it started, kept using multiple versions of each row. It stops dirty reads, non-repeatable reads and phantoms, but not write skew.
 
-The PostgreSQL manual says it implements three distinct levels. Read uncommitted behaves like read committed, and its repeatable read is snapshot isolation. Its table says read committed allows non-repeatable reads, phantoms and serialization anomalies. Repeatable read still allows serialization anomalies. Only serializable prevents all of them.
+The PostgreSQL manual says it implements three distinct levels. Read uncommitted behaves like read committed, and its repeatable read is snapshot isolation. Its table says read committed allows non-repeatable reads, phantoms and serialization anomalies. Repeatable read still allows serialization anomalies. Only serializable prevents all of them. A serialization error is the database aborting a transaction because letting it commit would produce such a result.
 
-What each PostgreSQL level allows, from the manual's table as quoted above.
+What each PostgreSQL level allows. The first three columns come from the manual's table. Write skew is one kind of serialization anomaly (a result no one-at-a-time ordering could produce), and Hermitage's Postgres tests confirm which levels allow it.
 
 | Level you ask for | Dirty read | Non-repeatable read | Phantom read | Write skew |
 | --- | --- | --- | --- | --- |
@@ -614,7 +619,7 @@ What each PostgreSQL level allows, from the manual's table as quoted above.
 What does your database default to? PostgreSQL: read committed. MySQL with InnoDB: repeatable read, according to the MySQL manual. Hermitage is a test suite by Martin Kleppmann that documents what several databases really do under their isolation level names. It shows the same name can mean different behavior. For example, Hermitage finds PostgreSQL's repeatable read prevents lost updates, while MySQL InnoDB's repeatable read does not. In Hermitage, Postgres "repeatable read" does not prevent write skew, and "serializable" does, by aborting one transaction with a serialization error.
 
 ## Optimistic and pessimistic locking
-Pessimistic locking assumes conflict. `SELECT ... FOR UPDATE` locks the rows you read so others wait. Safe, but slower, and it can deadlock.
+Pessimistic locking assumes conflict. `SELECT ... FOR UPDATE` locks the rows you read so others wait. Safe, but slower, and it can deadlock (two transactions each hold a lock the other needs, so the database aborts one).
 
 Optimistic locking assumes conflict is rare. Add a version column. Read the row and its version. When you write, include `WHERE version = 7` and set `version = 8`. If zero rows changed, someone else got there first, so retry. This fixes lost updates without holding locks. Under PostgreSQL repeatable read and serializable, the database does the same kind of check and raises an error, and your code must retry the whole transaction.
 
@@ -626,7 +631,7 @@ Fix 1, an atomic statement: `UPDATE accounts SET balance = balance + 50 WHERE id
 Fix 2, optimistic version check. Both read (balance 100, version 7). T1 writes 150, version 8, one row changed. T2 tries `WHERE version = 7`, zero rows change. T2 re-reads (150, version 8), writes 180, version 9. Result 180, and the cost was one retry.
 
 ## What goes wrong: write skew in production
-An on-call or seat booking feature checks a rule, then writes. Under read committed or snapshot isolation, two requests at once both pass the check. The symptom is data that breaks a rule your code checks, rarely, and only under load. Confirm it by finding two transactions with overlapping times in the logs and checking the rule at commit. Fix: use serializable and retry on serialization errors, lock the checked rows with `FOR UPDATE`, or store the rule as a constraint the database enforces.
+An on-call or seat booking feature checks a rule, then writes. Under read committed or snapshot isolation, two requests at once both pass the check. The symptom is data that breaks a rule your code checks, rarely, and only under load. Confirm it by querying for rows that already break the rule (for example, a shift with zero doctors on call) and comparing the commit times of the two writes that caused it. If they overlap, it is write skew. Fix: use serializable and retry on serialization errors; or select the on-call rows themselves with `FOR UPDATE` (not a `count`), so the second request waits and then sees the first one's change; or, where the rule fits one (a seat can be sold once), store it as a unique constraint the database enforces.
 
 ## When strong isolation is the wrong tool
 Serializable costs throughput and causes retries. For read-heavy analytics or counters where an occasional skew is harmless, read committed is fine. Across several services or shards, a single database transaction cannot span them, so you need patterns from [message queues](/sd/docs/async/message-queues) and [delivery guarantees](/sd/docs/async/delivery-guarantees) instead.
@@ -643,7 +648,7 @@ article | ByteByteGo: Database Isolation Levels | https://bytebytego.com/guides/
 ```
 
 ```quiz
-Two transactions both read a balance of 100, then one writes 150 and the other writes 130. What is this? | A phantom read ; A lost update ; A dirty read | 1 | The second write overwrites the first without seeing it.
+Two requests add +50 and +30 to a balance of 100, but the final balance is 130. Which change gives 180 without raising the isolation level? | Read the balance twice before writing ; UPDATE accounts SET balance = balance + 30 ; Run a COUNT before the update | 1 | The add runs inside the database on the current value, so the second update builds on 150 instead of the stale 100.
 Under PostgreSQL's default level, what can a transaction see on its second SELECT? | The same rows as the first SELECT, always ; Rows from uncommitted transactions ; Changes committed since the first SELECT | 2 | Read committed takes a new snapshot for each statement.
 Alice and Bob each check that 2 doctors are on call, then each remove themselves. Which level stops this in PostgreSQL? | Read committed ; Serializable ; Repeatable read | 1 | Only serializable detects the pattern and aborts one transaction.
 ```

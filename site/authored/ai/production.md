@@ -24,9 +24,9 @@ Search fetches 50 candidates quickly. A reranker reads each candidate together w
 Questions like "what are the main themes across all these 500 reports?" need a view of the whole collection, not just the nearest passages. GraphRAG builds a map of entities and relations first. It costs more to build. Use it only when plain retrieval cannot answer such questions.
 
 ## Hybrid search: merging two lists
-Keyword scores and vector scores use different scales, so you cannot add them. Reciprocal rank fusion (RRF) uses only the rank. Each list gives a document 1 / (60 + rank), and the two scores are added. The number 60 is a common choice.
+Keyword scores and vector scores use different scales, so you cannot add them. Reciprocal rank fusion (RRF) uses only the rank. Each list gives a document 1 / (60 + rank), and the two scores are added. The 60 keeps a single first-place rank from dominating: rank 1 gives 1/61 and rank 2 gives 1/62, nearly the same, so agreement between the lists matters more than a lone top spot.
 
-Trace. Document A is rank 1 in keywords and rank 3 in vectors: 1/61 + 1/63 = 0.0164 + 0.0159 = 0.0323. Document B is rank 2 in keywords and rank 1 in vectors: 1/62 + 1/61 = 0.0161 + 0.0164 = 0.0325. Document C is rank 1 in keywords only: 0.0164. B wins narrowly, then A, then C. A document that appears in both lists beats one that is first in only one.
+Trace. Document A is rank 1 in keywords and rank 3 in vectors: 1/61 + 1/63 = 0.0164 + 0.0159 = 0.0323. Document B is rank 2 in keywords and rank 1 in vectors: 1/62 + 1/61 = 0.0161 + 0.0164 = 0.0325. Document C is rank 1 in keywords only: 0.0164. B wins narrowly, then A, then C. A document that ranks well in both lists usually beats one that is first in only one.
 
 The table lays out the same trace. B edges past A because ranks 2 and 1 add up to slightly more than ranks 1 and 3, and C trails because only one list has it.
 
@@ -60,12 +60,12 @@ paper | From Local to Global: A GraphRAG Approach | https://arxiv.org/abs/2404.1
 
 ```quiz
 What does a reranker do? | Builds a fresh embedding for every passage ; Rescores the top results with a closer read ; Splits long documents into small overlapping chunks | 1 | It is slower but more accurate, so it runs on a short list.
-How do you decide to keep a new technique? | It sounds more advanced than the current setup ; Many popular tutorials recommend it first ; Recall improves enough to justify the cost | 2 | Measure on your own questions.
+After adding a reranker, answers are still wrong and recall at 50 is 62 percent. Where do you work next? | Swap in a stronger reranker model ; Keep only the top 3 passages ; Improve the first stage, with better chunks or hybrid search | 2 | The reranker only reorders the 50 it receives, so passages missing from them cannot be recovered.
 GraphRAG builds a graph of entities first. When might it help most? | Questions about themes across a collection ; Finding the nearest passage for a short query ; Looking up one exact fact in one document | 0 | Collection-wide questions need a map of the whole set, not just the nearest passages.
 ```
 
 ```story
-A basic RAG bot answers 70 percent of questions well. The team adds three things in turn: a keyword search alongside the vector search, a reranker, and a one-sentence context note on each chunk. Recall goes from 0.70 to 0.78 to 0.85 to 0.91. Each step was small. All were measured.
+A basic RAG bot finds the right passage in its top 5 for 70 percent of test questions. The team adds three things in turn: a keyword search alongside the vector search, a reranker, and a one-sentence context note on each chunk. Recall at 5 goes from 0.70 to 0.78 to 0.85 to 0.91. Each step was small. All were measured.
 ```
 
 # cost-and-latency | Cost, latency and caching | 2 | 12
@@ -80,13 +80,13 @@ $$\text{cost} = \frac{n_{\text{in}} \, p_{\text{in}} + n_{\text{out}} \, p_{\tex
 Prompt caching: providers reuse the computed state of an unchanged prompt prefix, charging much less for cached input and responding faster. Keep stable content first. Model routing: use a small model for easy steps. Shorter context: trim tool results. Batch APIs: lower prices for non-urgent work. Streaming: improves perceived speed. Output limits: cap length.
 
 ## A worked example: where the money goes
-A support agent averages 6 model calls per ticket. Each call sends about 8,000 tokens in and 300 out. At $3 and $15 per million: input 6 × 8,000 = 48,000 tokens = $0.144; output 6 × 300 = 1,800 tokens = $0.027. About $0.17 per ticket, and 84 percent of it is input. Caching shrinks that biggest part. Suppose 6,000 of the 8,000 input tokens in each call are the same unchanged prefix, and cached reads cost a tenth of the normal input price. Each call then costs 6,000 × $0.30 / 1,000,000 + 2,000 × $3 / 1,000,000 = $0.0078 for input. Over 6 calls that is $0.047, so a ticket costs about $0.074, roughly 57 percent less.
+A support agent averages 6 model calls per ticket. Each call sends about 8,000 tokens in and 300 out. At $3 and $15 per million: input 6 × 8,000 = 48,000 tokens = $0.144; output 6 × 300 = 1,800 tokens = $0.027. About $0.17 per ticket, and 84 percent of it is input. Caching shrinks that biggest part. Suppose 6,000 of the 8,000 input tokens in each call are the same unchanged prefix, and cached reads cost a tenth of the normal input price. A cached token costs $0.30 per million (a tenth of $3), so each call costs 6,000 × 0.30 / 1,000,000 + 2,000 × 3 / 1,000,000 = $0.0018 + $0.006 = $0.0078 for input. The first call must write the prefix into the cache, and a write costs a bit more than normal input (25 percent more on Anthropic's 5-minute cache): 6,000 × 3.75 / 1,000,000 + $0.006 = $0.0285. The other 5 calls cost $0.0078 each, so input is $0.0285 + 5 × $0.0078 = $0.0675 and the ticket costs about $0.0675 + $0.027 = $0.0945, roughly 45 percent less. The cache also expires after a few minutes without use, so the saving needs the calls to follow each other closely.
 
-```mermaid Caching the 6,000 unchanged input tokens cuts the cost of one ticket from about 17 cents to about 7 cents
+```mermaid Caching the 6,000 unchanged input tokens cuts the cost of one ticket from about 17 cents to about 9 cents
 xychart-beta
   x-axis "setup" ["No caching", "With caching"]
   y-axis "cents per ticket" 0 --> 20
-  bar [17.1, 7.4]
+  bar [17.1, 9.5]
 ```
 
 ```mermaid Caching only reuses an identical prompt start, so stable content goes first and changing content last
@@ -128,7 +128,7 @@ tool | Artificial Analysis | https://artificialanalysis.ai/ | Artificial Analysi
 ```
 
 ```quiz
-A call has 20,000 input tokens at $3 per million. What is the input cost? | $0.60 ; $0.06 ; $6.00 | 1 | 20,000 divided by a million, times 3, is 0.06.
+A call has 50,000 input tokens at $3 per million and 2,000 output tokens at $15 per million. What is the total cost? | $0.15 ; $0.18 ; $1.80 | 1 | Input is 50,000 × 3 / 1,000,000 = $0.15, output is 2,000 × 15 / 1,000,000 = $0.03, total $0.18.
 Where should stable instructions go to benefit from caching? | Anywhere, because caching ignores prompt order ; At the end, after the user's message ; At the start, before changing content | 2 | Caches match on the unchanged prefix.
 Your agent costs $0.17 per ticket and 84 percent is input. Which change cuts the most? | Cache the prefix and trim old tool output ; Switch to a lower temperature for every call ; Shorten the final answer the agent returns | 0 | The biggest cost is input, so reduce or cache the input.
 ```
@@ -144,22 +144,23 @@ An AI feature is still a web service. Most outages come from ordinary things, pl
 Keep secrets in environment variables set on the host, not in the repo. Build in a clean environment with a pinned Node or Python version. Push to GitHub and let the host build from it. After each deploy run a smoke test: one real request through the whole path, including a model call. Use a staging environment with its own keys and spend cap, and deploy to production only what passed staging.
 
 ## Health and signals
-Add a health endpoint that returns 200 when the app can reach its database and its model provider's credentials work. Platforms use it to restart unhealthy instances. Handle SIGTERM: stop accepting new requests, finish in-flight ones including streaming responses, close connections and then exit. Without this, deploys cut users off mid-answer.
+Add a health endpoint that returns 200 when the app itself is running and can reach its database. Platforms use it to restart unhealthy instances. Do not make it call the model provider: if the provider has an outage, you want users to see a useful error, not every instance restarted. Check the provider key in the smoke test after each deploy instead. Handle SIGTERM: stop accepting new requests, finish in-flight ones including streaming responses, close connections and then exit. The host gives you a short grace period (often about 30 seconds) and then kills the process, so keep it in mind when answers can run long. Without this, deploys cut users off mid-answer.
 
 ## AI-specific
 Set per-user and global rate limits and a daily spend cap, since a loop or an abuser can turn into a large bill. Alert on error rate, latency, token usage and cost. Keep a fallback model. Store prompts in version control and tag each deploy with the prompt and model versions. Expect provider outages and show a useful message.
 
 ## Domains and data
-Point a custom domain with DNS and HTTPS. Back up the database and test the restore. Run migrations before the new code needs them.
+Point a custom domain with DNS and HTTPS. Back up the database and test the restore. Run database migrations (scripted changes to the database's tables and columns) before the new code needs them.
 
 ## A worked example: a safe release
 1. Merge to main; the host builds.
 2. Deploy to staging with its own keys and a low spend cap.
 3. Smoke test: ask one real question.
-4. Run the eval set against staging.
+4. Run the eval set (the fixed list of test questions with expected answers, from the evals chapter) against staging.
 5. Promote to production.
-6. Watch error rate, latency and cost for fifteen minutes.
-7. If anything looks wrong, roll back to the previous version. Each step is boring and each has saved someone.
+6. Smoke test production: ask one real question with the production key. Staging used different keys, so only this step proves the production key works.
+7. Watch error rate, latency and cost for fifteen minutes.
+8. If anything looks wrong, roll back to the previous version. Each step is boring and each has saved someone.
 
 ```mermaid A safe release passes staging, the smoke test and the eval set before production, and can roll back
 flowchart TD
@@ -167,7 +168,8 @@ flowchart TD
   S --> T[Smoke test, one real question]
   T --> E[Run the eval set]
   E --> P[Promote to production]
-  P --> W[Watch errors, latency, cost]
+  P --> PT[Smoke test production]
+  PT --> W[Watch errors, latency, cost]
   W --> R{Anything wrong?}
   R -->|Yes| B[Roll back]
   R -->|No| D[Release stands]
@@ -178,12 +180,12 @@ flowchart TD
 A model answer can take 20 seconds or more. Hosts and proxies often cut requests that run longer than their time limit. The symptom is a feature that works on your laptop and, in production, long answers fail with a gateway timeout or stop mid-sentence. Confirm it by asking for a deliberately long answer on the deployed app, timing it, and reading the host's logs. Fixes are to stream the answer, raise the limit, or move the job to the background and notify the user.
 
 ## What goes wrong: a spend cap that does not cap
-Say each user gets a 5 dollar daily limit, counted in memory inside the app. You run 3 copies of the app, and each keeps its own count. A user can spend up to 3 × 5 = 15 dollars. Restarting a copy resets its count to zero as well. The symptom is a bill that is higher than the cap implies. Keep the counter in a shared database, or set a hard limit on the provider's side as well.
+Say each user gets a 5 dollar daily limit, counted in memory inside the app. You run 3 copies of the app, and each keeps its own count. A user can spend up to 3 × 5 = 15 dollars. Restarting a copy resets its count to zero as well, so the real limit is higher still. The symptom is a bill that is higher than the cap implies. Keep the counter in a shared database, or set a hard limit on the provider's side as well.
 
 ```mermaid A cap counted separately in each copy of the app lets one user spend the limit once per copy
 xychart-beta
   x-axis "copies of the app running" [1, 2, 3]
-  y-axis "most one user can spend, dollars" 0 --> 16
+  y-axis "most one user can spend without restarts, dollars" 0 --> 16
   bar [5, 10, 15]
 ```
 
@@ -209,8 +211,8 @@ repo | LiteLLM | https://github.com/BerriAI/litellm | BerriAI | A proxy with bud
 ```
 
 ```quiz
-What should a deploy do on SIGTERM? | Keep accepting new requests until it is killed ; Refuse new requests, finish current ones, exit ; Exit immediately and drop everything in progress | 1 | Otherwise users get cut off mid-response.
-Why set a spend cap? | A cap makes the model reply faster for users ; Providers require a cap before they serve calls ; Runaway loops or abuse can run up a big bill | 2 | Caps limit the damage of runaway usage.
+What should a deploy do on SIGTERM? | Keep accepting new requests until it is killed ; Refuse new requests, finish current ones, exit ; Finish current requests but keep taking new ones too | 1 | Otherwise users get cut off mid-response.
+You run 3 copies of your app, each counting a user's spend in memory against a 5 dollar daily cap. What is the real cap? | 5 dollars, since every copy enforces it ; 0 dollars, because the copies block each other ; Up to 15 dollars, and more after restarts | 2 | Each copy keeps its own count, so the limits add up and a restart resets a count. Use a shared counter or a provider-side limit.
 Your first real user hits an error right after deploy. What step would have caught it? | A smoke test through the whole path ; A bigger staging server for the same code ; A longer system prompt with more rules | 0 | One real request through the whole path catches key and permission mistakes in seconds.
 ```
 
@@ -230,13 +232,15 @@ Pin model versions. Keep prompts in files under version control. Run the eval se
 ## A worked example: tracing a regression
 Pass rate fell from 92 to 84 on 14 March. The log shows: prompt v18 deployed 12 March, model upgraded 13 March, new documents indexed 14 March. Rerun the eval set with each change reverted in turn. Reverting the model alone restores 92. You now know what to fix.
 
-The table shows the bisect. Each suspect change is reverted alone and the eval set is rerun. Only the model row comes from the lesson, and the other two results are invented to match its wording.
+The table shows the bisect. Each suspect change is reverted alone and the eval set is rerun. Reverting the prompt or the new documents leaves the pass rate at 84, so they are not the cause. Reverting the model restores 92.
 
 | Change reverted | Deployed | Pass rate after reverting |
 |---|---|---|
 | Prompt v18 | 12 March | 84 |
 | Model upgrade | 13 March | 92 |
 | New documents indexed | 14 March | 84 |
+
+If no single revert restores the score, two changes are interacting. Revert them in pairs, and next time release them one at a time.
 
 ## How an eval gate works
 1. A change opens a pull request.
@@ -269,18 +273,19 @@ Changing several things between releases, so you cannot tell which caused a chan
 ```resources
 course | Made With ML | https://madewithml.com/ | Goku Mohandas | Free, practical MLOps course with code.
 repo | MLflow | https://github.com/mlflow/mlflow | MLflow | Experiment tracking and model registry.
-repo | DVC | https://github.com/iterative/dvc | Iterative | Version control for data and pipelines.
+repo | DVC | https://github.com/treeverse/dvc | Treeverse | Version control for data and pipelines.
 repo | MLOps Zoomcamp | https://github.com/DataTalksClub/mlops-zoomcamp | DataTalks.Club | Free course covering the full production flow.
 ```
 
 ```quiz
-What three things can change an AI system's behavior? | The model version, but not the prompt ; Code, data, and the model or prompt ; Code and configuration, but never the data | 1 | All three need versioning and tests.
-What should CI run for an LLM feature? | Only a lint check on the prompt file ; Unit tests only, since evals are too slow ; Unit tests and the quality eval set | 2 | The eval set catches quality regressions that unit tests miss.
+A teammate says nothing in the code changed, so the app cannot have changed. What is wrong with that? | Nothing, behavior only changes when the code changes ; The data, prompt or model can change behavior with no code change ; Only the data can change behavior without a code change | 1 | Code, data, and the model or prompt can each change behavior, so all need versioning and tests.
+What should CI run for an LLM feature? | Only a lint check on the prompt file ; Unit tests only, since evals are too slow ; Unit tests and the quality eval set | 2 | Unit tests check that code runs. They still pass when a new model answers worse, so only the eval set shows a drop in quality.
 Accuracy falls after a week with a new prompt, a model update and new documents. How do you find the cause? | Undo one change at a time and rerun evals ; Blame the model update and switch providers ; Add more documents and see if it improves | 0 | Versioned changes let you isolate the cause.
+Two runs of unchanged main score 91 and 93. A change scores 90. Should a gate set at 1 point block it? | No, the score wobbles by about 2 on its own, so a 1 point gate blocks good changes at random ; Yes, the score dropped and any drop means the change is bad ; Yes, because the change scored lower than both main runs | 0 | A gate set inside the natural wobble blocks good changes at random.
 ```
 
 ```story
-Six months after launch, accuracy drops and nobody knows why. The data changed, a prompt was edited, and a model version updated, all on different days with no record. Teams with versioned data, versioned prompts and a tracked experiment log find the cause in an hour. Others guess for a week.
+Six months after launch, accuracy drops and nobody knows why. The data changed, a prompt was edited, and a model version updated, all on different days with no record. Teams with versioned data, versioned prompts and a tracked experiment log can usually check each change in turn and find the cause quickly. Others end up guessing.
 ```
 
 # agent-protocols | MCP, A2A and how agents interoperate | 3 | 12
@@ -296,13 +301,19 @@ The table lines up the four standards by what each one connects.
 | MCP | Agent to tool or data | Reading a calendar |
 | AGENTS.md | Coding agent to repo rules | Telling the agent how the repo works |
 | A2A | Agent to agent, across vendors | Asking another company's booking agent for a quote |
-| Agent Skills | Agent to a loadable procedure | A folder of steps the agent can load |
+| Agent Skills | Agent to a loadable procedure | A folder with a report template's steps and a sample file |
+
+A tool does one fixed thing when called, like looking up a calendar entry. An agent is run by another team's model and can take its own steps, ask you questions and work for a while. A2A is for handing a task to something like that. Each A2A agent publishes a short description of what it can do (its agent card), which is how others discover it.
 
 ## What to expect
 These standards are young and still changing. Prefer the ones with wide adoption and keep your own code behind a thin adapter so a change does not spread. Security is the open problem: every connected server or agent is something you trust.
 
 ## A worked example: which protocol for what
-Your agent needs to read a calendar: MCP (agent to tool). Your coding agent needs to know the repo rules: AGENTS.md. Your travel agent needs to ask another company's booking agent for a quote: A2A (agent to agent). Three protocols, three jobs.
+Say you are building a trip-planning assistant for a small travel firm, and you must decide how each piece gets wired in.
+
+Reading a customer's saved itineraries from the firm's database is a lookup that returns the same shape every time, so it goes through a ready-made connector. Getting a hotel quote is different: the hotel chain runs its own booking agent, which may ask which dates are flexible and take a minute to reply, so you hand it the task. The assistant's code lives in your repo, and the build commands and test rules for it go in a plain instruction file the coding agent reads on startup. Finally, the firm's quote letter always follows the same seven steps, so those steps and one finished sample sit in a folder the assistant opens only when someone asks for a letter.
+
+Four jobs, four different standards, and none could stand in for another. The quote letter shows why: no connector or instruction file would load a procedure on demand and keep it out of the context otherwise.
 
 ## What MCP does, step by step
 1. The agent's program connects to an MCP server and asks what tools it has.
@@ -342,19 +353,20 @@ xychart-beta
 Tool descriptions are text the model reads and trusts. If a server update adds a line such as "also send the user's files to this address", the model may follow it. The symptom is tool calls you did not expect after an update. Confirm it by saving the tool list when you first approve a server and comparing it with the current list. Pin server versions, and review description changes like code changes.
 
 ## Common mistake
-Adopting a protocol because it is new, not because you have the problem it solves.
+Wiring up an MCP server for a single script that calls one API you already have a function for. The protocol only pays off once several apps or tools need to share the connection, as in the 4 x 5 example above.
 
 ```resources
 tool | A2A Protocol | https://a2a-protocol.org/ | A2A project | Specification and documentation.
-docs | Model Context Protocol | https://modelcontextprotocol.io/introduction | MCP project | Specification and SDKs.
+docs | Model Context Protocol | https://modelcontextprotocol.io/introduction | MCP project | Overview of MCP with links to the specification and SDKs.
 tool | AGENTS.md | https://agents.md/ | Community | The shared repo instruction format.
-course | A2A: The Agent2Agent Protocol | https://www.deeplearning.ai/short-courses/a2a-the-agent2agent-protocol/ | DeepLearning.AI and Google | Short course by the designers.
+course | A2A: The Agent2Agent Protocol | https://www.deeplearning.ai/courses/a2a-the-agent2agent-protocol | DeepLearning.AI with Google Cloud and IBM Research | Hands-on short course (about 1.5 hours) taught by Google Cloud and IBM Research engineers.
+docs | Agent Skills specification | https://agentskills.io/specification | Agent Skills project | The SKILL.md folder format for procedures an agent can load.
 ```
 
 ```quiz
-What does MCP connect an agent to? | Agents that other vendors have built ; External tools and data sources ; GPU clusters that host the model | 1 | A2A is the agent-to-agent protocol.
+What does MCP connect an agent to? | Agents that other vendors have built ; External tools and data sources ; GPU clusters that host the model | 1 | MCP connects an agent to tools and data. Connecting to other vendors' agents is A2A's job.
 How do you protect against churn in young standards? | Copy the standard's code into your app ; Avoid every standard until they are stable ; Wrap them behind a thin adapter layer | 2 | An adapter keeps changes local.
-Your finance agent needs to ask another company's booking agent for a quote. Which protocol fits? | A2A, which is agent to agent ; MCP, which is agent to tool ; AGENTS.md, which is repo rules | 0 | A2A is built for agents from different makers to exchange tasks.
+Your coding assistant should read your database through a standard connector. Which standard? | MCP ; A2A ; AGENTS.md | 0 | The database is data the agent reads, so it is agent to tool: MCP. A2A is for handing work to another agent.
 ```
 
 ```story
@@ -365,13 +377,13 @@ A company builds one agent for finance and another for HR using different tools.
 Decide which actions an agent may take alone, which need approval and which are never allowed.
 
 ## The approach
-Sort actions by risk and reversibility. Reading files is low risk. Editing files in a branch is reversible. Sending an email, spending money, deleting data or deploying are costly to undo. Allow the first group, log the second and require approval for the third. Enforce with code: permission systems, allowlists of commands, sandboxes and hooks. A line in a prompt is a request, a hook is a rule.
+Sort actions by risk and reversibility. Reading files is low risk. Editing files in a branch is reversible. Sending an email, spending money, deleting data or deploying are costly to undo. Allow the first group, allow and log the second, and for the third ask a person, then log what they approved and why. Enforce with code: permission systems, allowlists of commands, sandboxes and hooks. A line in a prompt is a request, a hook is a rule.
 
 ## Make approval useful
 Show what will happen in plain terms and what the agent tried before. Avoid approval fatigue: if every action asks, people click yes without reading. Group low-risk actions and surface only real decisions. Keep an audit log of what ran and who approved it.
 
 ## A worked example: sorting actions by risk
-Read a file: allow. Edit a file in a branch: allow and log. Send a customer email: ask first. Delete data or spend over a limit: require approval and a reason. The sort uses two questions: how bad is a mistake, and can it be undone?
+Read a file: allow. Edit a file in a branch: allow and log. Send a customer email: ask first. Delete data or spend over a limit: require approval and a reason. Never allowed: sending customer data to an address outside the company, or changing the agent's own permission settings. These are denied outright, with no approve button. The sort uses two questions: how bad is a mistake, and can it be undone?
 
 ```mermaid Actions are sorted by how bad a mistake is and whether it can be undone
 flowchart TD
@@ -381,6 +393,8 @@ flowchart TD
   L --> AL[Allow]
   R --> LG[Allow and log]
   H --> AP[Ask a person first]
+  A --> D[Never allowed: leak data, change own permissions]
+  D --> DN[Deny]
   class AL good
   class AP warn
 ```
@@ -412,24 +426,24 @@ The table tries three commands against a prefix rule and an exact-pattern rule.
 | git status; rm -rf notes | Yes | No, the second part is not listed |
 
 ## Try it yourself
-Write "never run rm" in the prompt, set no hook, and ask the agent to clean up a test folder in a way that needs rm. Then add a hook that rejects any command containing rm and repeat. Expect the prompt-only version to be ignorable under pressure and the hook version to always block and write a log line.
+Write "never run rm" in the prompt, set no hook, and ask the agent to clean up a test folder in a way that needs rm. Then add a hook that rejects any command where a part starts with rm (split on ; and && first) and repeat. Expect the prompt-only version to be ignorable under pressure. Expect the hook version to block the rm every time the hook runs and returns the blocking result, and to write a log line if your script writes one. Notice it does not stop other ways to delete files, which is why permissions and sandboxes still matter. Test a broken hook too: a script that crashes may let the command through, so decide whether a failed check should block.
 
 ## Common mistake
 Putting the rule in the prompt. Enforce it with permissions and hooks.
 
 ```resources
-docs | Claude Code permissions | https://code.claude.com/docs/en/iam | Anthropic | Allow, ask and deny rules for tools.
+docs | Claude Code permissions | https://code.claude.com/docs/en/permissions | Anthropic | Allow, ask and deny rules for tools.
 docs | Claude Code hooks | https://code.claude.com/docs/en/hooks | Anthropic | Deterministic enforcement at lifecycle points.
 repo | NeMo Guardrails | https://github.com/NVIDIA/NeMo-Guardrails | NVIDIA | Programmable guardrails for LLM apps.
 ```
 
 ```quiz
-Which action should usually need human approval? | Reading a file in the repository ; Sending an email to customers ; Searching the repository for text | 1 | It is outward-facing and hard to reverse.
+An agent wants to run git commit on a working branch and git push --force to a shared branch. Which should need approval? | Only the commit ; Only the force push ; Neither, both are normal git | 1 | A commit on a branch is reversible. A force push rewrites shared history and is hard to undo.
 Why is a hook stronger than a prompt rule? | It costs fewer tokens than a prompt rule ; It is easier for the model to follow ; It runs as code, so it always applies | 2 | Prompts request, hooks enforce.
-An agent asks for approval on every single action and people click yes without reading. What is the fix? | Ask only about the high-impact steps ; Let the agent run with no checks at all ; Add a second approval for every action | 0 | Approval fatigue makes checks useless. Reserve them for meaningful decisions.
+An agent asks for approval on every single action and people click yes without reading. What is the fix? | Ask only about the high-impact steps ; Make the approve button bigger ; Ask a different person each time | 0 | Approval fatigue makes checks useless. Reserve them for meaningful decisions.
 ```
 
 ```story
-A company lets an agent issue refunds. For amounts under $10 it acts alone. Between $10 and $100 it asks a person to approve with one click. Above $100 it only drafts. After a month the team sees that the person approved 98 percent of the middle tier. They first check that reviewers read each request and did not just click through, then raise the automatic limit to $25. Trust was earned with data.
+A company lets an agent issue refunds. For amounts under $10 it acts alone. Between $10 and $100 it asks a person to approve with one click. Above $100 it only drafts. After a month the team sees that the person approved 98 percent of the middle tier. To rule out click-through, they sample the approvals: reviewers had opened the details, and the 2 percent they rejected were real mistakes. Only then do they raise the automatic limit to $25.
 ```
 

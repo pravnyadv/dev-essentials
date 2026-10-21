@@ -1,3 +1,6 @@
+# algorithms/search/linear-search | after Code
+Note the difference from the textbook version above. This code does not stop at the first match: it walks the whole array and returns a list of every index that matches, so `[1, 3]` for the 9s in `[4, 9, 2, 9, 5]`. If nothing matches it returns an empty list `[]`, which is how you tell "not found". A version that stops at the first match returns as soon as it sees it, so its best case is 1 comparison (the target is first) and its worst case is n (the target is last or missing).
+
 # algorithms/search/linear-search | before Code
 A trace of the `linearSearch` code on `[4, 9, 2, 9, 5]` looking for 9. This version checks every element, with no early stop, and returns every index that matches, so it always does n comparisons.
 
@@ -8,6 +11,9 @@ A trace of the `linearSearch` code on `[4, 9, 2, 9, 5]` looking for 9. This vers
 | 2 | 2 | No | `[1]` |
 | 3 | 9 | Yes | `[1, 3]` |
 | 4 | 5 | No | `[1, 3]` |
+
+# algorithms/search/binary-search | after Code
+If the sorted array has repeated values, this code returns whichever matching index the middle probes land on first. In `[1, 2, 2, 2, 3]` searching for 2 returns index 2, not index 1. If you need the first or last match, keep searching the left or right half after a hit instead of returning at once.
 
 # algorithms/search/binary-search | before Code
 A trace of `binarySearch` on the sorted array of odd numbers from 1 to 29 (15 items) looking for 21. Each step throws away half of what is left, so 4 steps are enough for 15 items. The code's middle check can compare twice per step (equal, then less than), so the counts below are steps, not comparator calls.
@@ -35,6 +41,9 @@ Binary search worst case, counted by running the code on every target for n up t
 | 1,000,000 | 1,000,000 | 20 |
 | 1,000,000,000 | 1,000,000,000 | 30 |
 
+# algorithms/sorting/bubble-sort | top
+How to read the table. Best, Average and Worst count comparisons for n items: n means about as many steps as items, n squared means every item is compared with about every other. Memory is the extra space used besides the input: 1 means a fixed handful of variables. Stable means equal values keep their original order: sorting `3a 3b` can never produce `3b 3a`. Bubble sort only swaps neighbours that are strictly out of order, so equal values never pass each other.
+
 # algorithms/sorting/bubble-sort | before Code
 A pass-by-pass trace of the code on `[5, 1, 4, 2, 8]`. After pass 1 the biggest value has bubbled to the end, after pass 2 the next one is in place, and a pass with no swaps stops the loop early.
 
@@ -51,6 +60,9 @@ The early stop is where the best case of n comes from. Comparisons counted by ru
 | Already sorted | 9 |
 | Reverse order | 45 |
 
+# algorithms/sorting/selection-sort | after Complexity
+Two words in the intro: in-place means it sorts inside the same array using only a few extra variables, and auxiliary memory means extra space beyond the input. Insertion sort, the next lesson, is another simple sort. Stable means equal values keep their original order; the example below shows selection sort breaking that.
+
 # algorithms/sorting/selection-sort | before Code
 A trace of the code on `[64, 25, 12, 22, 11]`. Each pass scans the unsorted part for the smallest value, then swaps it into the next slot. The sorted part grows from the left.
 
@@ -61,7 +73,7 @@ A trace of the code on `[64, 25, 12, 22, 11]`. Each pass scans the unsorted part
 | 3 | index 3 | Swap with index 2 | `11 12 22 25 64` |
 | 4 | index 3 | Already in place | `11 12 22 25 64` |
 
-That long-distance swap is why the lesson lists selection sort as not stable. With two equal 3s, written `3a` and `3b` to tell them apart, the first pass moves `3a` behind `3b`:
+Selection sort is not stable because it swaps the smallest value across the array, which can jump over an equal value. With two equal 3s, written `3a` and `3b` to tell them apart, the first pass moves `3a` behind `3b`:
 
 | Step | Array |
 | --- | --- |
@@ -79,7 +91,9 @@ A trace of the code on `[5, 2, 4, 6, 1, 3]`. Each round takes the next item and 
 | 4 | 1 | 4 | `1 2 4 5 6 3` |
 | 5 | 3 | 3 | `1 2 3 4 5 6` |
 
-The number of swaps depends on how out of order the input is, which is why the best case is n and the worst case is n squared. In the chart, the mixed input is `3 7 1 8 2 6 4 5`.
+Every round makes at least one comparison, so any input costs at least n - 1 comparisons. That is the best case of n. The extra work is the swaps: one per pair of items that are out of order. Sorted input has none, while reversed input of 8 items has all 28 pairs out of order (8 x 7 / 2), which is the n squared worst case.
+
+Each swap fixes exactly one out-of-order pair. In the chart, the mixed input is `3 7 1 8 2 6 4 5`. It has 13 such pairs (3 with 1 and 2, 7 with 1, 2, 6, 4 and 5, 8 with 2, 6, 4 and 5, 6 with 4 and 5), so insertion sort makes 13 swaps.
 
 ```mermaid Swaps insertion sort makes on 8 items: none when sorted, 28 when reversed
 xychart-beta
@@ -100,6 +114,10 @@ The heart of merge sort is the merge of two sorted halves. This trace runs `merg
 | 2, 2 | 38 vs 43 | Take 38 from the left | `3 9 10 27 38` |
 | 3, 2 | Left is used up | Append the rest of the right: 43, 82 | `3 9 10 27 38 43 82` |
 
+When the two front items are equal, the code takes the left one first (the `lessThanOrEqual` check). That tie rule is what keeps merge sort stable.
+
+Compare the two lines in the chart below: bubble sort (from the earlier lesson) needs n x (n - 1) / 2 comparisons, so doubling n roughly quadruples the work. Merge sort needs about (n x log2 n) / 2 comparisons on this input, so doubling n slightly more than doubles it. On other inputs merge sort needs up to n x log2 n, which is still the figure in the Complexity table.
+
 ```mermaid Comparisons to sort n items in reverse order, counted by running both algorithms
 xychart-beta
   x-axis "n items" [8, 16, 32, 64, 128]
@@ -107,6 +125,9 @@ xychart-beta
   line "bubble sort" [28, 120, 496, 2016, 8128]
   line "merge sort" [12, 32, 80, 192, 448]
 ```
+
+# algorithms/sorting/quick-sort | after Complexity
+The table describes the in-place version (the second code block). The simple version at the top is easier to read but builds new arrays at every level, so it uses about n extra memory, and it happens to be stable. The in-place version is not stable: equal items can swap past each other. Its memory is the recursion stack, which is about log(n) deep for typical input but can reach n deep when every partition is lopsided, as in the worst case below.
 
 # algorithms/sorting/quick-sort | before Code
 The partition step of `QuickSortInPlace` on `[6, 3, 8, 2, 9, 1, 5]`. The pivot is the last item (5). Items smaller than the pivot are swapped into a growing left zone, and at the end the pivot is swapped in right after that zone, where it stays for good.
@@ -121,7 +142,7 @@ The partition step of `QuickSortInPlace` on `[6, 3, 8, 2, 9, 1, 5]`. The pivot i
 | 5 | 1 | Yes, swap with index 2 | 3 | `3 2 1 6 9 8 5` |
 | end | - | Swap pivot 5 into index 3 | 3 | `3 2 1 5 9 8 6` |
 
-The simple version at the top of the code uses the first item as the pivot. On already-sorted input that pivot splits off nothing, which is the n squared worst case from the Complexity table. Items compared against a pivot, counted by running that version on sorted input, and the exact average over every possible order for the shuffled line (computed from the recurrence, so it is not a sample):
+The simple version at the top of the code uses the first item as the pivot. On already-sorted input that pivot splits off nothing, which is the n squared worst case from the Complexity table. Choosing the last item does not help: on sorted input it is the biggest item, so the in-place version also splits off nothing. Real implementations pick a random item or the median of three to avoid this. Items compared against a pivot, counted by running that version on sorted input, and the exact average over every possible order for the shuffled line (computed from the recurrence, so it is not a sample):
 
 ```mermaid Items compared against a pivot, first-item pivot: sorted input grows as n squared, shuffled input as n log n
 xychart-beta
@@ -130,6 +151,12 @@ xychart-beta
   line "already sorted" [120, 496, 2016, 8128]
   line "shuffled, average" [51, 140, 361, 890]
 ```
+
+# algorithms/sorting/counting-sort | after Complexity
+In this code r is the size of the count array: from 0 (or the smallest value if it is negative) up to the biggest value. Sorting `[1000, 1001]` still allocates 1002 counters, so counting sort suits small values, not just a small spread.
+
+# algorithms/sorting/counting-sort | after Algorithm
+The pictures above fill the result from the last input item backward, using running totals as end positions. The code below does the equivalent from the other side: it shifts the totals right by one so each value holds the position where its first copy goes, then walks the input from the front and moves that position up by one after each placement. Both give the same sorted, stable result.
 
 # algorithms/sorting/counting-sort | before Code
 The three steps on `[4, 2, 2, 8, 3, 3, 1]`, following the code, which sizes the count array from 0 to the largest value (8). Row by row: count each value, turn the counts into running totals, then shift the totals right by one so each entry becomes the first output position for that value.

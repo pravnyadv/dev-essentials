@@ -76,7 +76,7 @@ export function RetryDemo() {
   const [everyLayer, setEveryLayer] = useState(true)
   const [policy, setPolicy] = useState('fixed')
   const perClick = everyLayer ? tries ** layers : tries
-  const load = 100 * perClick
+  const load = 100 * perClick, total = 400 + load
   const counts = HISTOGRAMS[policy], peak = Math.max(...counts)
   return (
     <Box title="Retries multiply, and jitter spreads them out">
@@ -92,14 +92,14 @@ export function RetryDemo() {
       <div className="mt-3 grid grid-cols-[7rem_1fr_7rem] items-center gap-3 text-sm">
         <span className="font-medium">Database load</span>
         <div className="relative h-4 overflow-hidden rounded bg-fd-border">
-          <div className={`h-full rounded transition-all ${load > 1000 ? 'bg-danger' : 'bg-fd-primary'}`} style={{ width: `${Math.min(100, (load / 3000) * 100)}%` }} />
-          <div className="absolute inset-y-0 w-0.5 bg-fd-foreground" style={{ left: `${(1000 / 3000) * 100}%` }} />
+          <div className={`h-full rounded transition-all ${total > 1000 ? 'bg-danger' : 'bg-fd-primary'}`} style={{ width: `${Math.min(100, (total / 3500) * 100)}%` }} />
+          <div className="absolute inset-y-0 w-0.5 bg-fd-foreground" style={{ left: `${(1000 / 3500) * 100}%` }} />
         </div>
-        <span className="text-right tabular-nums">{fmt(load)}/s</span>
+        <span className="text-right tabular-nums">{fmt(total)}/s</span>
       </div>
-      <Line tone={load > 1000 ? 'bad' : 'good'}>{perClick} queries per failing click, so 100 clicks a second send {fmt(load)}. Capacity is 1,000.</Line>
+      <Line tone={total > 1000 ? 'bad' : 'good'}>{perClick} queries per failing click, so 100 clicks a second add {fmt(load)} to the 400 normal queries, {fmt(total)} in all. Capacity is 1,000.</Line>
 
-      <p className="mb-2 mt-4 border-t pt-4 text-sm font-medium">2. When 100 clients send their 4 retries</p>
+      <p className="mb-2 mt-4 border-t pt-4 text-sm font-medium">2. When 100 clients send their 4 tries</p>
       <div className="flex flex-wrap gap-2">
         {Object.entries(POLICIES).map(([k, p]) => <Chip key={k} size="sm" on={policy === k} onClick={() => setPolicy(k)}>{p.label}</Chip>)}
       </div>
@@ -199,7 +199,7 @@ export function BacklogDemo() {
         <Stat label="Served" value={`${fmt(Math.min(arrivals, service))}/s`} />
         <Stat label="Queue at 10 min" value={fmt(queue)} />
         <Stat label="New job waits" value={`${fmt(queue / service)} s`} />
-        <Stat label="Rejected (429)" value={`${fmt(rejected)}/s`} />
+        <Stat label="Rejected (503)" value={`${fmt(rejected)}/s`} />
       </div>
       <Line tone={growth > 0 && !capped ? 'bad' : ''}>Workers busy (Little's law): {fmt(Math.min(arrivals, service))} jobs/s × {JOB_SECONDS} s = {fmt(Math.min(arrivals, service) * JOB_SECONDS)} of {workers}</Line>
       <Hint>When arrivals beat service the queue grows without end. A cap keeps the wait short and refuses the excess openly.</Hint>

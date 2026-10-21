@@ -2,19 +2,20 @@
 AI started as a 1950s question: can a machine think? Two early ideas, rules and learning, competed for decades.
 
 ## What happened
-In 1950 Alan Turing asked whether machines can think and proposed the imitation game, now called the Turing test. In 1956 a summer workshop at Dartmouth coined the term "artificial intelligence". Early programs proved theorems and played checkers, and researchers predicted human-level AI within a generation.
+In 1950 Alan Turing asked whether machines can think and proposed the imitation game: a judge types questions to a person and a machine without knowing which is which, and if the judge cannot tell them apart, the machine passes. It is now called the Turing test. In 1956 a summer workshop at Dartmouth coined the term "artificial intelligence". Early programs proved theorems and played checkers, and researchers predicted human-level AI within a generation.
 
 Two approaches formed. Symbolic AI wrote rules by hand: if the patient has a fever and a rash, then consider measles. Connectionism copied the brain's idea instead. In 1958 Frank Rosenblatt built the perceptron, a single artificial neuron that learns its weights from examples. In 1969 Minsky and Papert showed a single perceptron cannot learn simple functions like XOR. Many researchers and funders moved away from neural networks afterward.
 
 ## The winters
-Promises ran far ahead of results. Machine translation and general problem solving turned out to be much harder than expected. Government reports cut funding in the 1970s, the first AI winter. Expert systems, hand-written rule bases for narrow jobs, brought a boom in the 1980s. They were expensive to maintain and brittle outside their narrow domain, and the market collapsed around 1987, the second winter.
+Promises ran far ahead of results. Machine translation and general problem solving turned out to be much harder than expected. In 1966 a US report (ALPAC) judged machine translation a failure and funding for it ended. In 1973 the Lighthill report in Britain criticised AI research as overpromising, and by 1974 the British and US governments stopped funding open-ended AI work. This was the first AI winter. Expert systems, hand-written rule bases for narrow jobs, brought a boom in the 1980s. They were expensive to maintain and brittle outside their narrow domain, and the market collapsed around 1987, the second winter.
 
 IBM's Deep Blue beat world chess champion Garry Kasparov in 1997, but it won by searching millions of positions per second with hand-tuned evaluation. It did not learn.
 
 ```mermaid Early AI went through two booms, each ended by a winter, and the 1997 chess win came from search, not learning
 flowchart TD
   A[1950 Turing asks if machines think] --> B[1956 Dartmouth names AI]
-  B --> C[1958 Perceptron learns its weights]
+  B --> B2[1950s and 60s First boom: early programs and big predictions]
+  B2 --> C[1958 Perceptron learns its weights]
   C --> D[1969 One perceptron shown to be limited]
   D --> E[1970s First AI winter]
   E --> F[1980s Expert system boom]
@@ -28,7 +29,7 @@ flowchart TD
 The pattern repeats: a method works on a narrow task, expectations balloon, then reality corrects. The shift that finally broke the cycle was not a smarter rule. It was letting models learn from large amounts of data with a lot of compute, which is the next chapter of the story.
 
 ## In plain words
-Early AI was a bet on two different ideas. One bet said: intelligence is rules, so write enough of them. The other said: intelligence is learning, so build something that can learn from examples, like a brain does. For about forty years the rules side won the money, because rules were easier to run on slow computers. Learning needed two things nobody had yet: huge amounts of data and fast chips.
+Early AI was a bet on two different ideas. One bet said: intelligence is rules, so write enough of them. The other said: intelligence is learning, so build something that can learn from examples, like a brain does. For decades the rules side attracted most of the funding. One likely reason is that rules ran on slow computers, while learning needed large amounts of data and fast chips that nobody had yet. Learning needed two things nobody had yet: huge amounts of data and fast chips.
 
 ## A worked example: why rules break
 Suppose you write rules to spot spam: "if the email contains FREE and MONEY, it is spam." It works for a week. Then spammers write "fr33 m0ney". You add a rule. They change again. A rule-writer is always one step behind, and a real inbox needs thousands of rules that interact in strange ways. A learning system instead sees ten thousand examples of spam and not-spam and finds the patterns itself, including ones no person would think to write down.
@@ -52,7 +53,7 @@ flowchart TD
 3. Input (1,0), correct answer 1. The total is 0, so the output is 0. Wrong, so the weights become (1,1).
 4. Check all four inputs again. The totals are 0, 1, 1 and 2, so every answer is right.
 
-The table replays the OR lesson (threshold 0.5) over every input, twice, so you can see that the weights change only on a mistake and that the second pass is all correct.
+The table replays the OR example (threshold 0.5) over every input, twice. The steps above skip (1,1) on pass 1 because it is already right. The table shows that the weights change only on a mistake and that the second pass is all correct.
 
 | Pass | Input | Wanted | Total | Output | Weights after |
 |---|---|---|---|---|---|
@@ -67,6 +68,8 @@ The table replays the OR lesson (threshold 0.5) over every input, twice, so you 
 
 Now try XOR, which means "exactly one input is 1". It needs 1 for (0,1) and (1,0) but 0 for (1,1). Each weight alone must beat the threshold, while the two together must not. With a threshold of zero or more, no weights do both. That is the limit Minsky and Papert proved.
 
+Try it with the OR weights (1,1) and threshold 0.5. Input (1,1) gives a total of 2, which passes the threshold, so the output is 1, but XOR wants 0. Lower the weights to 0.4 each and (0,1) gives 0.4, which fails, but XOR wants 1. Any weights that fix one row break the other.
+
 ## A second example: when rules are the right tool
 Not every problem needs learning. Take leap years: a year is a leap year if it divides by 4, except century years (ending in 00), unless it also divides by 400. So 1900 was not a leap year and 2000 was. The rule is short, complete and exact. A model trained on examples would only approximate it and might get 1900 wrong.
 
@@ -80,7 +83,7 @@ To confirm the cause, collect inputs the builders did not choose and count how m
 Deep Blue shows the honest label. The mechanism was fast search plus hand-tuned scoring. Calling that "thinking" stretches the word, since the mechanism is search and scoring, not human-style reasoning.
 
 ## Common mistake
-Thinking the winters happened because the ideas were wrong. Neural networks were a good idea in 1958. They were starved of data and computing power. Good ideas can look like failures until the ingredients arrive.
+Thinking the winters happened because the ideas were wrong. The XOR result was a real limit, but only of a single perceptron. Networks with several layers could get past it, and they were starved of the data and computing power needed to train them. Good ideas can look like failures until the ingredients arrive.
 
 ```resources
 article | Computing Machinery and Intelligence | https://academic.oup.com/mind/article/LIX/236/433/986238 | Alan Turing | The 1950 paper that introduced the imitation game.
@@ -90,7 +93,7 @@ article | Artificial intelligence: a brief history | https://ourworldindata.org/
 ```
 
 ```quiz
-Why did interest in neural networks fall after 1969? | Hardware makers stopped building chips for networks ; Governments banned neural network research that year ; Perceptrons were proved unable to learn XOR | 2 | The analysis showed a hard limit of single-layer perceptrons. Multi-layer networks trained with backpropagation came later.
+Why did interest in neural networks fall after 1969? | Hardware makers stopped building chips for networks ; Governments banned neural network research that year ; A single perceptron was proved unable to learn XOR | 2 | The analysis showed a hard limit of single-layer perceptrons. Multi-layer networks trained with backpropagation came later.
 What separates symbolic AI from the learning approach? | Symbolic uses written rules, learning fits data ; Symbolic needs training data, learning uses fixed rules ; Learning systems were invented before symbolic ones | 0 | Symbolic systems encode knowledge by hand. Learning systems extract it from data.
 A team writes 5,000 rules to catch spam and spammers keep finding gaps. Which idea would help most? | Add 5,000 more rules covering banned words ; Train a model on labelled spam emails ; Make each rule stricter than the one before | 1 | A learning system finds patterns that no person thought to write down, so it can keep up as spam changes.
 ```
@@ -103,7 +106,7 @@ In 1966 a program called ELIZA played a therapist by matching patterns in what y
 Machine learning means fitting a function to examples instead of writing the rules yourself. A few ideas cover most of it.
 
 ## Three ways to learn
-Supervised learning has inputs with the right answers attached: emails labeled spam or not spam, houses with sale prices. The model learns the mapping. Unsupervised learning has no answers: the model finds structure, such as grouping similar customers. Reinforcement learning learns from rewards after actions, as in game playing. Language models use a clever variant of supervised learning: the "answer" for each position is simply the next token in the text, so no human labeling is needed.
+Supervised learning has inputs with the right answers attached: emails labeled spam or not spam, houses with sale prices. The model learns the mapping. Unsupervised learning has no answers: the model finds structure, such as grouping similar customers. Reinforcement learning learns from rewards after actions, as in game playing. Language models start with a clever variant of supervised learning, often called self-supervised learning: the "answer" for each position is simply the next token in the text, so this first stage needs no human labeling. Later stages do use human-written examples and ratings.
 
 The table sets the four styles side by side, using the examples from this lesson.
 
@@ -112,22 +115,24 @@ The table sets the four styles side by side, using the examples from this lesson
 | Supervised | Inputs with the right answers attached | Emails labeled spam or not spam, houses with prices | The mapping from input to answer |
 | Unsupervised | Inputs only | Grouping similar customers | Structure in the data |
 | Reinforcement | Rewards that arrive after actions | Game playing | Which actions earn the most reward |
-| Language model training | Text, where the next token is the answer | Predicting the next word | Next-token prediction, with no human labeling |
+| Language model training | Text, where the next token is the answer | Predicting the next word | Next-token prediction, with no human labeling in the first stage |
 
 ## Two kinds of prediction
-Classification picks a category (spam or not). Regression predicts a number (a price). Both work the same way: compute a prediction, compare with the truth using a loss, adjust parameters to reduce it.
+Classification picks a category (spam or not). Regression predicts a number (a price). Both work the same way: compute a prediction, compare with the truth using a loss, adjust parameters to reduce it. A loss is a single number for how wrong the prediction is.
 
 ## Features, training and testing
-A feature is an input measurement, such as a house's area or age. Data is split into a training set that the model learns from, a validation set used to tune choices, and a test set touched once at the end. If a model scores far better on training data than on validation data, it is overfitting: memorizing instead of learning. More data, simpler models and regularization help.
+A feature is an input measurement, such as a house's area or age. Data is split into a training set that the model learns from, a validation set used to tune choices, and a test set touched once at the end. If a model scores far better on training data than on validation data, it is overfitting: memorizing instead of learning. More data, simpler models and regularization (a penalty that stops the model from fitting every wiggle of the training data) help.
 
 ## Classic machine learning still matters
-Gradient-boosted trees often beat neural networks on tables of numbers. Recommender systems, fraud and anomaly detection, forecasting and ranking are mostly classic machine learning. A common mistake is reaching for an LLM when a small model on your own data is cheaper, faster and easier to evaluate.
+Gradient-boosted trees often beat neural networks on tables of numbers. Recommender systems, fraud and anomaly detection, forecasting and ranking often use classic machine learning, and many of them use neural networks too. Start with the small model and move up only when it falls short. A common mistake is reaching for an LLM when a small model on your own data is cheaper, faster and easier to evaluate.
 
 ## A worked example: predicting a house price
 Say you have five houses. Area in square meters and price in thousands: (50, 150), (70, 210), (90, 270), (110, 330), (130, 390). A model learns a line, price = 3 × area. For a new 100 square meter house it predicts 300. That is all supervised learning is: find a function that fits the examples, then use it on new inputs. Real models have millions of inputs and curvy functions, but the loop is the same: guess, measure the error, adjust.
 
 ## Why we split the data
 Imagine studying for an exam by memorizing the exact practice questions. You would score 100 percent on the practice and fail the exam. A model can do the same. So we hide some data (the test set) and only look at it at the end. If the score on hidden data is far lower than on practice data, the model memorized instead of learned.
+
+In practice you compare training against validation while you tune, and keep the test set for one final check. The idea is the same: any score on data the model never saw is the honest one.
 
 ```mermaid Hidden data is the only honest check: the test set is touched once, at the end
 flowchart TD
@@ -153,9 +158,11 @@ flowchart TD
   class L focus
 ```
 
-1. Guess: weight 1 predicts 50. The error is 100, and squared error (the error times itself, so big misses count more) is 10,000.
+1. Guess: weight 1 predicts 50. The error is 100, and squared error (the error times itself, so big misses count more; it is one common loss) is 10,000.
 2. Adjust: the price is too low, so raise the weight to 2. The prediction is 100, the error 50, the squared error 2,500.
 3. Adjust again: weight 3 predicts 150. The error is 0.
+
+We nudged the weight by 1 each time, and each nudge cut the error by 50. Real training picks the step size from the gradient and a small learning rate, so it may take many tiny steps instead of three big ones.
 
 Real training does not try weights blindly. It computes the gradient, which says which direction lowers the error, and takes a small step that way. Millions of weights get nudged at once, but each one follows this same loop.
 
@@ -201,10 +208,10 @@ Between 1986 and 2016, three ingredients came together: a way to train deep netw
 Machine learning flips programming. Instead of writing rules, you provide examples of inputs and desired outputs, and an algorithm adjusts a model until it fits. In 1986 Rumelhart, Hinton and Williams popularized backpropagation, the method that trains networks with many layers. In the 1990s Yann LeCun's convolutional networks read handwritten digits on bank checks.
 
 ## The 2012 moment
-ImageNet was a dataset of over a million labeled images, started by Fei-Fei Li in 2009. In 2012 a convolutional network called AlexNet, trained on two gaming GPUs, cut the top-5 error of the annual ImageNet contest from about 26 percent to about 15 percent. The runner-up methods were hand-engineered feature pipelines. After that, nearly every field moved to deep learning.
+ImageNet was a dataset of over a million labeled images, started by Fei-Fei Li in 2009. In 2012 a convolutional network called AlexNet, trained on two gaming GPUs, won the annual ImageNet contest with a top-5 error of about 15 percent (the right answer was missing from its five best guesses only 15 times in 100). The second-best entry, a hand-engineered feature pipeline, scored about 26 percent. After that, deep learning spread quickly through vision, speech and language.
 
 ## What came after
-Word2vec in 2013 showed that words could be turned into vectors where directions carry meaning. Sequence-to-sequence networks with attention improved translation in 2014 and 2015. ResNets made networks hundreds of layers deep trainable in 2015. In 2016 DeepMind's AlphaGo beat Lee Sedol at Go, a game thought to be a decade away. Each success used the same recipe: a flexible model, lots of data, lots of compute.
+Word2vec in 2013 showed that words could be turned into vectors where directions carry meaning. Sequence-to-sequence networks with attention improved translation in 2014 and 2015. ResNets made networks hundreds of layers deep trainable in 2015. In 2016 DeepMind's AlphaGo beat Lee Sedol at Go, a game many experts had expected to stay out of reach for years. Each success used the same recipe: a flexible model, lots of data, lots of compute.
 
 ```mermaid Milestones from backpropagation to AlphaGo, with the ingredients arriving one by one
 flowchart TD
@@ -221,7 +228,7 @@ flowchart TD
 A neural network is layers of simple units. "Deep" just means many layers. In an image model, the first layer learns to spot tiny edges, the next combines edges into corners and curves, the next combines those into eyes and wheels, and the last layer says "cat". Nobody programs those steps. The layers fit themselves to the data by training.
 
 ## A worked example: why GPUs mattered
-A network's main job is multiplying big grids of numbers. A normal processor does a few calculations at a time. A graphics card (GPU) was built to color millions of pixels at once, so it can do thousands of multiplications in parallel. Training that took months on a regular chip could take days. The idea of deep networks was old. GPUs plus the ImageNet dataset made it practical.
+A network's main job is multiplying big grids of numbers. A normal processor does a few calculations at a time. A graphics card (GPU) was built to color millions of pixels at once, so it can do thousands of multiplications in parallel. Training that was impractically slow on a regular chip became a matter of days: AlexNet took five to six days on two GPUs. The idea of deep networks was old. GPUs plus the ImageNet dataset made it practical.
 
 ## How a network learns its layers
 Backpropagation answers one question for every weight: if I nudge this weight up a little, how much does the output change? Take a toy chain, ignoring activation functions to keep it simple. Input x = 1 goes through weight w1 = 2 and then weight w2 = 3, so the output is 1 × 2 × 3 = 6. The target is 8.
@@ -240,6 +247,8 @@ flowchart TD
 Raise w2 by 0.1 and the output becomes 2 × 3.1 = 6.2, a change of 0.2. Raise w1 by 0.1 and the output becomes 2.1 × 3 = 6.3, a change of 0.3. So w1 deserves the bigger nudge here. Backpropagation computes these sensitivities for every weight in one backward pass, starting from the output error. Then each weight moves a small step, set by the learning rate, toward lower error.
 
 The table runs five training steps on the toy chain, using squared error as the loss and an invented learning rate of 0.01. Watch the output creep toward the target of 8 as the loss shrinks, and notice that w1 moves more than w2 because its gradient is larger.
+
+Here is step 0 by hand. The error is 8 - 6 = 2. For squared error, the slope of the loss for a weight is 2 x error x the output's sensitivity to that weight: for w1 that is 2 x 2 x 3 = 12, and for w2 it is 2 x 2 x 2 = 8. Multiply each by the learning rate 0.01 and add: w1 becomes 2 + 0.12 = 2.12 and w2 becomes 3 + 0.08 = 3.08.
 
 | Step | w1 | w2 | Output | Squared error |
 |---|---|---|---|---|
@@ -274,26 +283,26 @@ paper | Neural Machine Translation by Jointly Learning to Align and Translate | 
 ```
 
 ```quiz
-What changed the field in 2012? | A deep GPU network beat hand-built methods ; A new programming language made training faster ; A famous lab released its first chatbot | 0 | AlexNet showed that features learned at scale beat hand-designed ones, and the field followed.
-What does machine learning replace in a program? | The computer's processor, replaced by a faster chip ; The data, replaced by rules chosen by experts ; Hand-written rules, replaced by fitted parameters | 2 | You supply examples and a training algorithm finds the rules.
+What changed the field in 2012? | A deep GPU network beat hand-built methods ; Backpropagation was invented that year ; Researchers designed better hand-made image features | 0 | AlexNet showed that features learned at scale beat hand-designed ones, and the field followed.
+What does machine learning replace in a program? | The computer's processor, replaced by a faster chip ; The training data, replaced by a fixed rule book ; Hand-written rules, replaced by fitted parameters | 2 | You supply examples and a training algorithm finds the rules.
 Why did graphics cards matter so much for deep learning? | They run thousands of multiplications at once ; They store more training data than normal chips ; They make the network design simpler to write | 0 | A network is mostly matrix multiplication, and GPUs were built to do many of those at once.
 ```
 
 ```story
-Before 2012, to teach a computer to recognise cats you had to describe cats: pointy ears, whiskers, certain edges. Teams of researchers spent years inventing such descriptions. Then a network trained on a million labelled photos found its own description, better than theirs, in about a week on two gaming graphics cards. Almost every lab changed direction that year.
+Before 2012, to teach a computer to recognise cats you had to describe cats: pointy ears, whiskers, certain edges. Teams of researchers spent years inventing such descriptions. Then a network trained on a million labelled photos found its own description, better than theirs, in about a week on two gaming graphics cards. Within a few years, most vision labs had changed direction.
 ```
 
 # transformer-era | The transformer launch and the models that followed | 1 | 15
 In June 2017 a Google paper introduced the transformer. Within three years it had replaced almost every other architecture for language.
 
 ## The launch
-"Attention Is All You Need" (Vaswani et al., 2017) dropped recurrence. Earlier models read text one token at a time, which was slow to train and forgot early words. The transformer processes all tokens in parallel and lets each one attend to the others. That fit GPUs well, so models could grow.
+"Attention Is All You Need" (Vaswani et al., 2017) dropped recurrence. Earlier models read text one token at a time, which was slow to train and forgot early words. The transformer processes all tokens of a text in parallel during training and lets each one attend to the others. (When a chatbot writes a reply it still produces one token at a time, because the next token is not known yet.) That fit GPUs well, so models could grow.
 
 ## Two branches
 In 2018 Google's BERT read text in both directions and became the standard for understanding tasks like search and classification. OpenAI's GPT read left to right and predicted the next token, which is also how it generates text. GPT-2 (2019, 1.5 billion parameters) wrote surprisingly coherent paragraphs. GPT-3 (2020, 175 billion parameters) could do new tasks from a few examples in the prompt, with no retraining. That behavior is called in-context learning, and it is why prompting became a skill.
 
 ## Scaling laws
-In 2020 researchers at OpenAI showed that test loss falls as a smooth power law as you increase parameters, data and compute. In 2022 DeepMind's Chinchilla work found that many large models were undertrained: for a fixed compute budget, parameters and training tokens should grow together, roughly 20 tokens per parameter. This predictability is why labs were willing to spend huge sums on larger runs.
+In 2020 researchers at OpenAI showed that the model's error on text it had not seen (its test loss) drops in a smooth, predictable way as you scale up parameters, data and compute. Ten times more compute gives a steady, forecastable improvement, not a lucky jump. In 2022 DeepMind's Chinchilla work found that many large models were undertrained, meaning they had too many parameters for the amount of text they saw. Their 70 billion parameter model trained on 1.4 trillion tokens beat much bigger models trained on less. That is 1,400 billion / 70 billion = 20 tokens per parameter, a handy rule of thumb. When you add parameters, add training text too. This predictability is why labs were willing to spend huge sums on larger runs.
 
 ## Two ways to learn language
 BERT learns by hiding a word in the middle of a sentence and guessing it: "The cat sat on the ___ and purred." Because it sees words on both sides, it is good at understanding. GPT learns by hiding the future: given "The cat sat on the", guess the next word. That is exactly the job of writing text, so GPT-style models became the chatbots.
@@ -326,7 +335,7 @@ flowchart LR
 ```
 
 ## Trade-offs: what attention costs
-Parallel is not free. Every token is compared with every earlier token. For 1,000 tokens that is about 500,000 comparisons (1,000 × 999 ÷ 2). Double the length to 2,000 and it is about 2 million, four times more. At 10,000 tokens it is roughly 50 million.
+Parallel is not free. Every token is compared with every earlier token. For 1,000 tokens that is about 500,000 comparisons (1,000 × 999 ÷ 2). That halving is for a GPT-style model; a BERT-style model sees both sides, so it makes about twice as many. Double the length to 2,000 and it is about 2 million, four times more. At 10,000 tokens it is roughly 50 million.
 
 ```mermaid Comparisons between tokens grow with the square of the length: 50 million at 10,000 tokens
 xychart-beta
@@ -358,9 +367,10 @@ article | The Illustrated GPT-2 | https://jalammar.github.io/illustrated-gpt2/ |
 ```
 
 ```quiz
-Why did the transformer scale better than earlier language models? | It uses far fewer parameters than older models ; It trains on all tokens in parallel on GPUs ; It needs far less training data than older ones | 1 | Parallel training made it practical to build much larger models on much more data.
+Why did the transformer scale better than earlier language models? | It reads text in order, so it remembers early words better ; It trains on all tokens in parallel on GPUs ; It needs less compute because attention is cheap | 1 | Older models had to wait for each step before starting the next, so GPUs sat idle. Attention removed that wait, which let training use far more text.
 What did GPT-3 show? | Models must be fine-tuned for every new task ; Attention proved unnecessary for language models ; Big models can learn tasks from prompt examples | 2 | In-context learning is why prompting became a useful skill.
 BERT hides a word in the middle of a sentence and guesses it. GPT guesses the next word. Which is better for writing text? | GPT, because next-word prediction is writing ; BERT, because it reads words on both sides of a gap ; Both equally, because both learn to predict words | 0 | Generating text means predicting what comes next, which is exactly GPT's training task.
+Your team must label 1 million support tickets into 5 categories. Which model type fits best? | A GPT-style generator, because it writes new text ; A BERT-style encoder, because the output is a label ; Either, because only the model size matters | 1 | The output is a label, not new text, so an understanding-focused encoder is often enough and can be cheap to run.
 ```
 
 ```story
@@ -368,17 +378,19 @@ Imagine reading a long sentence one word at a time and having to remember everyt
 ```
 
 # scaling-laws | Why bigger worked: scaling laws | 2 | 12
-Loss falls as a predictable power law when you add parameters, data or compute. That predictability financed the whole era.
+Loss falls as a predictable power law when you add parameters, data or compute. That predictability gave labs the confidence to spend on much larger runs.
 
 ## The math, lightly
 Test loss L as a function of model size N follows roughly L(N) = (Nc / N)^α, with a small exponent α, around 0.07 for the early OpenAI fits. A power law is a straight line on a log-log plot. Each time you multiply N by 10, loss drops by the same factor, 10^(-α), which is about 15 percent for α = 0.07.
 
 $$L(N) = \left(\frac{N_c}{N}\right)^{\alpha}$$
 
-Chinchilla refined this: for a compute budget C, the best split gives parameters and tokens that grow together, and a good rule is about 20 training tokens per parameter. A 70 billion parameter model should see around 1.4 trillion tokens.
+This form ignores a floor. Real loss cannot go below the unpredictability of the text itself, so the law describes the part of the loss you can still remove. Nc is a constant that sets where the curve starts. You never need its value here, only the exponent: what matters is how loss changes when N is multiplied.
+
+Chinchilla refined this: for a compute budget C, the best split gives parameters and tokens that grow together, about in proportion. Its 70 billion parameter model was trained on 1.4 trillion tokens, which works out to about 20 tokens per parameter, and that ratio became the popular rule of thumb.
 
 ## Example
-Suppose a 1B model has loss 3.0. With α = 0.07, a 10B model has loss 3.0 × 10^(-0.07) = 3.0 × 0.851 = 2.55. Another 10x gives 2.17. Each 10x in model size, with data growing alongside, costs about 100 times more compute for a smaller absolute gain, which is why labs also look for gains elsewhere: better data, reasoning at inference time and tools.
+Suppose a 1B model has loss 3.0 (an invented number). If model size is the only thing that changes, with α = 0.07 a 10B model has loss 3.0 × 10^(-0.07) = 3.0 × 0.851 = 2.55. Another 10x gives 2.17. Growing the model 10 times also means training it on about 10 times more data to use it well, so compute rises about 100 times for each of these steps. The gains shrink while the bill grows, which is why labs also look for better data, reasoning at inference time and tools.
 
 ```mermaid Each 10 times in model size cuts loss by about 15 percent, so the curve flattens (the loss of 3.0 at 1 billion parameters is invented)
 xychart-beta
@@ -388,13 +400,13 @@ xychart-beta
 ```
 
 ## What to take from it
-Scaling is a trend, not a guarantee of every skill. It tells you that bigger runs reliably improve average loss, not when a particular ability will appear. It also explains why training tokens are as important as parameters.
+Scaling is a trend, not a guarantee of every skill. It tells you that bigger runs reliably improve average loss, not when a particular ability will appear. Chinchilla's follow-up showed why training tokens matter as much as parameters.
 
 ## Reading the exponent
-An exponent of 0.07 sounds tiny, and it is. It means progress is steady but slow in absolute terms. To halve the loss with that exponent you would need to multiply the model size by about 2^(1/0.07), which is around 20,000 times. That is why labs build enormous data centers and why they also hunt for other gains, like better training data and letting models think longer at answer time.
+An exponent of 0.07 sounds tiny, and it is. It means progress is steady but slow in absolute terms. To halve the part of the loss that can still be removed, you would need to multiply the model size by about 2^(1/0.07), which is around 20,000 times. That is why labs build enormous data centers and why they also hunt for other gains, like better training data and letting models think longer at answer time.
 
 ## A worked example with Chinchilla
-You have a budget to train a model. Option A: 280 billion parameters on 300 billion tokens. Option B: 70 billion parameters on 1.4 trillion tokens. Chinchilla found B wins at the same cost, because A was too big for how little data it saw. Rule of thumb: about 20 tokens of training text per parameter.
+You have a budget to train a model. Option A is Gopher: 280 billion parameters on 300 billion tokens. Option B is Chinchilla: 70 billion parameters on 1.4 trillion tokens. DeepMind trained both with about the same compute (the true figure includes more than parameters times tokens), and B did better on nearly every test, because A was too big for how little data it saw. Rule of thumb: about 20 tokens of training text per parameter.
 
 ## Planning a run with the 20-to-1 rule
 Invented budget for illustration: you want a model with 10 billion parameters. The rule of thumb says about 20 tokens per parameter, so you should plan for 200 billion training tokens (10 billion × 20).
@@ -442,31 +454,31 @@ Treating scaling laws as a promise that any skill will appear at some size. They
 
 ```resources
 paper | Scaling Laws for Neural Language Models | https://arxiv.org/abs/2001.08361 | Kaplan et al. | The original power-law fits.
-paper | Training Compute-Optimal Large Language Models | https://arxiv.org/abs/2203.15556 | Hoffmann et al. | The 20 tokens per parameter result.
+paper | Training Compute-Optimal Large Language Models | https://arxiv.org/abs/2203.15556 | Hoffmann et al. | Parameters and tokens should grow together; the 70B model on 1.4T tokens.
 article | Scaling laws | https://epoch.ai/blog/scaling-laws-literature-review | Epoch AI | A literature review of the evidence and its limits.
 ```
 
 ```quiz
 Loss follows L = (Nc/N)^0.07. What happens to loss when N grows 10 times? | It falls by a factor of ten ; It drops to half its value ; It drops about 15 percent | 2 | 10 to the power -0.07 is about 0.85, so loss falls by roughly 15 percent.
-What is Chinchilla's rule of thumb? | About 1 training token for each parameter ; About 20 training tokens for each parameter ; About 200 training tokens for each parameter | 1 | Compute-optimal training balances model size with the amount of training data.
-A lab has a fixed budget and trains a huge model on very little data. What does Chinchilla suggest? | A smaller model with more data would do better ; A bigger model with the same data would do better ; A longer prompt at answer time would do better | 0 | Many large models were undertrained: size and data should grow together.
+You plan to train a 10 billion parameter model compute-optimally. About how many tokens? | About 10 billion training tokens ; About 200 billion training tokens ; About 2 trillion training tokens | 1 | About 20 tokens per parameter, so 10 billion × 20 = 200 billion.
+A lab has a fixed budget and trains a huge model on very little data. What does Chinchilla suggest? | A smaller model with more data would do better ; A bigger model with the same data would do better ; Repeating the same data for more epochs would do better | 0 | Gopher saw only about 4 tokens per parameter, far below the roughly 20 that balances size and data.
 ```
 
 ```story
-A farmer notices that every extra bag of fertilizer adds a bit more corn, but each bag adds less than the one before. The pattern is so regular that she can predict next year's harvest from this year's spending. Scaling laws are that regularity for AI: spend ten times more on size, data and compute, and the error drops by a predictable amount.
+A farmer notices that every extra bag of fertilizer adds a bit more corn, but each bag adds less than the one before. The drop is by a steady proportion, so she can predict next year's harvest from this year's spending, as long as she stays within the range she has measured. Scaling laws are that regularity for AI: make the model ten times bigger and train it on proportionally more data, and the error falls by a predictable fraction.
 ```
 
 # chatgpt-and-the-race | ChatGPT and how companies kept improving | 1 | 18
-A raw language model is not a product. Post-training, an interface and a lot of scale turned it into one, then labs kept improving it on several fronts at once.
+A raw language model is not a product. Post-training (extra training after the main run, to shape how the model behaves), an interface and a lot of scale turned it into one, then labs kept improving it on several fronts at once.
 
 ## The product moment
 OpenAI's InstructGPT work in 2022 used human feedback to make GPT-3 follow instructions. On 30 November 2022 OpenAI released ChatGPT, a chat interface on a model tuned this way. A UBS estimate put it at 100 million monthly users about two months after launch, faster than earlier consumer apps. In 2023 Anthropic released Claude, Meta released Llama with downloadable weights, and Google followed with its Gemini models. GPT-4 added image input and much stronger reasoning.
 
 ## The levers labs pulled
-More scale: larger runs on more compute. Better data: filtering, deduplication and synthetic data. Better post-training: preference tuning, then reinforcement learning on tasks with checkable answers. Test-time compute: reasoning models, starting with OpenAI's o1 in late 2024 and the open DeepSeek-R1 in early 2025, spend extra tokens thinking and improve at math and code. Longer context: from a few thousand tokens to hundreds of thousands and beyond. Efficiency: mixture-of-experts, distillation of big models into small ones, and quantization. Multimodality: images, audio and video in and out. Tools: the model calls code, search and APIs, which led to agents.
+More scale: larger runs on more compute. Better data: filtering, removing duplicate text, and synthetic data (text written by other models). Better post-training: preference tuning, then reinforcement learning on tasks with checkable answers. Test-time compute, meaning extra work spent while answering rather than while training: reasoning models, starting with OpenAI's o1 in September 2024 (preview) and the open DeepSeek-R1 in January 2025, spend extra tokens thinking before they answer and improve at math and code. Longer context: from a few thousand tokens to hundreds of thousands and beyond. Efficiency: mixture-of-experts, distillation of big models into small ones, and quantization. Multimodality: images, audio and video in and out. Tools: the model calls code, search and APIs, which led to agents.
 
 ## The shape of the market
-By 2026 each lab ships a family of sizes, from a large model for hard problems to a small one for cheap, fast work. Open-weight models trail the frontier by a modest margin and can be run on your own hardware. The consequence for builders is that models change every few months, so design for swapping them and keep your own evals.
+By 2026 each lab ships a family of sizes, from a large model for hard problems to a small one for cheap, fast work. On many tasks, open-weight models trail the best closed models by a modest margin, though the gap depends on the task and changes with each release. They can be run on your own hardware. The consequence for builders is that models change every few months, so design for swapping them and keep your own evals.
 
 ## Why it was suddenly good
 GPT-3 could write, but it often ignored what you asked. Two steps fixed that. First, people wrote thousands of example conversations (a question and a good answer) and the model was trained on them. Second, humans ranked pairs of answers ("this one is better") and the model was nudged toward the better kind. That second step is called RLHF, reinforcement learning from human feedback. It turned a text predictor into an assistant.
@@ -509,8 +521,10 @@ The table works out the invented example. The large model costs 20 times the sma
 | Model | Correct per 100 | Price units per review | Cost for 10,000 reviews | Extra cost over the next cheaper model |
 |---|---|---|---|---|
 | Small | 94 | 1 | 10,000 | none |
-| Medium | 96 | 4 | 40,000 | 30,000 for 2 more correct |
-| Large | 97 | 20 | 200,000 | 160,000 for 1 more correct |
+| Medium | 96 | 4 | 40,000 | 30,000 for 200 more correct |
+| Large | 97 | 20 | 200,000 | 160,000 for 100 more correct |
+
+That is 150 units per extra correct label going from small to medium, and 1,600 going from medium to large.
 
 ## Common mistake
 Assuming the newest model is always best for your task. Different models trade off quality, speed and price. Test on your own examples.
@@ -526,26 +540,26 @@ article | State of AI | https://www.stateof.ai/ | Air Street Capital | Yearly fr
 
 ```quiz
 What turned GPT-3 into ChatGPT? | A model 100 times larger with no other changes ; Feedback-based tuning and a chat interface ; A new architecture that replaced the transformer | 1 | Post-training made the model follow instructions, and the interface made it usable by anyone.
-What is test-time compute? | Running the same model on faster cloud hardware ; Running unit tests on the code the model wrote ; Extra tokens spent thinking before answering | 2 | Reasoning models trade latency and cost for accuracy on hard problems.
-Two labs release models in the same month. How should a company decide which to use? | Test both on its own examples before choosing ; Pick whichever model the news covers more ; Pick the model with the largest parameter count | 0 | Models differ in quality, speed and price, so your own examples decide.
+What is test-time compute? | Running the same model on faster cloud hardware ; Giving the model a longer prompt ; Extra tokens spent thinking before answering | 2 | Reasoning models trade latency and cost for accuracy on hard problems.
+Your 100-review test shows small 94 correct at 1 unit and large 97 at 20 units. Which fact do you need next? | How costly a missed negative review is for you ; Which model has more parameters inside ; Which lab released its model first | 0 | Whether 3 more correct per 100 is worth 20 times the price depends on what a miss costs you.
 ```
 
 ```story
-In November 2022 a research lab put a chat box on top of a model that had existed for months in a developer tool. Nothing about the model had changed overnight, but the box made it usable by anyone. An estimated hundred million people were using it within about two months. The lesson: a capability becomes a revolution when someone makes it easy to use.
+In November 2022 a research lab put a chat box on a model that had been tuned to follow instructions, built on a base model developers had been able to use for months. Neither piece alone was new, but together they made it usable by anyone. An estimated hundred million people were using it within about two months. The lesson: a capability becomes a revolution when someone makes it easy to use.
 ```
 
 # ai-engineer-role | What is an AI engineer? | 1 | 10
 An AI engineer builds products on top of existing models. It is a different job from training the models.
 
 ## The roles
-An AI researcher invents new methods and trains frontier models. A machine learning engineer trains and deploys custom models on an organization's data. An AI engineer uses pretrained models through APIs or open weights, and builds the system around them: prompts, retrieval, tools, evals and deployment. Software engineers already have most of the skills: APIs, databases, testing and operations. What is new is working with a non-deterministic component.
+An AI researcher invents new methods and trains frontier models. A machine learning engineer trains and deploys custom models on an organization's data. An AI engineer uses pretrained models through APIs or open weights, and builds the system around them: prompts, retrieval, tools, evals and deployment. Software engineers already have most of the skills: APIs, databases, testing and operations. What is new is working with a component that can give a different answer each time you ask it.
 
 ## What the work looks like
 Choose a model. Design prompts and context. Add retrieval and tools. Build evals to know whether it works. Trace and monitor it in production. Control cost and latency. Keep it safe. The roadmap in this site follows that order.
 
 
-## AI is narrow, AGI is a goal
-All current systems are narrow in the sense that they have uneven abilities: superhuman on some tasks and brittle on others. AGI, artificial general intelligence, has no agreed definition. Do not design around it. Design around what the model measurably does on your task today.
+## AI is uneven, AGI is a goal
+Today's models are not general in the AGI sense. Their abilities are uneven: superhuman on some tasks and brittle on others. AGI, artificial general intelligence, has no agreed definition. Do not design around it. Design around what the model measurably does on your task today.
 
 ## How to grow
 Build small projects that break in interesting ways. Read traces of your own system. Learn evals early. Keep a short list of sources and ignore the noise.
@@ -571,9 +585,9 @@ flowchart TD
 ```
 
 1. Open the trace, the logged record of the conversation and every step inside it.
-2. Check whether the retrieved documents included the 30 day policy.
+2. Check whether the retrieved documents included the 30 day policy, and whether any of them says 60 days.
 3. If not, the retrieval step is the problem. Fix how documents are split or searched.
-4. If yes, the prompt or the model ignored it. Reword the instructions or try another model.
+4. If the right policy was there and nothing conflicts, the prompt or the model ignored it. Reword the instructions or try another model. If an old document says 60, remove or fix that document.
 5. Add this case to the test set and rerun all cases, so the fix cannot quietly break something else.
 
 ## Trade-offs: call an API, run open weights, or train
@@ -583,7 +597,7 @@ The table compares the three routes on speed, control and when each fits.
 
 | Option | Start-up | Data and control | Fits when |
 |---|---|---|---|
-| Hosted API | Fastest | Data leaves your systems, the provider can change or retire the model, you pay per use | Almost every product at the start |
+| Hosted API | Fastest | Data leaves your systems, the provider can change or retire the model, you pay per use | Most products at the start |
 | Open weights | Slower, you run servers | Control and privacy | A measured problem pushes you off the API |
 | Train your own | Slowest | Full control | You have enough data and nothing existing meets the need |
 
@@ -607,12 +621,12 @@ article | Start AI Engineering in 2026 | https://github.com/louisfb01/start-ai-e
 ```
 
 ```quiz
-How does an AI engineer differ from an ML engineer? | AI engineers never write code, ML engineers always do ; AI engineers build on models, ML engineers train them ; AI engineers work only on images, ML engineers on text | 1 | The first builds systems around existing models. The second trains models.
+A team wants a support assistant that answers from its own policy documents. Whose skills does it mostly need? | A researcher who invents a new training method ; An AI engineer who adds retrieval, prompts and tests to an existing model ; An ML engineer who trains a new model from scratch on all company data | 1 | The product is built around an existing model, which is the AI engineer's job.
 Why not design a product around AGI? | It is illegal to build products with it ; It has already been fully achieved ; It has no agreed definition or test | 2 | Design around measured behavior on your own task today.
 You are starting out and the field changes every month. What is the best first step? | Build a small project and see how it fails ; Wait until the tools stop changing so fast ; Read every new paper before writing any code | 0 | Building something small teaches more than waiting, and the habits carry over.
 ```
 
 ```story
-Two friends learn about AI. One spends two years studying how to train models and joins a research lab. The other learns to call models well, add the company's documents and tests, and ships a support assistant in six weeks. Both are valuable, and the second one is what most companies are hiring for.
+Two friends learn about AI. One spends two years studying how to train models and joins a research lab. The other learns to call models well, add the company's documents and tests, and ships a support assistant in six weeks. Both are valuable. Demand for the second kind is growing fast, because far more teams need to build on existing models than to train new ones.
 ```
 
