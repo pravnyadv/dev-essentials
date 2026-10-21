@@ -5,7 +5,7 @@ import Panel from './Panel.jsx'
 import { ListRow, RowList } from './RowList.jsx'
 import SectionHeading from './SectionHeading.jsx'
 import Quiz from './Quiz.jsx'
-import { Pill } from './ui.jsx'
+import { buttonClass, Pill } from './ui.jsx'
 
 const KIND = { article: 'Article', video: 'Video', course: 'Course', repo: 'Repo', paper: 'Paper', docs: 'Docs', tool: 'Tool', book: 'Book' }
 const compact = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : n)
@@ -37,17 +37,53 @@ export function Resources({ resources }) {
   )
 }
 
-// A few multiple-choice questions, one answer picked per question.
+// The lesson quiz, one question at a time: answer, read why beside Next, then move on; after the last one, the score.
+// The first answer to a question counts and stays until Try again.
 export function CheckYourself({ quiz }) {
   const [picks, setPicks] = useState({})
+  const [at, setAt] = useState(0)
   if (!quiz.length) return null
-  const answered = Object.keys(picks).length, score = quiz.filter((q, i) => picks[i] === q.answer).length
+  const done = at === quiz.length
+  const score = quiz.filter((q, i) => picks[i] === q.answer).length
+  const picked = picks[at], right = !done && picked === quiz[at].answer
+  const tone = i => (picks[i] === undefined ? (i === at ? 'bg-fd-primary/40' : 'bg-fd-border') : picks[i] === quiz[i].answer ? 'bg-success' : 'bg-danger')
   return (
     <section className="mt-10">
       <SectionHeading lesson className="mb-3">Check yourself</SectionHeading>
-      <Panel className="space-y-6">
-        {quiz.map((q, i) => <Quiz key={i} quiz={q} picked={picks[i]} onPick={n => setPicks(p => ({ ...p, [i]: n }))} />)}
-        <p aria-live="polite" className={`border-t pt-4 text-sm font-medium ${answered === quiz.length ? '' : 'invisible'}`}>You got {score} of {quiz.length} right.</p>
+      <Panel>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex flex-1 gap-1.5" aria-hidden>{quiz.map((_, i) => <span key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${tone(i)}`} />)}</div>
+          <span className="shrink-0 text-sm tabular-nums text-fd-muted-foreground">{done ? `${score} of ${quiz.length} right` : `${at + 1} of ${quiz.length}`}</span>
+        </div>
+        {done ? (
+          <div>
+            <p className="text-2xl font-bold tabular-nums">{score} of {quiz.length}</p>
+            <p className="mt-1 text-sm text-fd-muted-foreground">{score === quiz.length ? 'All right. On to the next lesson.' : 'Open a missed question to see why, or try again.'}</p>
+            <ol className="mt-3 space-y-1 text-sm">
+              {quiz.map((q, i) => (
+                <li key={i}>
+                  <button type="button" onClick={() => setAt(i)} className="flex w-full items-start gap-2 rounded-md py-1 text-left hover:underline max-md:min-h-11">
+                    <span className={`w-14 shrink-0 font-semibold ${picks[i] === q.answer ? 'text-success' : 'text-danger'}`}>{picks[i] === q.answer ? 'Right' : 'Missed'}</span>
+                    <span>{q.q}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : (
+          <Quiz key={at} quiz={quiz[at]} picked={picked} showWhy={false} onPick={n => picked === undefined && setPicks(p => ({ ...p, [at]: n }))} />
+        )}
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-t pt-4 sm:flex-nowrap">
+          <p aria-live="polite" className={`min-w-0 flex-1 basis-full text-sm leading-snug empty:hidden sm:basis-auto sm:empty:block ${right ? 'text-success' : 'text-danger'}`}>
+            {!done && picked !== undefined && <>{right ? 'Right. ' : 'Not quite. '}{quiz[at].why}</>}
+          </p>
+          <div className="ml-auto flex shrink-0 gap-2">
+            {at > 0 && <button type="button" onClick={() => setAt(at - 1)} className={buttonClass('outline', 'sm', 'rounded-full px-4')}>Back</button>}
+            {done
+              ? <button type="button" onClick={() => { setPicks({}); setAt(0) }} className={buttonClass('primary', 'sm', 'rounded-full px-4')}>Try again</button>
+              : <button type="button" onClick={() => setAt(at + 1)} disabled={picked === undefined} className={buttonClass('primary', 'sm', 'rounded-full px-4')}>{at === quiz.length - 1 ? 'See score' : 'Next'}</button>}
+          </div>
+        </div>
       </Panel>
     </section>
   )
