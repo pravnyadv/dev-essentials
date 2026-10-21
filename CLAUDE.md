@@ -12,7 +12,7 @@ Fumadocs (Next.js, static export) renders all three. No backend. Each track is i
 
 - `site/`: the Next.js + Fumadocs app. Run all commands from here.
 - `site/src/app/page.tsx`: track picker. `src/app/dsa/`, `src/app/ai/` and `src/app/sd/`: one layout, dashboard and `docs/[[...slug]]` page per track.
-- `site/src/lib/source.tsx`: one Fumadocs loader per track (`dsaSource`, `aiSource`, `sdSource`), with the sidebar status dots.
+- `site/src/lib/source.tsx`: one Fumadocs loader per track (`dsaSource`, `aiSource`, `sdSource`), with the sidebar status dots. `trackIndex.ts`: the topic, next topic and chapter position a lesson page looks up by url. `vocab.mjs`: levels, resource kinds and article topics, shared by the build scripts and the UI.
 - `site/src/components/shared/`: everything tracks share. Layout and pages: `TrackLayout`, `LessonPage`, `AuthoredLesson` (the lesson route of an authored track), `PageContainer`, `Dashboard`, `TrackPicker`, `LearningMap`, `Reference` (library and glossary), `LessonParts` (story, quiz, resources, terms, credits). Building blocks: `Panel`, `RowList`/`ListRow`, `Chip`, `SectionHeading`, `DemoFrame`, `Roadmap`, `Stepper`, `Quiz`, `Term`, `MarkDone`, plus `ui.jsx` (pills, bars, button styles) and `progress.jsx`.
 - `site/src/components/dsa/`: DSA-only pieces (patterns, diagrams, explainers, sorting player). `site/src/components/ai/`: math demos, story demos, model atlas, radar, articles. `site/src/components/sd/`: the system design demos.
 - `vendor/`: upstream clones (gitignored). `npm run content` clones them if missing.
@@ -20,7 +20,7 @@ Fumadocs (Next.js, static export) renders all three. No backend. Each track is i
 ### DSA track
 - `scripts/curation.mjs`: tiers, chapters (learning order), difficulty. **Edit this to re-arrange content.**
 - `scripts/patterns.mjs`, `explain.mjs`, `walkthroughs.mjs`: problem patterns.
-- `scripts/build-content.mjs` then `build-docs.mjs`: upstream + `authored/foundations/` into `content/dsa/` (as `.mdx`, with the upstream text escaped) and `src/generated/dsa.json`.
+- `scripts/build-dsa.mjs`: upstream + `authored/foundations/` (read by `lib-upstream.mjs`) into `content/dsa/` (as `.mdx`, with the upstream text escaped), `src/generated/dsa.json` and the images in `public/content/`. It fails on a topic in two chapters, a topic with no sections, a broken image or a bad pattern quiz.
 - `authored/dsa/<chapter>.md`: visuals added on top of the upstream text, never edits to it. Each block is headed `# <topic id> | top`, `| before <Section>` or `| after <Section>` and holds markdown: ```mermaid diagrams and charts (see Diagrams below), trace tables, short worked examples. The build fails on an unknown topic or section.
 - `DEAD_IMAGES` in `curation.mjs`: upstream image URLs that return 404, dropped by the build. Re-check upstream images when refreshing the vendor clone.
 
@@ -31,9 +31,9 @@ Diagrams: a ```mermaid fence with a caption on the fence line (```` ```mermaid W
 
 ### AI track
 - `authored/ai/<chapter>.md`: one file per chapter. A topic is a section headed `# slug | Title | level 1-3 | minutes`: first paragraph is the summary, `##` sections are the lesson, a ```resources fence lists `kind | title | url | by | why` lines, a ```quiz fence lists `question | a ; b ; c | answerIndex | why` lines, and a ```story fence holds a 2 to 4 sentence "Picture this" scenario. Every topic needs at least one resource and three quiz questions with options of similar length (write the right answer anywhere, `npm run lint:ai` flags clustering), and every authored lesson should have a story, a worked example and a "Common mistake" note (`npm run lint:ai` reports thin or hard-to-read lessons).
-- `scripts/ai-curation.mjs`: tiers, stages, goals, chapter order, and which demo (`EXPLAINERS`) a topic shows. Each chapter also carries `stage`, `after` (chapters it builds on), `goals`, `outcome` and `story`, which drive the learning map at `/ai/map`. Chapter order in the file is the numbered recommended order on the map.
+- `scripts/ai-curation.mjs`: tiers, stages, goals, chapter order, and which demo (`EXPLAINERS`) a topic shows. A demo name the track's `components/<track>/Explainers.jsx` does not know fails `next build`. Each chapter also carries `stage`, `after` (chapters it builds on), `goals`, `outcome` and `story`, which drive the learning map at `/ai/map`. Chapter order in the file is the numbered recommended order on the map.
 - `authored/ai/glossary.txt`: `term [aliases] | definition`. Each lesson lists the terms it uses, so define every new technical word here.
-- `authored/ai/data/`: the parts that change over time: `models.json` (model atlas), `radar.json` (dated news on the dashboard), `stars.json` (GitHub stars snapshot), `meta.json` (`lastUpdated` and the sources to re-check). `articles.json` is the hand-picked free reading list shown at `/ai/articles`: each entry has `title`, `author`, `year`, `url`, `why`, `level` (1 to 3), `topic` (one of `ARTICLE_TOPICS` in `build-ai.mjs`), `lesson` (an existing topic slug) and `verified`. The build fails on a bad topic, level or lesson. `npm run links` checks these URLs too.
+- `authored/ai/data/`: the parts that change over time: `models.json` (model atlas), `radar.json` (dated news on the dashboard), `stars.json` (GitHub stars snapshot), `meta.json` (`lastUpdated` and the sources to re-check). `articles.json` is the hand-picked free reading list shown at `/ai/articles`: each entry has `title`, `author`, `year`, `url`, `why`, `level` (1 to 3), `topic` (one of `ARTICLE_TOPICS` in `src/lib/vocab.mjs`), `lesson` (an existing topic slug) and `verified`. The build fails on a bad topic, level or lesson. `npm run links` checks these URLs too.
 - `scripts/build-ai.mjs`: all of the above into `content/ai/` and `src/generated/ai.json`. It fails on a bad resource kind, quiz answer, duplicate slug or unknown topic reference.
 - `scripts/import-guide.mjs`: imports the DAIR.AI Prompt Engineering Guide technique pages (MIT) as the `prompting-reference` chapter. Do not import roadmap.sh content: its license forbids reuse. Use it only as a checklist (`npm run coverage`).
 
@@ -46,7 +46,7 @@ Diagrams: a ```mermaid fence with a caption on the fence line (```` ```mermaid W
 - `npm run lint:sd` is the readability and depth report for these lessons. `npm run coverage:sd` checks lesson text against the roadmap.sh System Design map (titles as a checklist only); it should stay at full coverage.
 
 ### Adding a track
-Landing-page cards come from `site/src/lib/tracks.ts`. A new track needs its page tree under `src/app/<track>/` (copy `src/app/ai/layout.tsx` and `docs/[[...slug]]`), a generator script like `build-docs.mjs`, a Fumadocs source in `src/lib/source.tsx`, a search route under `src/app/api/search/`, and one entry in `tracks.ts`.
+Landing-page cards come from `site/src/lib/tracks.ts`. A new track needs its page tree under `src/app/<track>/` (copy `src/app/ai/layout.tsx` and `docs/[[...slug]]`), a generator script (an authored track is a thin wrapper over `lib-authored.mjs` like `build-sd.mjs`; all of them write the page tree with `pageTree` in `lib-files.mjs`), a Fumadocs source in `src/lib/source.tsx`, a search route under `src/app/api/search/`, and one entry in `tracks.ts`.
 
 ### CI and deploy
 `.github/workflows/ci.yml` runs `npm run verify` on every push and pull request and deploys `out/` to Cloudflare Pages on pushes to `main` when the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets exist. `links.yml` runs `npm run links` weekly. The local manual deploy is `npm run deploy` with `CLOUDFLARE_ACCOUNT_ID` exported.

@@ -6,9 +6,10 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { diagramSvg, figureMdx } from './lib-diagrams.mjs'
-import { generatedDir, writeIfChanged } from './lib-files.mjs'
+import { pageTree, writeGenerated, writeIfChanged } from './lib-files.mjs'
+import { topicsIn } from './lib-lessons.mjs'
+import { LEVELS, RESOURCE_KINDS } from '../src/lib/vocab.mjs'
 
-export const KINDS = ['article', 'video', 'course', 'repo', 'paper', 'docs', 'tool', 'book']
 export const CARDS = {
   pattern: ['Problem', 'Solution', 'Use when', 'Avoid when'],
   antipattern: ['Symptoms', 'Why it hurts', 'Detect', 'Fix'],
@@ -17,7 +18,6 @@ export const CARDS = {
 const cardKind = labels => Object.keys(CARDS).find(k => CARDS[k].join() === labels.join())
 
 const blocksIn = body => [...body.matchAll(/^```(mermaid|card) (.+)\n([\s\S]*?)^```$/gm)].map(m => ({ kind: m[1], arg: m[2].trim(), lines: m[3].trim().split('\n') }))
-const LEVEL = { 1: 'Starter', 2: 'Core', 3: 'Stretch' }
 const here = new URL('.', import.meta.url).pathname
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const repoOf = url => url.match(/^https:\/\/github\.com\/([^/]+\/[^/#?]+)\/?$/)?.[1]
@@ -91,11 +91,11 @@ export function loadTrack(name, { CHAPTERS, EXPLAINERS, TIERS, STAGES, GOALS, ST
   // The story is shown by its own component, so it is not in the page body. Repeating it in a hidden block puts it in the search index.
   const hiddenStory = story => (story ? `<div hidden>\n\n${toMdx(story, [])}\n\n</div>` : '')
 
-  function parseTopic(chapter, raw, file) {
-    const [head, ...lines] = raw.split('\n')
-    const [slug, title, level, minutes] = head.slice(2).split(' | ').map(s => s.trim())
+  // Where a topic lives. The id is the topic's progress key in localStorage, so its format must never change.
+  const place = (chapter, slug) => ({ id: `${name}/${chapter.id}/${slug}`, chapter: chapter.title, url: `/${name}/docs/${chapter.id}/${slug}` })
+
+  function parseTopic(chapter, { fields: [slug, title, level, minutes], body }, file) {
     const fail = msg => errors.push(`${file} ${slug}: ${msg}`)
-    let body = lines.join('\n')
     const fence = kind => {
       const re = new RegExp('```' + kind + '\\n([\\s\\S]*?)```\\n?')
       const m = body.match(re)
@@ -104,7 +104,7 @@ export function loadTrack(name, { CHAPTERS, EXPLAINERS, TIERS, STAGES, GOALS, ST
     }
     const resources = fence('resources').map(l => {
       const [kind, title, url, by, why] = l.split(' | ')
-      if (!KINDS.includes(kind) || !new RegExp(`^(https?://|/${name}/)`).test(url ?? '') || !why) fail(`bad resource line: ${l}`)
+      if (!Object.hasOwn(RESOURCE_KINDS, kind ?? '') || !new RegExp(`^(https?://|/${name}/)`).test(url ?? '') || !why) fail(`bad resource line: ${l}`)
       const repo = repoOf(url ?? '')
       return { kind, title, url, by, why, ...(repo && stars[repo] ? { stars: stars[repo] } : {}) }
     })
@@ -152,17 +152,16 @@ export function loadTrack(name, { CHAPTERS, EXPLAINERS, TIERS, STAGES, GOALS, ST
     }
     const rest = body.slice(summary.length).trim()
     return {
-      id: `${name}/${chapter.id}/${slug}`, slug, title, level: +level, minutes: +minutes, summary, kind: 'Lesson', chapter: chapter.title,
-      url: `/${name}/docs/${chapter.id}/${slug}`, resources, quiz, terms: termsIn(`${summary}\n${rest.replace(/^```mermaid[\s\S]*?^```$/gm, '')}`),
+      ...place(chapter, slug), slug, title, level: +level, minutes: +minutes, summary, kind: 'Lesson', resources, quiz, terms: termsIn(`${summary}\n${rest.replace(/^```mermaid[\s\S]*?^```$/gm, '')}`),
       explainer: EXPLAINERS[slug], story, ...(adapted.length && { adapted }), ...(cards.length && { cards }), body: rest,
     }
   }
 
   const chapters = CHAPTERS.map(c => {
-    if (c.imported) return { ...c, topics: imported(c, termsIn) }
+    if (c.imported) return { ...c, topics: imported(termsIn).map(t => ({ ...place(c, t.slug), ...t })) }
     const file = `${c.id}.md`
     const text = readFileSync(join(authored, file), 'utf8')
-    return { ...c, topics: text.split(/^(?=# [a-z0-9-]+ \| )/m).filter(s => s.startsWith('# ')).map(raw => parseTopic(c, raw, file)) }
+    return { ...c, topics: topicsIn(text).map(topic => parseTopic(c, topic, file)) }
   })
 
   const topics = Object.fromEntries(chapters.flatMap(c => c.topics.map(t => [t.id, t])))
@@ -181,18 +180,15 @@ export function loadTrack(name, { CHAPTERS, EXPLAINERS, TIERS, STAGES, GOALS, ST
     for (const t of Object.values(topics)) for (const r of t.resources) (library[r.url] ??= { ...r, topics: [] }).topics.push({ title: t.title, url: t.url })
     if (errors.length) { console.error(errors.join('\n')); process.exit(1) }
 
-    const pages = generatedDir(out)
-    const rootPages = []
-    for (const tier of TIERS) {
-      rootPages.push(`---${tier.id}. ${tier.title}---`)
-      for (const c of chapters.filter(c => c.tier === tier.id)) {
-        rootPages.push(c.id)
-        pages.write(join(out, c.id, 'meta.json'), JSON.stringify({ title: c.title, pages: c.topics.map(t => t.slug) }, null, 2))
-        for (const t of c.topics) pages.write(join(out, c.id, `${t.slug}${t.source ? '.md' : '.mdx'}`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : `${toMdx(t.body, t.terms)}\n\n${hiddenStory(t.story)}`}\n`)
-      }
-    }
-    pages.write(join(out, 'meta.json'), JSON.stringify({ pages: [`[Dashboard](/${name})`, `[Learning map](/${name}/map)`, ...rootPages, '---Reference---', ...reference] }, null, 2))
-    pages.finish()
+    writeGenerated(out, pageTree({
+      tiers: TIERS,
+      chapters,
+      nav: { before: [`[Dashboard](/${name})`, `[Learning map](/${name}/map)`], after: ['---Reference---', ...reference] },
+      page: t => ({
+        slug: t.slug, ext: t.source ? '.md' : '.mdx', title: t.title, description: `${t.minutes} min · ${LEVELS[t.level]}`,
+        body: t.source ? t.body : `${toMdx(t.body, t.terms)}\n\n${hiddenStory(t.story)}`,
+      }),
+    }))
 
     const slim = Object.fromEntries(Object.entries(topics).map(([id, t]) => [id, { ...t, body: undefined }]))
     writeIfChanged(join(here, `../src/generated/${name}.json`), JSON.stringify({

@@ -1,8 +1,6 @@
 'use client'
 import { buttonVariants } from 'fumadocs-ui/components/ui/button'
-
-// 'Stretch' avoids clashing with the Advanced tier name.
-export const LEVELS = { 1: 'Starter', 2: 'Core', 3: 'Stretch' }
+import { LEVELS } from '../../lib/vocab.mjs'
 
 // Small rounded label. Pass href to make it a link.
 const PILL = { muted: 'bg-fd-muted text-fd-muted-foreground', primary: 'bg-fd-primary/10 text-fd-primary hover:bg-fd-primary/20', outline: 'border text-fd-muted-foreground' }

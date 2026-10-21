@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import type { aiSource } from '@/lib/source';
+import { trackIndex } from '@/lib/trackIndex';
 import LessonPage from './LessonPage';
 import { LevelBadge, Pill } from './ui';
 import { AdaptedNote, CheckYourself, Resources, SourceNote, Story, Terms } from './LessonParts';
@@ -25,27 +26,23 @@ type Topic = {
 
 // What a track's generated JSON (src/generated/<track>.json) must provide for its lesson pages.
 export interface AuthoredTrack {
-  base: string;
   source: typeof aiSource;
-  data: { topics: object; order: string[]; chapters: { title: string; topics: { url: string }[] }[] };
+  data: Parameters<typeof trackIndex>[0];
   Explainer: ComponentType<{ name: string }>;
 }
 
 type Props = { params: Promise<{ slug?: string[] }> };
 
 // The docs route of an authored track (lessons from authored/<track>/*.md): page, static params and metadata.
-export function authoredLessonRoute({ base, source, data, Explainer }: AuthoredTrack) {
-  const byUrl: Record<string, Topic> = Object.fromEntries(Object.values(data.topics as Record<string, Topic>).map((t) => [t.url, t]));
+export function authoredLessonRoute({ source, data, Explainer }: AuthoredTrack) {
+  const index = trackIndex<Topic>(data);
   const pageOf = async (props: Props) => source.getPage((await props.params).slug) ?? notFound();
 
   async function Page(props: Props) {
     const page = await pageOf(props);
-    const url = `${base}/docs/${page.slugs.join('/')}`;
-    const topic = byUrl[url];
-    const next = byUrl[data.order[data.order.indexOf(url) + 1]];
-    const chapterNo = data.chapters.findIndex((c) => c.title === topic?.chapter) + 1;
-    const chapter = data.chapters[chapterNo - 1];
-    const lessonNo = (chapter?.topics.findIndex((t) => t.url === url) ?? 0) + 1;
+    const topic = index.topicAt(page.url);
+    const next = index.nextAfter(page.url);
+    const { chapterNo, lessonNo, lessonCount } = index.position(page.url);
 
     return (
       <LessonPage
@@ -58,7 +55,7 @@ export function authoredLessonRoute({ base, source, data, Explainer }: AuthoredT
           topic && (
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
               <Pill>Chapter {chapterNo}: {topic.chapter}</Pill>
-              <Pill>Lesson {lessonNo} of {chapter?.topics.length ?? 0}</Pill>
+              <Pill>Lesson {lessonNo} of {lessonCount}</Pill>
               <LevelBadge level={topic.level} />
               <Pill>About {topic.minutes} min</Pill>
             </div>

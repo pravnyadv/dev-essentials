@@ -1,4 +1,5 @@
 'use client'
+import { demoRegistry } from '../shared/demoRegistry.jsx'
 import BenchmarkGapDemo from './BenchmarkGapDemo.jsx'
 import ChunkDemo from './ChunkDemo.jsx'
 import QuantizeDemo from './QuantizeDemo.jsx'
@@ -8,7 +9,4 @@ import { ErasDemo, HarnessDemo, LoopDemo, RagDemo, StackDemo, TimelineDemo } fro
 // Keys match EXPLAINERS in scripts/ai-curation.mjs.
 const DEMOS = { matrix: MatrixDemo, attention: AttentionDemo, sampler: SamplerDemo, dot: DotDemo, neuron: NeuronDemo, descent: DescentDemo, loop: LoopDemo, rag: RagDemo, harness: HarnessDemo, stack: StackDemo, eras: ErasDemo, timeline: TimelineDemo, threshold: ThresholdDemo, chunks: ChunkDemo, quantize: QuantizeDemo, gap: BenchmarkGapDemo }
 
-export default function Explainer({ name }) {
-  const Demo = DEMOS[name]
-  return Demo ? <Demo /> : null
-}
+export default demoRegistry(DEMOS)

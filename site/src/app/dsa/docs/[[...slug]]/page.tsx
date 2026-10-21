@@ -5,7 +5,9 @@ import LessonPage from '@/components/shared/LessonPage';
 import { Practice, TopicBadges, TopicDemo } from '@/components/dsa/TopicExtras';
 import { SORTS } from '@/components/dsa/sortFrames';
 import site from '@/generated/dsa.json';
+import { trackIndex } from '@/lib/trackIndex';
 
+const index = trackIndex<(typeof site.topics)[keyof typeof site.topics]>(site);
 const sortAlgo = (slug?: string[]) => Object.keys(SORTS).find((k) => slug?.at(-1)?.endsWith(k));
 
 export default async function Page(props: PageProps<'/dsa/docs/[[...slug]]'>) {
@@ -13,11 +15,9 @@ export default async function Page(props: PageProps<'/dsa/docs/[[...slug]]'>) {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  const url = `/dsa/docs/${page.slugs.join('/')}`;
-  const byUrl = Object.fromEntries(Object.values(site.topics).map((t) => [t.url, t]));
-  const topic = byUrl[url];
+  const topic = index.topicAt(page.url);
   const patterns = site.patterns.filter((p) => (topic?.patterns as string[] | undefined)?.includes(p.id));
-  const next = byUrl[site.order[site.order.indexOf(url) + 1]];
+  const next = index.nextAfter(page.url);
 
   return (
     <LessonPage
