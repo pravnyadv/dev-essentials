@@ -104,5 +104,3 @@ export const EXPLAINERS = {
   'tooling-map': 'stack',
   'forecasting-and-fraud': 'threshold',
 }
-
-export const KINDS = ['article', 'video', 'course', 'repo', 'paper', 'docs', 'tool', 'book']

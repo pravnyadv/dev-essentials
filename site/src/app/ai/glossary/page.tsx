@@ -1,4 +1,4 @@
-import { Glossary } from '@/components/ai/Directory';
+import { Glossary } from '@/components/shared/Reference';
 import ai from '@/generated/ai.json';
 
 export const metadata = { title: 'Glossary' };

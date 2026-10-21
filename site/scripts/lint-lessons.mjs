@@ -1,15 +1,16 @@
-// Readability and depth report for the authored AI lessons. Usage: node scripts/lint-ai.mjs [--all]
+// Readability and depth report for an authored track's lessons. Usage: node scripts/lint-lessons.mjs <ai|sd> [--all] [--strict]
 // Flags lessons that are short, hard to read (Flesch-Kincaid grade), long-sentenced, light on examples or missing a story.
 import { readFileSync } from 'node:fs'
 import { readLessons } from './lib-lessons.mjs'
 
-const { chapters } = JSON.parse(readFileSync(new URL('../src/generated/ai.json', import.meta.url), 'utf8'))
-const dir = new URL('../content/ai/', import.meta.url).pathname
+const track = process.argv[2]
+const { chapters } = JSON.parse(readFileSync(new URL(`../src/generated/${track}.json`, import.meta.url), 'utf8'))
+const dir = new URL(`../content/${track}/`, import.meta.url).pathname
 const syll = w => Math.max(1, (w.toLowerCase().replace(/e$/, '').match(/[aeiouy]+/g) ?? []).length)
 const rows = []
 for (const c of chapters) for (const t of c.topics) {
   if (t.source) continue
-  const md = readFileSync(`${dir}${c.id}/${t.slug}.mdx`, 'utf8').replace(/^---[\s\S]*?---/, '').replace(/<Term def=\{"(?:[^"\\]|\\.)*"\}>([^<]*)<\/Term>/g, '$1')
+  const md = readFileSync(`${dir}${c.id}/${t.slug}.mdx`, 'utf8').replace(/^---[\s\S]*?---/, '').replace(/<Term def=\{"(?:[^"\\]|\\.)*"\}>([^<]*)<\/Term>/g, '$1').replace(/<Formula[^>]*\/>/g, ' ').replace(/<DiagramFigure .*\/>/g, ' ').replace(/<\/?LessonCard[^>\n]*>/g, ' ')
   const prose = `${t.summary}\n${md}`.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]*`/g, ' ').replace(/[#*>|-]/g, ' ')
   const sentences = prose.split(/[.!?]+\s/).filter(s => s.trim().split(/\s+/).length > 2)
   const words = prose.split(/\s+/).filter(w => /[a-z]/i.test(w))
@@ -26,15 +27,14 @@ console.log(`\n${rows.length} lessons. avg words ${avg('words')}, avg FK grade $
 // Content checks that fail `npm run lint:ai -- --strict`: sections that restate each other, and quiz keys that give the answer away (one position, or always the longest option).
 const words = t => new Set(t.toLowerCase().match(/[a-z]{4,}/g) ?? [])
 const problems = []
-for (const l of readLessons()) {
+for (const l of readLessons(track)) {
   const s = l.sections.filter(x => x.title !== 'The code').map(x => ({ ...x, w: words(x.text) })) // code mirrors its worked example on purpose
   for (let i = 0; i < s.length; i++) for (let j = i + 1; j < s.length; j++) {
     const min = Math.min(s[i].w.size, s[j].w.size)
     if (min >= 12 && [...s[i].w].filter(x => s[j].w.has(x)).length / min >= 0.6) problems.push(`${l.chapter}/${l.slug}: sections "${s[i].title}" and "${s[j].title}" restate each other`)
   }
 }
-const { chapters: all } = JSON.parse(readFileSync(new URL('../src/generated/ai.json', import.meta.url), 'utf8'))
-for (const c of all) {
+for (const c of chapters) {
   const keys = c.topics.flatMap(t => t.quiz.map(q => q.answer)), n = keys.length
   const top = Math.max(...[0, 1, 2].map(k => keys.filter(x => x === k).length))
   if (n >= 6 && top / n > 0.5) problems.push(`${c.id}: ${Math.round((top / n) * 100)}% of quiz keys sit at one position`)

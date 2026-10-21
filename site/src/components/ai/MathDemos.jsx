@@ -1,16 +1,9 @@
 'use client'
 import { useState } from 'react'
 import DemoFrame from '../shared/DemoFrame.jsx'
-import { ActionButton, Hint, Line } from '../shared/explainerKit.jsx'
+import { ActionButton, Hint, Line, Slider } from '../shared/explainerKit.jsx'
 
 const Box = ({ title, children }) => <DemoFrame boxed title={title}>{children}</DemoFrame>
-const Slider = ({ label, value, onChange, min, max, step = 0.1, unit = '' }) => (
-  <label className="flex items-center gap-3 text-sm">
-    <span className="w-28 shrink-0 font-medium">{label}</span>
-    <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(+e.target.value)} className="min-w-0 flex-1 accent-[var(--color-fd-primary)]" />
-    <span className="w-14 shrink-0 text-right tabular-nums">{value}{unit}</span>
-  </label>
-)
 
 // The same scores as the worked example in the Probability and softmax lesson.
 const TOKENS = [['cat', 2.0], ['dog', 1.0], ['fish', 0.1]]

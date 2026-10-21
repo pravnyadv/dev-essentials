@@ -32,6 +32,15 @@ export const Line = ({ children, tone = '' }) => (
   <p className={`flex min-h-7 items-center justify-center text-center text-sm font-medium ${{ good: 'text-success', bad: 'text-danger' }[tone] ?? ''}`}>{children}</p>
 )
 
+// A labelled range input with its value on the right. `display` replaces the shown value when the slider moves along a scale.
+export const Slider = ({ label, value, onChange, min, max, step = 0.1, unit = '', display }) => (
+  <label className="flex items-center gap-3 text-sm">
+    <span className="w-28 shrink-0 font-medium">{label}</span>
+    <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(+e.target.value)} className="min-w-0 flex-1 accent-[var(--color-fd-primary)]" />
+    <span className={`${display ? 'w-24' : 'w-14'} shrink-0 text-right tabular-nums`}>{display ?? `${value}${unit}`}</span>
+  </label>
+)
+
 export const Hint = ({ children }) => <p className="mt-1 min-h-5 text-center text-xs text-fd-muted-foreground">{children}</p>
 
 export const ActionButton = ({ children, ...p }) => (

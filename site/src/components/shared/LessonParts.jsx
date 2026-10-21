@@ -1,11 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { Callout } from 'fumadocs-ui/components/callout'
-import Panel from '../shared/Panel.jsx'
-import { ListRow, RowList } from '../shared/RowList.jsx'
-import SectionHeading from '../shared/SectionHeading.jsx'
-import Quiz from '../shared/Quiz.jsx'
-import { Pill } from '../shared/ui.jsx'
+import Panel from './Panel.jsx'
+import { ListRow, RowList } from './RowList.jsx'
+import SectionHeading from './SectionHeading.jsx'
+import Quiz from './Quiz.jsx'
+import { Pill } from './ui.jsx'
 
 const KIND = { article: 'Article', video: 'Video', course: 'Course', repo: 'Repo', paper: 'Paper', docs: 'Docs', tool: 'Tool', book: 'Book' }
 const compact = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : n)
@@ -67,6 +67,13 @@ export function Terms({ terms }) {
 export function SourceNote({ source }) {
   if (!source) return null
   return <Callout title="Imported lesson">From the <a href={source.url}>{source.name}</a>, {source.license} licensed. Shown here as part of the learning path with progress tracking.</Callout>
+}
+
+// Credit for a lesson that adapts openly licensed text. CC BY asks for the source, the license and a note that it was changed.
+export function AdaptedNote({ adapted }) {
+  if (!adapted?.length) return null
+  const sources = adapted.map((a, i) => <span key={a.url}>{i ? ' and ' : ''}<a href={a.url} className="underline underline-offset-2">{a.name}</a> ({a.license})</span>)
+  return <p className="mt-10 text-sm text-fd-muted-foreground">Parts of this lesson are adapted from {sources}, rewritten and extended for this course.</p>
 }
 
 // A short real-world scenario that shows what the chapter or lesson means in practice.

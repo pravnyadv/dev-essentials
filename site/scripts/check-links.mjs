@@ -1,8 +1,9 @@
-// Network check of every AI resource URL (not part of `verify`, which stays offline). Usage: node scripts/check-links.mjs
+// Network check of every resource URL in the authored tracks (not part of `verify`, which stays offline). Usage: node scripts/check-links.mjs
 // YouTube is checked through oEmbed because watch pages answer 200 for any id. 401/403/429 are reported as "blocked", not broken.
 import { readFileSync } from 'node:fs'
 
-const { library, articles = [] } = JSON.parse(readFileSync(new URL('../src/generated/ai.json', import.meta.url), 'utf8'))
+const tracks = ['ai', 'sd'].map(t => JSON.parse(readFileSync(new URL(`../src/generated/${t}.json`, import.meta.url), 'utf8')))
+const [library, articles] = [tracks.flatMap(t => t.library), tracks.flatMap(t => t.articles ?? [])]
 const UA = { 'user-agent': 'Mozilla/5.0 (link-check)' }
 const check = async ({ url }) => {
   const target = /youtube\.com\/watch/.test(url) ? `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json` : url

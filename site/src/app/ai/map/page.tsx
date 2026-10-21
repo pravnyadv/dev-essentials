@@ -1,4 +1,4 @@
-import LearningMap from '@/components/ai/LearningMap';
+import LearningMap from '@/components/shared/LearningMap';
 import PageContainer from '@/components/shared/PageContainer';
 import ai from '@/generated/ai.json';
 
