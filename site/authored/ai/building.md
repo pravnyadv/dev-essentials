@@ -12,6 +12,16 @@ Public benchmarks are useful for shortlisting. They are weak predictors of how a
 ## A worked example: a simple comparison
 Take 50 real support emails with the correct category. Run model A (large), B (mid), C (small). Example results (invented for illustration): A 96 percent at $0.020 per email, B 94 percent at $0.004, C 88 percent at $0.0005. If a 2-point difference is not worth five times the price, pick B. For a medical triage tool, you might pick A. The decision is about your costs of being wrong.
 
+The invented results from the worked example, worked out per 50 emails. The model with the lowest cost per correct answer is C, but the quality bar comes first.
+
+| Model | Correct of 50 | Cost per email | Cost for 50 emails | Cost per correct answer |
+| --- | --- | --- | --- | --- |
+| A (large) | 48 | $0.0200 | $1.00 | $0.0208 |
+| B (mid) | 47 | $0.0040 | $0.20 | $0.0043 |
+| C (small) | 44 | $0.0005 | $0.025 | $0.0006 |
+
+Model B gives up 1 correct answer out of 50 compared with A and costs one fifth as much.
+
 ## Open or closed?
 A closed model is used through the lab's API. An open-weight model can be downloaded and run by you, which helps with privacy and cost at scale. The [open-weight models lesson](/ai/docs/breakthroughs/open-models) covers the trade-offs, and the Model atlas lists both kinds.
 
@@ -21,6 +31,19 @@ A closed model is used through the lab's API. An open-weight model can be downlo
 3. Run every candidate model on all 20 with the same prompt.
 4. Score each output as right or wrong, and note the cost and the wait for each call.
 5. Pick the cheapest model that clears the quality bar you set in step 1.
+
+```mermaid A fair comparison: every model sees the same inputs, and the cheapest one that clears the bar wins
+flowchart TD
+  T[Task and cost of a wrong answer] --> I[20 real inputs with answers]
+  I --> R[Run every model, same prompt]
+  R --> S[Score right or wrong, note cost]
+  S --> B{Clears the bar?}
+  B -->|Yes| C[Candidate]
+  B -->|No| X[Drop it]
+  C --> P[Pick the cheapest candidate]
+  class X bad
+  class P good
+```
 
 Invented numbers for illustration: your bar is 90 percent, so at least 18 of 20. The small model gets 17 right (85 percent) and fails the bar. The mid-size model gets 19 (95 percent) and passes. You choose the mid-size model without ever looking at a leaderboard.
 
@@ -70,6 +93,16 @@ Write a 20-line script that sends one message, prints the answer and prints the 
 ## A worked example: your first request, in words
 You send: a model name, a system message ("You suggest gifts in two sentences") and a user message ("Gift for a hiker, under $50"). You get back: the reply text and a usage block, for example 38 input tokens and 52 output tokens. At $3 and $15 per million tokens that call cost about $0.0009. Print the usage every time. It teaches you what things cost and where the tokens go.
 
+The usage block from the gift example, priced at $3 per million input tokens and $15 per million output tokens.
+
+| Part | Tokens | Price per million | Cost |
+| --- | --- | --- | --- |
+| Input | 38 | $3 | $0.000114 |
+| Output | 52 | $15 | $0.000780 |
+| Total | 90 | | $0.000894 |
+
+Output is 52 of the 90 tokens but about 87 percent of the cost, because each output token costs five times as much.
+
 ## Setting up safely
 Create an API key in the provider's dashboard. Store it in an environment variable on your machine, never inside the code file. Add the file that holds it to .gitignore. If a key ever lands in a public repository, assume it is stolen and revoke it.
 
@@ -79,6 +112,18 @@ Create an API key in the provider's dashboard. Store it in an environment variab
 3. The provider checks the key, counts the input tokens and queues your request on its hardware.
 4. The model writes the answer one token at a time until it finishes or hits your cap.
 5. You get back the text, a stop reason (the model finished, or your length cap cut it off) and the usage counts.
+
+```mermaid One request goes from your code to the provider and the model, and the text, stop reason and usage come back
+sequenceDiagram
+  participant C as Your code
+  participant P as Provider
+  participant M as Model
+  C->>P: JSON with model, system prompt, messages, cap
+  Note over P: Checks the key, counts input tokens
+  P->>M: Queued request
+  M-->>P: Answer, one token at a time
+  P-->>C: Text, stop reason, usage counts
+```
 
 ## What goes wrong
 The answer stops mid-sentence. Your length cap was too low. To confirm, read the stop reason in the response: it says the cap was reached.
@@ -145,6 +190,17 @@ The system message sets standing instructions. User messages carry what the pers
 ## Example
 Call 1 sends [system: "You are a gift expert. Answer in two sentences.", user: "Gift for a hiker?"]. The reply is added as an assistant message. Call 2 sends all three messages plus the new user message "Under $50?". Without the earlier messages the model would not know what "under $50" refers to. The cost grows too: call 2 pays for call 1's tokens again, which is why long chats get expensive and why trimming and summarizing matter.
 
+```mermaid The app, not the API, keeps the history, so call 2 carries everything from call 1 again
+sequenceDiagram
+  participant A as Your app
+  participant M as Model API
+  A->>M: Call 1: system, user "Gift for a hiker?"
+  M-->>A: Assistant reply
+  Note over A: Appends the reply to its list
+  A->>M: Call 2: system, user, assistant, new user "Under $50?"
+  M-->>A: Assistant reply
+```
+
 ## Pin the model version
 Model names like "claude-sonnet-5-5" can point at a moving target while dated snapshots stay fixed. Pin the exact version in config for anything in production, run your eval set before changing it, and keep a fallback. A new version can be better overall and still break your prompt.
 
@@ -153,6 +209,13 @@ Count tokens before sending: input plus the maximum output must fit in the conte
 
 ## A worked example: why the bill grows
 Say the first question is 100 tokens, every later question is 50 and every reply is 100. Turn 1 sends 100 tokens. Turn 2 sends the first question and its reply (200) plus the new question (50): 250. Turn 3 sends those 250, plus the second reply (100) and the new question (50): 400. By turn 10 each call carries about 1,450 tokens of history. The cost of a conversation grows faster than its length. Trim old turns or summarize them.
+
+```mermaid Input tokens sent on each turn, using the invented sizes above: every turn adds 150 tokens of history, so ten turns send 7,750 tokens in total
+xychart-beta
+  x-axis "turn" [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  y-axis "input tokens in the call" 0 --> 1500
+  bar [100, 250, 400, 550, 700, 850, 1000, 1150, 1300, 1450]
+```
 
 ## Where to put what
 System message: rules that never change. User messages: this turn's request. Assistant messages: what the model said before. Do not paste secrets into any of them if you would not want them in logs.
@@ -236,13 +299,45 @@ Chat-style APIs take a list of messages and return the next message. Newer respo
 ## A worked example: handling limits
 Your app sends 300 requests a minute and the provider allows 200. The extra 100 get a 429 error. A good client queues them and retries after 1, 2, then 4 seconds with a little random jitter, so a hundred clients do not retry in lockstep. For a non-urgent job, such as labeling 100,000 reviews overnight, use a batch API: results arrive within hours at a lower price.
 
+```mermaid A rate-limited request waits and tries again with growing delays, up to a fixed number of tries
+flowchart TD
+  S[Send request] --> L{Rate limit hit?}
+  L -->|No| A[Answer]
+  L -->|Yes, 429| W[Wait 1, 2, then 4 seconds plus jitter]
+  W --> N{Tries left?}
+  N -->|Yes| S
+  N -->|No| G[Plain message to the user]
+  class W warn
+  class A good
+```
+
 ## Streaming gotchas
 Text arrives in small pieces, so append, do not replace. The connection can drop halfway: keep what you have and offer a retry. Let the user press Stop.
 
 ## How streaming works
 The server keeps the connection open and sends small events as tokens are produced. Your code reads each event and appends its text to the screen. Usage counts arrive in the stream's closing events. Some providers need an option switched on to send them.
 
+```mermaid Streaming keeps one connection open: many small events carry text, and the closing events carry usage
+sequenceDiagram
+  participant C as Your code
+  participant S as Server
+  C->>S: Request with streaming on
+  loop Until the answer ends
+    S-->>C: Small event with a piece of text
+    Note over C: Appends it to the screen
+  end
+  S-->>C: Closing events with usage counts
+```
+
 Two times matter. Time to first token is the wait before anything appears. Total time is how long the whole answer takes. Streaming improves the first and leaves the second unchanged.
+
+Each feature trades something for a gain, and each has a case where it does not help.
+
+| Feature | What it changes | Best for | Does not help when |
+| --- | --- | --- | --- |
+| Streaming | The wait before the first words | A person reading the answer as it arrives | Code parses the answer, or you must check all of it first |
+| Batch API | The price, lower, with results in hours | Bulk work nobody is waiting on, such as labeling 100,000 reviews | A person is waiting |
+| Prompt caching | The price of an unchanged prompt start | Many calls that share the same opening text | Something changes early, such as a timestamp at the top |
 
 ## Trade-offs and when not to stream
 Skip streaming when code, not a person, consumes the answer. A JSON reply cannot be parsed until it is complete. Skip it when you must check the full answer before anyone sees it, such as a safety filter.
@@ -315,7 +410,28 @@ Models often reply in markdown. If you convert it to HTML and insert it into the
 3. If it fails again, wait about 2 seconds, then about 4.
 4. Stop after a fixed number of tries and show the user a plain message.
 
+```mermaid Each status code leads to a different action, and only errors that can pass on their own are retried
+flowchart LR
+  C[API call] --> S{Status code?}
+  S -->|400| F1[Fix the request, no retry]
+  S -->|401 or 403| F2[Fix the key or access, no retry]
+  S -->|429| R1[Retry with backoff]
+  S -->|500 or 529| R2[Retry a few times]
+  R2 --> M[Then show a plain message]
+  class F1 bad
+  class F2 bad
+  class R1 good
+  class R2 good
+```
+
 Without jitter, the waits total 1 + 2 + 4 = 7 seconds across the three retries. Jitter adds a random fraction so many clients do not retry together. Always cap the number of attempts and the longest wait.
+
+```mermaid Total seconds spent waiting after each retry, without jitter: the waits double, so five retries cost 31 seconds in all
+xychart-beta
+  x-axis "retry number" [1, 2, 3, 4, 5]
+  y-axis "total seconds waited" 0 --> 32
+  bar [1, 3, 7, 15, 31]
+```
 
 ## A second example: retrying makes it worse
 A request fails with 400 because the prompt is too long. Retrying five times sends the same oversized prompt five times and fails five times. The fix is to shorten the prompt. A 401 behaves the same way: the key is wrong, and repeating the call changes nothing. Retry only errors that can pass on their own: rate limits, overload and timeouts.
@@ -326,6 +442,15 @@ Markdown converted to HTML with raw HTML allowed can carry a script tag. Symptom
 Links can use a "javascript:" address that runs code when clicked. A safe renderer blocks that address type.
 
 Model text placed into a database query can change the query. Pass values separately from the query text (a parameterized query) so the database treats them as data.
+
+```mermaid Model output is untrusted, so it passes through a sanitizer before it reaches the page
+flowchart TD
+  M[Model reply, untrusted] --> S[Sanitizer or safe markdown renderer]
+  S --> P[Page]
+  M -.->|Never| H[Raw HTML insert]
+  class H bad
+  class S good
+```
 
 ## Try it yourself
 Write a function that returns the wait before each of 5 attempts. Without jitter it should return 1, 2, 4, 8, 16 seconds. Add jitter and run it three times to see the lists differ. Then feed your page the harmless test string above and check that nothing runs.
@@ -366,6 +491,19 @@ The description is the interface. Say what the tool does, when to use it and wha
 4. You send that result back.
 5. The model answers: "Your order shipped and should arrive Friday." The model decided when to call and with what. Your code controlled what actually ran.
 
+```mermaid The model only asks for the call: your code runs the function and sends the result back
+sequenceDiagram
+  participant A as Your code
+  participant M as Model
+  participant T as track_order function
+  A->>M: Question plus tool description
+  M-->>A: Tool call: track_order("8123")
+  A->>T: Run it
+  T-->>A: shipped, arrives Friday
+  A->>M: Result as a new message
+  M-->>A: Final answer in plain words
+```
+
 ## Writing a good description
 Write for a new colleague: what it does, when to use it, what each argument means, and an example. If two tools sound alike, say how they differ.
 
@@ -373,6 +511,26 @@ Write for a new colleague: what it does, when to use it, what each argument mean
 Think of a short loop. Your code sends the messages and tool list. If the reply contains a tool call, your code runs it, adds the result and sends everything again. If the reply is plain text, the loop ends.
 
 Trace for the question "Is order 8123 late, and what is the refund policy?" The model calls track_order. Your code returns "shipped, arrives Friday". The model calls get_policy. Your code returns the policy text. The model then writes the final answer. That is three model calls, and each one resends the earlier messages and results. More tools and longer results mean more tokens. Always set a maximum number of loop steps.
+
+```mermaid The loop repeats until the reply is plain text, and a step cap stops a runaway loop
+flowchart TD
+  S[Send messages and tool list] --> R{Tool call in reply?}
+  R -->|No| E[Plain text, loop ends]
+  R -->|Yes| X[Your code runs the tool]
+  X --> A[Add the result to the messages]
+  A --> C{Step cap reached?}
+  C -->|No| S
+  C -->|Yes| H[Stop the loop]
+  class H warn
+```
+
+The messages sent grow with every round trip, which is why the three model calls in the trace above each cost more than the last.
+
+| Model call | Messages sent | What the model returns |
+| --- | --- | --- |
+| 1 | The question (1 message, plus the tool list) | A call to track_order |
+| 2 | Question, first call, shipping result (3 messages) | A call to get_policy |
+| 3 | Everything above, plus the second call and the policy text (5 messages) | The final answer in plain text |
 
 ## A second example: when a tool is not the answer
 A tool for adding two numbers is fine, since code is exact where the model can slip. A tool that returns the capital of France wastes a round trip, because the model already knows. Add a tool when the answer needs live data, private data or an action. Skip it when the model can answer alone.
@@ -469,6 +627,18 @@ Each search or code run can add charges. Search results can contain hidden instr
 
 The difference from your own tools is that you never run the loop. That saves work and also means you control less.
 
+```mermaid With a server-side tool, the provider runs the search and you get back one response
+sequenceDiagram
+  participant Y as Your app
+  participant M as Model
+  participant S as Provider search
+  Y->>M: Request with web search switched on
+  M->>S: Search query
+  S-->>M: Results
+  Note over M,S: May search again, all on the provider's servers
+  M-->>Y: One response: answer and citations
+```
+
 ## A second example: where it fails or is not needed
 You ask "What is 4,817 x 3,296?" A model guessing digits can slip. Code execution computes it exactly: 15,876,832. Web search would be pointless here. Now ask about your company's internal wiki. Web search cannot see it, so the model either says it cannot find anything or, worse, guesses. The right choice is file search over your own documents or a tool of your own.
 
@@ -525,10 +695,32 @@ Every server's tool descriptions are loaded into the model's context. Ten server
 4. The tool descriptions are added to the model's context.
 5. When the model asks for a tool, the client forwards the call. The server runs it and returns the result.
 
+```mermaid The host app connects to the server and loads its tool descriptions, and only then can the model ask for a tool
+sequenceDiagram
+  participant H as Host app (MCP client)
+  participant S as MCP server
+  participant M as Model
+  H->>S: Start or connect
+  H->>S: Handshake: supported features
+  H->>S: List tools, resources, prompts
+  S-->>H: Descriptions
+  H->>M: Tool descriptions added to context
+  M-->>H: Asks for a tool
+  H->>S: Forwards the call
+  S-->>H: Result
+```
+
 MCP is plumbing. It makes connecting easy, but it does not make the model better at choosing tools. Results still depend on how clear the descriptions are.
 
 ## What the context cost looks like
 Invented numbers for illustration: 8 servers with 6 tools each is 48 tool descriptions. At about 150 tokens each, that is 7,200 tokens spent before you type a word. In a 100,000 token window, that is 7.2 percent. It also gives the model 48 choices, and more choices raise the chance of a wrong pick.
+
+```mermaid Tokens spent on tool descriptions before you type a word, using the invented rule of 6 tools per server and 150 tokens per tool: 8 servers cost 7,200
+xychart-beta
+  x-axis "servers connected" [2, 4, 6, 8, 10, 12]
+  y-axis "description tokens" 0 --> 12000
+  line "tokens used" [1800, 3600, 5400, 7200, 9000, 10800]
+```
 
 ## A second example: when MCP is not needed
 Your own app has two tools and nobody else will use them. Plain functions in the same codebase are simpler. MCP pays off when many apps share an integration, or when you want a third-party server that someone else maintains.
@@ -570,6 +762,17 @@ Wrapping your own tool or data source as an MCP server lets any compatible app u
 ## The architecture
 A host is the app the user runs, such as a coding agent or a chat client. Inside it, an MCP client keeps one connection to each server. A server exposes three kinds of things: tools (functions the model can call), resources (data it can read, such as files) and prompts (reusable templates). The transport carries the messages. Stdio runs the server as a local subprocess and is the simplest. Streamable HTTP serves remote servers and adds authentication.
 
+```mermaid The model talks to the host, the host's MCP client keeps one connection per server, and each server exposes three kinds of things
+flowchart TD
+  subgraph Host[Host app]
+    M[Model] --> C[MCP client]
+  end
+  C -->|Stdio or HTTP, one per server| S[MCP server]
+  S --> T[Tools]
+  S --> R[Resources]
+  S --> P[Prompts]
+```
+
 ## Building one
 Pick an SDK in Python or TypeScript. Define each tool with a name, a clear description and an input schema. Return concise text the model can use. Validate arguments and handle errors with messages that say what to try next. Test with the MCP Inspector, then connect it to your client. Keep the server narrow: a few well-described tools beat dozens of thin ones, since descriptions load into context.
 
@@ -591,7 +794,37 @@ The SDK reads each function when the server starts. It takes the name, the docst
 4. Your function runs and returns text.
 5. The SDK wraps that text in a protocol message and sends it back.
 
+```mermaid The SDK builds the tool description from your function, checks each call, and runs your code
+sequenceDiagram
+  participant M as Model
+  participant C as MCP client
+  participant K as SDK
+  participant F as Your function
+  C->>K: Ask for the tool list
+  K-->>C: Name, description, schema built from your function
+  M-->>C: Picks search_notes with a query
+  C->>K: Call search_notes
+  Note over K: Checks the arguments against the schema
+  K->>F: Run it
+  F-->>K: Text
+  K-->>C: Protocol message with the text
+```
+
 So a vague docstring means a vague tool. The model never sees your code, only that description.
+
+A trace of search_notes("tax") over four invented files that hold 7 matching lines. The code keeps only the first five matches, and the order is the order the folder is read in.
+
+| Match | File and line | Returned |
+| --- | --- | --- |
+| 1 | a.md: Taxes are due in April. | Yes |
+| 2 | b.md: Call the accountant about taxes. | Yes |
+| 3 | b.md: Taxes: gather receipts. | Yes |
+| 4 | b.md: Taxes form 1040 needs signing. | Yes |
+| 5 | c.md: Tax refund arrived. | Yes |
+| 6 | d.md: Tax software renewal due. | No, cut by the five-line cap |
+| 7 | d.md: Tax year starts January. | No, cut by the five-line cap |
+
+Lines with no match, such as "Buy milk.", never enter the list.
 
 ## A second example: adding a tool that writes
 Add add_note(title, text). A title like "../../.bashrc" could point outside your notes folder. Build the path, resolve it, and refuse the call unless the result still sits inside the notes folder. Also require the host to ask for approval before any write. Reading a few lines is low risk. Writing files is not.
@@ -676,6 +909,27 @@ A local stdio server runs on your machine with your user's permissions. A remote
 ## A worked example: a safer setup
 Server A reads private notes (sensitive). Server B browses the web (untrusted). Together they form a risk: a page B reads could instruct the model to send A's notes somewhere. Safer: run them in separate sessions, or add approval before any message leaves the machine.
 
+```mermaid A web page the model reads can steer it to send private notes out, and an approval step before sending stops that
+flowchart TD
+  A[Server A: private notes] --> M[Model]
+  B[Server B: web pages, untrusted] -->|May hide instructions| M
+  M --> G{Approval before sending?}
+  G -->|No| L[Notes leave the machine]
+  G -->|Yes| H[You check what is sent]
+  class L bad
+  class H good
+```
+
+The three conditions from the second example below, checked for five setups. The setup in the last row has all three.
+
+| Setup | Sees private data | Reads untrusted content | Can send data out | Worst case |
+| --- | --- | --- | --- | --- |
+| Read-only server on public documents | No | No | No | Small |
+| Notes server alone | Yes | No | No | Small |
+| Notes server plus web browsing, nothing can send | Yes | Yes | No | A page can steer the model, but nothing leaves |
+| Web browsing plus email, no private data | No | Yes | Yes | A page can make the model send mail, but there is no private data to leak |
+| Notes, web browsing and email | Yes | Yes | Yes | A page can make the model email your notes |
+
 ## A review checklist
 Who wrote it, and can you read the code? Is the version pinned? What credentials does it hold and are they the minimum? Does it write or only read? What happens if its tool descriptions change? If you cannot answer, do not connect it to anything sensitive.
 
@@ -686,6 +940,20 @@ A tool description is text that goes into the model's context, so the model trea
 2. The author later publishes an update that changes one description.
 3. Your client loads the new text the next time it connects.
 4. The model now sees an instruction you never reviewed.
+
+```mermaid A rug pull changes a description after approval, so the model reads text you never reviewed
+sequenceDiagram
+  participant Y as You
+  participant C as Client
+  participant S as MCP server
+  participant M as Model
+  Y->>S: Review and approve clean descriptions
+  Note over S: Author publishes an update that changes one description
+  C->>S: Connects again
+  S-->>C: New description text
+  C->>M: New text added to context
+  Note over M: Sees an instruction you never reviewed
+```
 
 Defenses: pin the version, compare descriptions after any update and re-approve. Whether a given client warns you about changes varies, so check yours.
 
@@ -746,6 +1014,22 @@ Describe: send a product photo and ask for a one-sentence alt text. Extract: sen
 The provider cuts the image into patches and turns each patch into vectors that the model reads like tokens. A larger image means more patches and a higher bill. The exact rule differs by provider.
 
 Invented rule for illustration: one token per 1,000 pixels. A 1000 by 1000 image is 1,000,000 pixels, so 1,000 tokens. Halve each side to 500 by 500 and you get 250,000 pixels, so 250 tokens. Halving each side cuts the cost to a quarter.
+
+```mermaid An image is cut into patches that the model reads like tokens, so a bigger image costs more
+flowchart TD
+  I[Image] --> P[Cut into patches]
+  P --> V[Each patch becomes vectors]
+  V --> M[Model reads them like tokens]
+  M --> B[More patches, higher bill]
+  class B warn
+```
+
+```mermaid Tokens for a square image under the invented rule of one token per 1,000 pixels: doubling the side from 500 to 1000 quadruples the cost
+xychart-beta
+  x-axis "side of the image in pixels" [500, 1000, 1500, 2000]
+  y-axis "image tokens" 0 --> 4000
+  bar [250, 1000, 2250, 4000]
+```
 
 ## A second example: where vision fails
 Counting many small objects, reading tiny or blurry text, handwriting and judging exact positions are common weak spots. Take a receipt photographed at an angle in dim light. The model may return a total that looks right but is wrong. For printed text at scale, a dedicated OCR tool can be more reliable and cheaper. Use a vision model when you also need understanding, such as what the receipt is for.

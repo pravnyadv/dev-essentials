@@ -1,16 +1,7 @@
 'use client'
 import { useState } from 'react'
-import DemoFrame from '../shared/DemoFrame.jsx'
-import { ActionButton, CellRow, Hint, Line, Slider } from '../shared/explainerKit.jsx'
+import { ActionButton, Box, CellRow, fmt, Hint, Line, Slider, Stat } from '../shared/explainerKit.jsx'
 
-export const Box = ({ title, children }) => <DemoFrame boxed title={title}>{children}</DemoFrame>
-export const Stat = ({ label, value }) => (
-  <div className="rounded-lg border p-3 text-center">
-    <p className="text-xs text-fd-muted-foreground">{label}</p>
-    <p className="text-lg font-bold tabular-nums">{value}</p>
-  </div>
-)
-export const fmt = n => Math.round(n).toLocaleString('en-US')
 
 // 100 requests between 40 and 80 ms, then `slow` of them replaced by one slow latency. Percentiles use the nearest-rank method.
 const BASE = Array.from({ length: 100 }, (_, i) => 40 + ((i * 37) % 41))

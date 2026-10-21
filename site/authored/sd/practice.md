@@ -72,6 +72,21 @@ flowchart TD
 
 For autoscaling, say a group has minimum 4, maximum 12, and each server handles 1,000 requests per second (also invented). A peak of 9,000 needs 9 servers, so the group sits at 9 and drops back to 4 at night. You pay for about 9 only during the peak.
 
+```mermaid Database replicas needed for 40,000 reads per second at 2,000 each (invented figure), by cache hit ratio
+xychart-beta
+  x-axis "cache hit ratio in percent" [0, 50, 80, 90, 95, 99]
+  y-axis "replicas needed" 0 --> 20
+  bar [20, 10, 4, 2, 1, 1]
+```
+
+The autoscaling group from the same invented numbers, at three loads:
+
+| Load in requests per second | Servers needed at 1,000 each | Group size |
+| --- | --- | --- |
+| 3,000 | 3 | 4, the minimum |
+| 9,000 | 9 | 9 |
+| 15,000 | 15 | 12, the maximum, so the group is short by 3 servers |
+
 ## What goes wrong: scaling up too slowly
 A news link sends traffic from 3,000 to 12,000 requests per second in two minutes. A policy on average CPU typically reacts after a few minutes of data, then needs time to boot servers. The Primer warns that a system may take a while to scale up. Meanwhile the four running servers are overloaded and latency climbs. If the load balancer's health checks then mark overloaded servers unhealthy, the rest take even more load (a common pattern, not something the Primer states).
 
@@ -193,6 +208,19 @@ class LRUCache:
         self._push_front(node)
 ```
 
+Trace of the cache above with a capacity of 3. The front of the list is the most recent entry:
+
+| Call | List after, front first | What happened |
+| --- | --- | --- |
+| set a | a | stored |
+| set b | b, a | stored |
+| set c | c, b, a | stored, cache is now full |
+| get a | a, c, b | hit, a moves to the front |
+| set d | d, a, c | b was at the back, so b is dropped |
+| get b | d, a, c | miss, b is gone |
+| get c | c, d, a | hit |
+| set e | e, c, d | a was at the back, so a is dropped |
+
 The Primer shows this with the list methods left blank. Its sketch reads `self.lookup[query]` directly, which raises an error for a missing key in real Python, so the version above uses `.get`. In everyday Python, `collections.OrderedDict` with `move_to_end` and `popitem(last=False)` does the same job in a few lines.
 
 ## Scaling the cache across machines
@@ -214,6 +242,13 @@ Four cache machines hold entries placed by `hash mod 4`. Traffic is 4,000 reques
 Add a fifth machine and switch to `hash mod 5`. A key keeps its machine only if its hash gives the same remainder mod 4 and mod 5. Over every 20 hash values, that holds for 4 of them (0, 1, 2 and 3). So 20 percent of entries stay put and 80 percent are now on the wrong machine.
 
 The hit ratio drops to about 0.9 times 0.2 = 18 percent. Misses are 82 percent of 4,000, which is 3,280 per second, about 8 times the 400 before. The reverse index gets an eightfold load spike. With consistent hashing, adding the fifth machine moves only about 1 in 5 keys.
+
+```mermaid Requests per second that reach the reverse index, before and after the switch from hash mod 4 to hash mod 5
+xychart-beta
+  x-axis [Before mod 4, After mod 5]
+  y-axis "misses per second" 0 --> 3500
+  bar [400, 3280]
+```
 
 ## What goes wrong: the thundering herd
 A very popular query expires. Within the same second, thousands of requests miss together and all go to the index. The Facebook memcache paper describes this herd and a fix: a server hands out one lease token per key about every 10 seconds, and other clients wait briefly and retry, so one client refills the entry. The paper reports a peak database rate of 17,000 queries per second for the affected keys without leases and 1,300 with them. The symptom in your system is a sawtooth: the miss rate and index latency spike on a regular beat. Confirm it by checking hit and miss counters. Redis exposes `keyspace_hits` and `keyspace_misses` in `INFO`.
@@ -354,6 +389,19 @@ Logs grow and the hourly job starts taking 70 minutes. The next run starts while
 
 The symptom is odd lists and a `computed_at` timestamp that falls behind. Confirm it by comparing job durations with the schedule. The fix is to write into a new table (or version number) and switch readers over in one step when it is complete, and to refuse to start a run while another is active. MapReduce also copes with slow machines: the paper describes backup tasks that rerun the last few stragglers.
 
+```mermaid The batch job writes a new table version while readers keep using the old one, then one switch moves them over
+sequenceDiagram
+  participant J as Hourly job
+  participant N as New table version
+  participant R as Readers
+  participant O as Current table
+  J->>N: write the full ranking
+  R->>O: keep reading the complete old ranking
+  J->>R: switch readers to the new version
+  R->>N: read the new ranking
+  Note over J,O: a run that is still active blocks the next one from starting
+```
+
 ## Alternatives considered
 About 9 GB of one week's log fits on one machine, and a warehouse can answer `SUM(quantity) ... GROUP BY category_id, product_id` over the last seven days with one query. At this lesson's numbers that is the simpler choice. Reach for MapReduce style jobs when data is far larger than one machine, or when you already run such a cluster.
 
@@ -449,6 +497,17 @@ def shortest_path(friends_of, source, dest):
 
 On one machine `friends_of` reads memory. In the distributed design it asks the Lookup Service and a Person Server, so each call is a network round trip.
 
+Trace of the search on a tiny invented network where A is friends with B and C, B with A and D, C with A, D and E, D with B, C and F, E with C, and F with D. The target is F:
+
+| Step | Person taken from queue | New people found | Queue after |
+| --- | --- | --- | --- |
+| 1 | A | B, C | B, C |
+| 2 | B | D (A is already seen) | C, D |
+| 3 | C | E (A and D are already seen) | D, E |
+| 4 | D | F, the target | stop |
+
+Following the `prev` map back from F gives F, D, B, A, so the shortest path is A, B, D, F with 3 hops.
+
 ```mermaid One ring of the search: group the ids by server, then make one call per server
 sequenceDiagram
   participant U as User Graph Service
@@ -466,6 +525,16 @@ sequenceDiagram
 
 ## A worked example: how many people we touch
 With 50 friends per person, the number of people at each ring is at most: 50, then 2,500, then 125,000, then 6.25 million, then 312 million. Overlap among friends makes real counts smaller, but the growth is the point. In 2016 Facebook reported an average distance of 4.57 steps among 1.59 billion active users (3.57 people in between), so typical searches go four or five rings deep.
+
+| Ring | People in this ring, at most | Running total |
+| --- | --- | --- |
+| 0 (you) | 1 | 1 |
+| 1 | 50 | 51 |
+| 2 | 2,500 | 2,551 |
+| 3 | 125,000 | 127,551 |
+| 4 | 6,250,000 | 6,377,551 |
+
+Two searches that each stop at ring 2 touch 2,551 people each. One search that goes to ring 4 touches 6.4 million.
 
 A one-sided search to depth 4 may touch 50 + 2,500 + 125,000 + 6,250,000 = about 6.4 million people. Each is a possible network call.
 
@@ -578,7 +647,22 @@ def crossed(old_total, new_total, limit, steps=(0.8, 1.0)):
 ## A worked example: sizing the workers
 Suppose 30 percent of the 30 million accounts are active, so 9 million refreshes a day (invented). Spread over 24 hours that is 9,000,000 divided by 86,400 = about 104 jobs per second. Say each bank call takes 3 seconds (invented). By Little's law, in-flight jobs equal rate times time, so 104 times 3 = about 312 workers busy at once.
 
+```mermaid Workers busy at once for 104 refresh jobs per second, by how long one bank call takes (invented durations)
+xychart-beta
+  x-axis "seconds per bank call" [1, 2, 3, 5]
+  y-axis "workers busy" 0 --> 550
+  bar [104, 208, 312, 520]
+```
+
 Each account sees about 6 new transactions a day (2,000 per second times 86,400 is 173 million a day, divided by 30 million accounts). Check the budget rule: limit 200, month total goes from 150 to 170. `crossed` tests 0.8 times 200 = 160, and 150 is below 160 and 160 is at most 170, so one alert fires. Later, 170 to 190 fires nothing, since the step was already passed. Then 190 to 210 crosses 200 and fires the second.
+
+Trace of `crossed` for a limit of 200, so the steps sit at 160 and 200:
+
+| Month total changes from | To | Steps passed | Alerts sent |
+| --- | --- | --- | --- |
+| 150 | 170 | 160 | 1 (80 percent) |
+| 170 | 190 | none | 0 |
+| 190 | 210 | 200 | 1 (100 percent) |
 
 ```mermaid A retry after a crash is harmless when a unique key rejects the repeated bank transaction ids
 sequenceDiagram

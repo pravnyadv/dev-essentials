@@ -12,6 +12,17 @@ Monday, 20 minutes: skim one newsletter for the week's research. Wednesday, 10 m
 
 ## Tracing a claim to its source
 A thread says: "New model beats the old one by 20 percent." Follow these steps.
+```mermaid Trace a viral claim back to the table behind it
+flowchart TD
+  A[Claim in a thread] --> B{Link given?}
+  B -->|no| C[Search lab blog or model card]
+  B -->|yes| D[Open the source]
+  C --> D
+  D --> E[Find the table, test and settings]
+  E --> F[Check who ran it and the date]
+  class E focus
+```
+
 1. Look for a link. If there is none, search the lab's blog or model card for the release.
 2. Find the table behind the claim and note which test it uses and the settings.
 3. Check who ran it: the lab itself, or an independent group.
@@ -23,6 +34,16 @@ Suppose the table shows 10 points before and 12 points after. That is a 20 perce
 Your five newsletters all report the same new result in nearly the same words, with the same number. It feels like strong confirmation. It is often five summaries of one post.
 
 To confirm, follow each link backward. If all of them end at the same page, you have one source, repeated. Count independent sources, not mentions. The lesson is to read the page they all point to.
+
+```mermaid Five newsletters can all point to one post, which is one source repeated
+flowchart LR
+  N1[Newsletter 1] --> P[One original post]
+  N2[Newsletter 2] --> P
+  N3[Newsletter 3] --> P
+  N4[Newsletter 4] --> P
+  N5[Newsletter 5] --> P
+  class P warn
+```
 
 ## How to tell your set is working
 At the end of each month, write down three things you learned and where each came from. Mark each one as primary (paper, docs, repo) or secondary (someone's summary). Replace a source if:
@@ -68,6 +89,18 @@ Are paid items marked?
 
 ## A worked example: judging a list
 Open the repository and look at the commit history. If the last change was eleven months ago, treat the links as hints and check each one. Look at ten entries. If seven of them have a sentence about what you will learn, the list is curated. If none do, it is a dump. Pick the best two or three entries in the section you need and ignore the rest.
+
+```mermaid Judge a list in a minute: check the last update, then whether entries say why, then pick a few
+flowchart TD
+  L[Open the list] --> A{Recently updated?}
+  A -->|No| H[Treat links as hints, check each]
+  A -->|Yes| B{Do most entries say why?}
+  H --> B
+  B -->|No| D[A dump: skim, do not trust]
+  B -->|Yes| C[Curated: pick the best two or three]
+  class C good
+  class D bad
+```
 
 ## Which list for which goal
 You are new and want an order to follow: the path on this site, then the beginner guides below. You want to build agents: the agentic engineering lists. You want to study the research: the model internals chapter and the papers it cites. You want to keep up weekly: the sources in the previous lesson.
@@ -126,10 +159,26 @@ Use leaderboards to shortlist, then run your own examples. Track a small number 
 ## A worked example: is the gap real?
 Model A scores 87.3 and model B 86.9 on a test with 500 questions. With that many questions the typical sampling error is about 1.5 points (about 3 points at 95 percent confidence), so a gap of 0.4 is within noise. Treat them as equal until a larger or different test separates them.
 
+```mermaid Both scores carry sampling error, and the gap between them carries more
+flowchart TD
+  A[Model A 87.3, error about 1.5] --> G[Gap 0.4, error about 2.1]
+  B[Model B 86.9, error about 1.5] --> G
+  G --> R[Within noise, treat as a tie]
+  class R warn
+```
+
 ## How the noise estimate works
 A score on n questions is a sample. The typical sampling error is sqrt(p(1 - p) / n). For p = 0.87 and n = 500 that is sqrt(0.87 × 0.13 / 500), about 0.015, or 1.5 points.
 
 A gap between two scores is noisier than either score alone, because both carry error. Treating them as independent, the gap error is about 1.5 times the square root of 2, or about 2.1 points. About 95 percent of the time the true gap sits within roughly twice that. A 0.4 gap is far inside it. Models tested on the same questions have a tighter gap in practice, but 0.4 still tells you very little.
+
+```mermaid At a score near 87 percent, the typical error of the gap is still larger than 0.4 points at 5,000 questions
+xychart-beta
+  x-axis "questions in the test" [100, 250, 500, 1000, 2000, 5000]
+  y-axis "points of typical error" 0 --> 5
+  line "one score" [3.36, 2.13, 1.5, 1.06, 0.75, 0.48]
+  line "gap between two scores" [4.76, 3.01, 2.13, 1.5, 1.06, 0.67]
+```
 
 ## What goes wrong: a model that has seen the test
 Contamination means test questions appeared in the training data. The symptom is a high public score that does not carry over. A model scores 90 on a famous test, then does much worse on questions you wrote in the same style.
@@ -138,6 +187,17 @@ To check, write 20 fresh questions of the same type and compare. A large drop su
 
 ## When a public benchmark is the wrong tool
 You summarize legal contracts. A coding leaderboard tells you almost nothing about that. Build your own test:
+```mermaid A small test built from your own work, run several times per model
+flowchart TD
+  A[30 real inputs] --> B[Write the answer or a rubric for each]
+  B --> C[Run each model 3 times on all 30]
+  C --> D[Record the average and the spread]
+  D --> E{Spread bigger than the gap?}
+  E -->|yes| F[Add more examples]
+  E -->|no| G[Pick the better model]
+  class E focus
+```
+
 1. Collect 30 real inputs from your work.
 2. Write the answer you want for each, or a short rubric (a checklist for grading).
 3. Run each candidate model three times on all 30.

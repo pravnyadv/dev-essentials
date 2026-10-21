@@ -51,3 +51,30 @@ export const DIFFICULTY = {
 }
 
 export { GROUPS, PATTERNS } from './patterns.mjs'
+
+// Upstream images that return 404 (checked 2026-10-21). The build drops them; authored/dsa draws our own versions.
+export const DEAD_IMAGES = [
+  'http://gregtrowbridge.com/content/images/2014/Jul/Screenshot-from-2014-06-17-19-46-20.png',
+  'https://ivanyu.me/wp-content/uploads/2014/09/zalg1.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/ArticulationPoints.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/ArticulationPoints1.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/ArticulationPoints21.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/Bridge1.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/Bridge2.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/Bridge3.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/RangeMinimumQuery.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/cycleGraph.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/kadane-Algorithm.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/redBlackCase2.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/redBlackCase3a1.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/redBlackCase3b.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/redBlackCase3c.png',
+  'https://www.geeksforgeeks.org/wp-content/uploads/redBlackCase3d.png',
+]
+
+// Topic id -> interactive demo shown above the lesson (components/dsa/Explainers.jsx).
+export const DEMOS = {
+  'foundations/big-o': 'growth',
+  'data-structures/hash-table': 'hashing',
+  'algorithms/sets/knapsack-problem': 'knapsack',
+}

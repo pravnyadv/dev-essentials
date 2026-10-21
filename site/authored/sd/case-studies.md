@@ -57,6 +57,14 @@ Invented prompt: design a photo-sharing service. You ask questions and the inter
 
 Now the design nearly writes itself. 20 uploads per second is easy for a few servers. The 1.5 PB a year says photos go in an object store, not a database. The 10,000 reads per second at a 500 to 1 ratio says a [CDN](/sd/docs/scaling/cdn-and-edge) and caching do most of the work. Four lines of arithmetic told you where to spend the time.
 
+```mermaid Each number from the estimate pushes the design toward one component
+flowchart LR
+  A[20 uploads per second] --> B[A few app servers]
+  C[1.5 PB of photos a year] --> D[Object store, not a database]
+  E[10,000 views per second] --> F[CDN and caching]
+  G[500 to 1 read to write] --> F
+```
+
 ## What goes wrong: designing without numbers
 A candidate hears "design a chat app" and starts with a database choice and microservices. Twenty minutes in, the interviewer asks how many users. The answer is 50,000, and the whole design is far bigger than needed. The symptom is a diagram with many boxes and no figure next to any of them. At work the same thing produces a system that costs ten times what it should. You confirm it by asking, for each box, which number made you add it. If you cannot name one, remove the box.
 
@@ -161,6 +169,16 @@ Three ways to get keys, and what each costs:
 
 A counter hands out 1, 2, 3 and so on, and base62 encoding turns the number into a short string. To avoid one hot counter, each Write API server asks a small key service for a block, for example 1,000 numbers at a time, and hands them out locally. If a server crashes it loses at most the rest of its block, which is fine because the key space is huge. Guessable keys leak how many links exist. If that matters, shuffle the number with a keyed permutation before encoding.
 
+Base62 encoding of the counter value 5001 (digits 0 to 9, then a to z, then A to Z, so 41 is F, 18 is i and 1 is 1). Divide by 62, keep the remainder, repeat until the quotient is 0, then read the remainders from last to first:
+
+| Step | Number | Divided by 62 | Remainder | Character |
+| --- | --- | --- | --- | --- |
+| 1 | 5001 | 80 | 41 | F |
+| 2 | 80 | 1 | 18 | i |
+| 3 | 1 | 0 | 1 | 1 |
+
+The key is `1iF`. Small counters give short keys, so pad with leading zeros if the keys must all have the same length.
+
 ```mermaid Each Write API server takes a block of numbers once, then hands them out with no network call
 sequenceDiagram
   participant S as Write API
@@ -183,6 +201,13 @@ The Primer's cleanup is a scan for rows whose expiry is older than now, deleting
 Collisions with truncated hashes. The space has about 3.5 trillion keys and the design holds 360 million. When a new link is created at the end, the chance that its random key is already taken is 360 million divided by 3.5 trillion, about 0.01 percent. That is 1 in 10,000, so a check and one retry is rare and cheap. Across all inserts over three years, roughly 18,000 retries happen. That is not a problem, only a reason you must check the database for a duplicate, as the Primer does.
 
 Cache sizing (invented hit rate). Say peak is 400 reads per second. If the cache serves 90 percent, the database sees 40 per second. To hold the hottest data, cache 1 million links at about 500 bytes each. That is 500 MB, easily one Redis node. See [caching basics](/sd/docs/caching/caching-basics).
+
+```mermaid Database reads per second at a peak of 400, for a few invented cache hit rates
+xychart-beta
+  x-axis "cache hit rate in percent" [0, 50, 90, 99]
+  y-axis "database reads per second" 0 --> 400
+  bar [400, 200, 40, 4]
+```
 
 ## What goes wrong: a hot key on a viral link
 One link is shared by a celebrity and gets 20,000 reads a second. The cache entry is hot, and if it expires, thousands of requests miss at once and hit the database for the same row. The symptom is database latency spikes that line up with one key's expiry. Confirm by logging the top keys per minute. The fix is to refresh that key before it expires, coalesce concurrent misses so only one goes to the database, and let a [CDN](/sd/docs/scaling/cdn-and-edge) hold the redirect if you use 301 or a short cache lifetime. See [cache invalidation](/sd/docs/caching/cache-invalidation).
@@ -325,6 +350,13 @@ Try these numbers in the demo above.
 
 Cache size (our estimate, cap of 300 entries): 300 times 17 bytes is about 5 KB per user. For 100 million users that is 510 GB, so keep only active users in the cache, as the Primer suggests.
 
+```mermaid Seconds to fan one post out at the Primer's 60,000 deliveries a second, by follower count
+xychart-beta
+  x-axis "followers" [1000, 100000, 1000000, 10000000]
+  y-axis "seconds" 0 --> 170
+  bar [0.02, 1.7, 17, 167]
+```
+
 ## What goes wrong: a stampede of cold timelines
 After a cache outage or a launch, millions of users open the app and their timelines are not cached. Each one triggers a rebuild: find followed accounts, query SQL for their posts, merge and write back. The database falls over. Symptoms are low cache hit rate, SQL read latency climbing and timeouts. Confirm by watching hit rate and the rebuild rate. The Primer's answer for inactive users is to rebuild from SQL on demand. Add a limit on concurrent rebuilds, warm the cache for active users first, and use [timeouts and retries](/sd/docs/reliability/timeouts-and-retries) with backoff so retries do not pile up.
 
@@ -437,6 +469,14 @@ Small groups: write one message, then deliver to each member's connection, or ad
 
 Presence: clients send a heartbeat every 30 seconds, and the presence service marks someone online with a lifetime of about 60 seconds. If heartbeats stop, the key expires and they go offline. Do not broadcast every change to every contact. Send presence only to people who currently have that user's chat open or list visible.
 
+```mermaid Presence is a key with a short lifetime that heartbeats keep alive
+stateDiagram-v2
+  [*] --> Offline
+  Offline --> Online: first heartbeat
+  Online --> Online: heartbeat every 30 s
+  Online --> Offline: no heartbeat for 60 seconds
+```
+
 ## A worked example: finding Bob
 Alice and Bob are on different servers out of 200. Bob's key in the session store says server 137.
 
@@ -471,6 +511,13 @@ A connection server crashes or a deploy restarts it, and its 100,000 clients rec
 
 ## Alternatives considered
 Polling is far simpler, but look at the cost. If 20 million clients asked every 5 seconds (invented), the servers would face 4 million requests a second, nearly all of them empty. WebSockets turn that into 20 million mostly idle sockets, which the 200 servers above can hold. The price is memory per user and servers that keep state, so deploys and load balancing need care. See [stateless services](/sd/docs/scaling/stateless-services) for why that matters.
+
+```mermaid Requests per second the servers face with 20 million clients (invented numbers), against the 20,000 real messages per second
+xychart-beta
+  x-axis [Poll every 5 s, Poll every 30 s, Real messages]
+  y-axis "requests per second" 0 --> 4000000
+  bar [4000000, 666667, 20000]
+```
 
 Other transports win in other cases. If updates are rare, such as an order status that changes a few times, polling every 30 seconds is much simpler. If only the server pushes, as with a live score, server-sent events are lighter.
 
@@ -565,6 +612,17 @@ flowchart TD
   D -->|no| P
 ```
 
+Trace of the crawl loop on a tiny invented web where A links to B and C, B links to A and C, C links to D, and D has no links. Links already seen are dropped:
+
+| Step | Take from frontier | New links added | Frontier after | Seen after |
+| --- | --- | --- | --- | --- |
+| 1 | A | B, C | B, C | A, B, C |
+| 2 | B | none (A and C are seen) | C | A, B, C |
+| 3 | C | D | D | A, B, C, D |
+| 4 | D | none | empty | A, B, C, D |
+
+The cycle between A and B ends at step 2, because the seen check removes the link back to A. Without it, A and B would feed each other forever.
+
 ## Duplicates
 URLs: the Primer removes duplicates with `sort | unique` for small lists, and for 1 billion links a MapReduce job that outputs only entries with frequency 1. A faster online check is a Bloom filter, a compact structure that answers "definitely not seen" or "probably seen". ByteByteGo's guide explains it as a bit vector with several hash functions. It never gives a false negative but may give a false positive, so you may skip a few new URLs.
 
@@ -575,6 +633,13 @@ Each stored page has a timestamp. After a default period of one week the page is
 
 ## A worked example: sizing the Bloom filter and the hosts
 Bloom filter. For 1 billion URLs with a 1 percent false positive rate, the standard sizing formula gives about 9.6 bits per URL, which we round to 10. That is 10 billion bits, or 1.25 GB. It fits in memory on one machine, where a set of raw URLs would take 100 GB or more.
+
+```mermaid False positive rate of a well-sized Bloom filter by bits per URL, from the standard formula
+xychart-beta
+  x-axis "bits per URL" [4, 6, 8, 10, 12, 16]
+  y-axis "false positives in percent" 0 --> 15
+  line [14.63, 5.6, 2.14, 0.82, 0.31, 0.05]
+```
 
 Hosts. Assume one request per second per host. To reach 1,600 pages a second the crawler needs at least 1,600 different hosts in flight at once. A frontier holding mostly one big site would stall, so the per-host queues must interleave many sites.
 

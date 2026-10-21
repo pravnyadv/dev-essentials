@@ -30,6 +30,18 @@ orders = [{"name": f"{r.first_name} {r.last_name}".strip().upper(),
            "total": f"${r.total:,.2f}"} for r in rows]
 ```
 
+```mermaid Busy Database does formatting inside the one shared database, the fix moves it to app servers that are cheap to clone
+flowchart LR
+  subgraph Before
+    A1[App server] --> D1[(Database: find rows, format, apply rules)]
+  end
+  subgraph After
+    A2[App servers: format, apply rules] --> D2[(Database: find rows)]
+  end
+  class D1 bad
+  class D2 good
+```
+
 Why it hurts: a database is a shared resource, and it is hard to scale out (see [replication](/sd/docs/data/replication) and [sharding](/sd/docs/data/sharding)). Every CPU millisecond spent formatting is a millisecond not spent finding rows. A stateless app server, by contrast, is cheap to clone behind a [load balancer](/sd/docs/scaling/load-balancing). On a metered managed database you also pay for that CPU.
 
 How to detect it: throughput falls and latency rises on every endpoint that touches the database, while the amount of data moved stays small. That mix is the clue. Database CPU is high, network traffic out of the database is low. Look at the slowest queries in the database's own statistics view and ask whether the time goes to finding rows or to computing. If the queries turn out to be plain data access with no heavy computing, the real problem is more likely Extraneous Fetching.
@@ -85,6 +97,13 @@ How to fix it: use Queue-Based Load Leveling. The front end puts a small message
 
 ## A worked example: two bad endpoints (invented numbers)
 A database server has 8 cores. Each order-list request spends 40 ms of database CPU because the SQL formats everything. The database can finish at most 8 cores / 0.040 s = 200 requests per second. After the move to plain rows, each request costs 4 ms in the database: 8 / 0.004 = 2,000 requests per second. The formatting costs 1 ms of app CPU per request. Ten app servers with 4 cores each supply 40 / 0.001 = 40,000 requests per second of formatting, so the database is the limit again, 10 times later than before.
+
+```mermaid Most requests per second the 8 core database can finish, before and after the formatting moves out
+xychart-beta
+  x-axis [SQL formats everything, Plain rows]
+  y-axis "requests per second" 0 --> 2000
+  bar [200, 2000]
+```
 
 Now the Busy Front End. A web server has 4 cores. A report job burns 8 CPU-seconds. Ten reports at once need 80 CPU-seconds, which is 20 seconds of every core. For those 20 seconds a 5 ms profile lookup waits for a turn on the CPU.
 
@@ -204,6 +223,13 @@ A page lists 50 orders with customer names. The database is in the same data cen
 
 Now suppose the database is in another region and each round trip costs 40 ms. N+1 becomes 51 x 40 = 2,040 ms, a two-second page. The join stays near 46 ms. Same code, same data, and the distance multiplied the antipattern.
 
+```mermaid Time to build the page of 50 orders, in milliseconds, by query shape and round trip time (invented numbers)
+xychart-beta
+  x-axis [N+1 same site, Join same site, N+1 other region, Join other region]
+  y-axis "milliseconds" 0 --> 2100
+  bar [102, 6, 2040, 46]
+```
+
 Extraneous Fetching on the same data: a table has 1,000,000 products at about 1 KB each, so 1 GB. Loading it to count the expensive ones moves 1 GB. `SELECT COUNT(*) WHERE price > 100` returns a few bytes.
 
 ## Spot it in production: the cure causes the disease
@@ -312,7 +338,26 @@ flowchart LR
 ## A worked example: the slow upstream (invented numbers)
 A service has 100 worker threads and calls a pricing API that normally answers in 50 ms. Capacity is 100 / 0.05 = 2,000 requests per second. Traffic is 1,200 per second, so all is well. Then the pricing API slows to 500 ms. Capacity falls to 100 / 0.5 = 200 requests per second, a tenth of before, with no change in the service's own load. Requests pile up, threads fill, and even endpoints that never call pricing start to time out.
 
+```mermaid Capacity of a 100 thread service falls in proportion as the pricing API slows down
+xychart-beta
+  x-axis "pricing API latency in ms" [50, 100, 200, 500]
+  y-axis "requests per second" 0 --> 2000
+  line [2000, 1000, 500, 200]
+```
+
 Now add Improper Instantiation. Each request opens a new connection: 3 round trips of 10 ms for TCP and TLS 1.2, so 30 ms of setup before a call that takes 20 ms once connected. A shared pooled client skips the setup, so the call takes 20 ms instead of 50 ms.
+
+```mermaid A new client pays three setup round trips before the call, a pooled client skips them
+sequenceDiagram
+  participant C as Caller
+  participant S as Remote service
+  Note over C,S: New client per request, 50 ms in total
+  C->>S: TCP handshake, 10 ms
+  C->>S: TLS handshake, 2 round trips, 20 ms
+  C->>S: the call itself, 20 ms
+  Note over C,S: Shared pooled client, 20 ms in total
+  C->>S: the call itself on a warm connection, 20 ms
+```
 
 ## Spot it in production: "works until Black Friday"
 Symptom: at about 600 requests per second the service logs `Cannot assign requested address`, though the CPU is at 20 percent. Confirm by counting sockets in TIME_WAIT on the server: tens of thousands pointing at one IP. At 470 new connections per second the port range is gone. The code builds a client inside the request handler. The same mistake can also cost time without errors, when a class is merely slow to build. Moving the client to startup removes the errors without a single new server. Be careful when proving it: reproduce with a load test and check that the count of new connections falls to the pool size after the fix.
@@ -411,7 +456,21 @@ How to fix it: split data by how it is used. Put logs in a log or search store, 
 ## A worked example: quotas and a log table (invented numbers)
 A shared API has capacity of 1,000 requests per second. Tenants A, B and C normally send 100 each. A starts a bulk job and sends 900. Demand is 900 + 100 + 100 = 1,100, over capacity by 100. With no quota, the first requests in win, and B and C lose some. Give each tenant a quota of 400 per second. A is held to 400, and B and C send 100 each. Total is 600, leaving 400 spare. A's extra requests get a throttled response.
 
+| Tenant | Sends | Served with a 400 per second quota |
+| --- | --- | --- |
+| A (bulk job) | 900 | 400, the other 500 get a throttled response |
+| B | 100 | 100 |
+| C | 100 | 100 |
+| Total | 1,100, which is over the 1,000 capacity | 600, with 400 to spare |
+
 For Monolithic Persistence: an order service handles 500 orders per second and writes 6 log rows per order. That is 500 order rows plus 3,000 log rows each second, so 3,500 writes, and 86 percent of them are logs (3,000 / 3,500). Moving logs out frees most of the write load for orders.
+
+```mermaid Writes per second hitting the one database: logs are 3,000 of the 3,500
+xychart-beta
+  x-axis [Order rows, Log rows]
+  y-axis "writes per second" 0 --> 3500
+  bar [500, 3000]
+```
 
 ## Spot it in production: checkout dies at 2 a.m.
 Symptom: every night at 2 a.m. checkout slows and some requests fail with "too many connections". No traffic spike. Confirm with the database's process list at that moment: a nightly report is scanning the log table with a long query that holds connections, and the application pool is exhausted. The cause is shared storage, not slow checkout code. Move the logs to a separate store and give reports a read replica, so the report cannot touch order traffic.
@@ -487,6 +546,22 @@ sequenceDiagram
 
 Why it hurts: failures often mean overload. Retrying at once adds more load to a service that is already behind. Every client does it together, so the load multiplies. Suppose a service has capacity of 1,000 requests per second and normal traffic of 800. A 5-second blip makes requests fail. If each client retries 3 times at once, the offered load becomes up to 800 x 4 = 3,200 per second, 3.2 times capacity. Even after the cause is fixed, the service stays buried and cannot get back to normal. This synchronized pile-up is sometimes called a thundering herd. The Google SRE book describes this loop in its chapter on cascading failures: overloaded servers answer late, clients retry, and the extra work adds overload. The same chapter shows that retries at each layer of a call chain multiply: three layers that each retry 3 times can turn one user action into 64 attempts against the database.
 
+```mermaid Offered load with immediate retries for a service that normally gets 800 per second and can take 1,000
+xychart-beta
+  x-axis "immediate retries per failed request" [0, 1, 2, 3]
+  y-axis "requests per second offered" 0 --> 3200
+  line "offered load" [800, 1600, 2400, 3200]
+  line "capacity" [1000, 1000, 1000, 1000]
+```
+
+Retries stack across layers too. Each layer that retries 3 times multiplies the attempts that reach the bottom:
+
+| Layers that each retry 3 times | Attempts at the database per user action |
+| --- | --- |
+| 1 | 4 |
+| 2 | 16 |
+| 3 | 64 |
+
 How to detect it: very long response times on the client with telemetry showing repeated attempts, a retry rate that climbs while success falls, many requests from one client in a short time, and a service that stays down after the original fault is fixed. The SRE book notes that in an emergency it may not be obvious that bad retry behavior is the cause, and that graphs of retry rates can help.
 
 How to fix it: the mechanics are in [timeouts, retries and backoff](/sd/docs/reliability/timeouts-and-retries): limit attempts and total time (most callers need to retry for seconds or minutes, not forever), use exponential backoff with jitter, retry at one layer, and keep a retry budget. Three more points. Give up and return an error when the caller cannot wait. Do not retry errors that cannot succeed, such as a 400 Bad Request. And honor the Retry-After header. On the service side, throttle at a gateway, use [circuit breakers and load shedding](/sd/docs/reliability/circuit-breakers), and send a clear overload signal so clients back off.
@@ -526,6 +601,13 @@ How to fix it: use cache-aside (see [cache patterns](/sd/docs/caching/cache-patt
 
 ## A worked example: two ways to double the load (invented numbers)
 A product service gets 5,000 reads per second. The database can handle 1,500. With no cache, 3,500 reads per second cannot be served, so requests time out. A cache with a 90 percent hit ratio sends only 5,000 x 0.10 = 500 reads per second to the database, a third of its capacity.
+
+```mermaid Attempts per second reaching a database that can handle 1,500, in four situations from the example
+xychart-beta
+  x-axis [Warm cache, No cache, Cold cache, Cold cache plus retries]
+  y-axis "attempts per second" 0 --> 16000
+  bar [500, 5000, 5000, 15500]
+```
 
 Now the two antipatterns together. The cache restarts, so hit ratio drops to 0. All 5,000 reads reach the database, which fails 70 percent of them. Each failed read is retried 3 times. The database sees 5,000 first attempts plus 3,500 x 3 = 10,500 retries, which is 15,500 attempts per second, more than 10 times capacity. Warm caches and capped retries each prevent that.
 

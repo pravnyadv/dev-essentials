@@ -25,6 +25,14 @@ These two get confused. If your system is slow for a single user, you have a per
 ## Trade-offs are the core skill
 Every choice buys something and costs something. A cache makes reads fast and risks showing stale data. Copying data to three machines survives a crash and triples the storage bill. There is rarely a best answer, only an answer that fits your numbers. A good design explanation sounds like "I chose X because the load is Y, and the price is Z".
 
+Three trade-offs from this page, side by side.
+
+| Choice | What it buys | What it costs |
+| --- | --- | --- |
+| Add a cache | Fast reads | Data that may be stale |
+| Copy data to three machines | Survives a crash | Triple the storage bill |
+| Run a second server (the $70 example below, invented) | A reboot or bad deploy no longer takes the service down | $70 a month and one more machine to run |
+
 ## The interview and the real job
 System design interviews give you 45 minutes and a vague prompt, like "design a URL shortener". The real job gives you months, real traffic data, an existing system you cannot throw away, and a team that has to run it at 3 a.m. The habits carry over: ask about requirements, estimate numbers, draw boxes, name the trade-offs. What the interview skips is the long tail of operations and migration. This course teaches the habits, and flags where real work differs.
 
@@ -122,6 +130,13 @@ sequenceDiagram
   B->>S: GET /index.html
   S-->>B: 200 OK
   Note over B,S: 1 RTT for the request
+```
+
+```mermaid Time until the first response at 50 ms per round trip: a reused connection pays 1 round trip, a new TLS 1.3 connection 3, a new TLS 1.2 connection 4
+xychart-beta
+  x-axis [Reused connection, New TLS 1.3, New TLS 1.2]
+  y-axis "milliseconds" 0 --> 250
+  bar [50, 150, 200]
 ```
 
 ## A worked example: counting round trips for a page load
@@ -260,6 +275,16 @@ You move a site to a new server, and its IP changes. The A record has a TTL of 3
 
 The fix is planning. A day before the move, lower the TTL to 60 seconds. After the old TTL has expired everywhere (one hour), every cache now holds the short TTL. Move the site, and the change reaches nearly everyone within a minute. Afterwards, raise the TTL again to cut lookup load.
 
+The same change under both TTL plans, for a resolver that cached the old address at 11:59 while the record changed at 12:00.
+
+| Time | Resolver with TTL 3,600 s | Resolver with TTL lowered to 60 s a day earlier |
+| --- | --- | --- |
+| 11:59 | Caches the old IP | Caches the old IP |
+| 12:00 | Still returns the old IP | Cache has expired, returns the new IP |
+| 12:30 | Still returns the old IP | Returns the new IP |
+| 12:59 | Cache expires, returns the new IP | Returns the new IP |
+| Longest wait for the new IP | Almost 60 minutes | Almost 1 minute |
+
 ## What goes wrong: DNS as a single point of failure
 A site uses one DNS provider. That provider has an outage, or is attacked with a flood of traffic. The site's servers are healthy, yet users get "server not found" errors, because nobody can learn its address. The primer notes that a DDoS attack on a DNS provider once kept users away from major sites. Symptoms: failures from many networks at once, while connecting directly to the IP address still works. Confirm it with a lookup against the authoritative servers. Mitigation is a second DNS provider and sensible TTLs, so cached answers survive a short outage.
 
@@ -310,6 +335,16 @@ An **API** (application programming interface) is the set of requests a server a
 
 ## Choosing between them
 REST fits public APIs and data that is naturally a set of things. Tools, caches and browsers already understand it. RPC fits internal calls where speed and a typed contract matter, and where an action does not map to a noun. GraphQL fits clients with varied screens, such as mobile apps, where one view needs data from many places and bandwidth is tight. The cost of GraphQL is on the server: arbitrary queries can be expensive, so you need limits, and HTTP caching is harder because queries usually go to one URL as POST requests.
+
+The three styles compared on the points the lesson uses to choose.
+
+| | REST | RPC and gRPC | GraphQL |
+| --- | --- | --- | --- |
+| Models | Resources with names | Actions as function calls | One query over related objects |
+| Endpoints | One path per resource | One per action | One for everything |
+| HTTP caching | Easy, tools understand it | Harder | Harder, queries usually go as POST |
+| Fits | Public APIs, sets of things | Internal calls, typed contract | Mobile screens needing data from many places |
+| Watch out for | Several round trips for nested views | Tight coupling, a new endpoint per action | Expensive arbitrary queries, so set limits |
 
 ## Versioning
 Clients you do not control will not upgrade when you do. Adding a new optional field is safe. Renaming or removing a field breaks people. Put a version in the URL (`/v2/persons`) or a header, keep the old one running for a stated period, and measure who still uses it before turning it off.
@@ -405,6 +440,13 @@ So we look at **percentiles**. The p50 (median) is the value that half of reques
 Modern requests often fan out: one user action calls many servers and waits for all of them. Then the slowest one decides the response time. Google's paper "The Tail at Scale" explains that short slow episodes that do not matter in a small system can dominate the performance of a large one.
 
 Suppose each server is slow on 1 percent of its calls. A single call is slow with probability 0.01, so fast with probability 0.99. For a request that needs 100 servers, the chance that all 100 are fast is $0.99^{100} \approx 0.366$. So the chance that at least one is slow is $1 - 0.99^{100} \approx 0.634$, about 63 percent. A rare 1 percent event per server becomes the usual case for the user.
+
+```mermaid The more servers one request waits on, the likelier it meets a slow one, even when each server is slow only 1 percent of the time
+xychart-beta
+  x-axis "servers per request" [1, 10, 50, 100, 200]
+  y-axis "percent of requests with a slow call" 0 --> 100
+  bar [1, 9.6, 39.5, 63.4, 86.6]
+```
 
 ```mermaid The user waits for the slowest of the servers the request fans out to
 flowchart LR

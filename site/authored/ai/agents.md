@@ -4,6 +4,19 @@ Pick the least autonomy that solves the problem. Agents are for tasks whose step
 ## What it is
 A workflow runs a fixed path in your code and calls the model at set points, such as classify, then draft, then check. An agent lets the model decide which step comes next. The first is predictable, cheap and easy to test. The second handles open-ended work and costs more in tokens, latency and debugging.
 
+```mermaid A workflow follows a path your code fixed, while an agent loops and lets the model choose each next step
+flowchart TD
+  subgraph W[Workflow, code picks the step]
+    W1[Classify] --> W2[Draft] --> W3[Check]
+  end
+  subgraph G[Agent, model picks the step]
+    A1{Model decides} -->|Tool call| A2[Tool]
+    A2 --> A1
+    A1 -->|Done| A3[Final answer]
+  end
+  class A1 focus
+```
+
 ## How to choose
 Can you list the steps ahead of time? Use a workflow. Does the task branch in ways you cannot predict, like fixing an unknown bug in a codebase? Use an agent, and give it a way to check its work. Start with a single model call with good context. Add retrieval, then tools, then a loop, only when the simpler form falls short on your evals.
 
@@ -15,6 +28,16 @@ Take the email tagger and give it an agent loop. Invented numbers for illustrati
 
 The workflow makes one call and sends 500 tokens. The agent makes four calls and sends 500, 800, 1,100 and 1,400 tokens, which is 3,800 in total. That is 7.6 times the input for a task that needed one call.
 
+The table counts the input tokens each call sends. The agent resends the growing history every time, so its total is 7.6 times the workflow's.
+
+| Setup | Call | Tokens sent | Running total |
+|---|---|---|---|
+| Workflow | 1 | 500 | 500 |
+| Agent | 1 | 500 | 500 |
+| Agent | 2 | 800 | 1,300 |
+| Agent | 3 | 1,100 | 2,400 |
+| Agent | 4 | 1,400 | 3,800 |
+
 Cost is only part of it. The agent might also take a different route on each run, so the same email can get two different tags.
 
 ## What goes wrong: an agent where a workflow would do
@@ -22,6 +45,15 @@ The symptom is a system that works in the demo and disagrees with itself in test
 
 ## A middle path: one loop inside a workflow
 You do not have to pick one side. Keep the fixed steps in code and allow a loop in only the step that needs it. For the invoice question, fetching the invoice and the account can be two fixed calls. Only the step "work out why the totals differ" needs a loop. The loop then has a small job, a short step limit and a narrow set of tools, so it is cheap to test and hard to derail.
+
+```mermaid Only the middle step of the invoice question gets a loop, and the rest stays fixed code
+flowchart TD
+  F1[Fetch the invoice] --> F2[Fetch the account]
+  F2 --> L[Loop: work out why totals differ]
+  L --> L2[Short step limit, narrow tools]
+  L2 --> A[Answer]
+  class L focus
+```
 
 ## Common mistake
 Building an agent because the word is exciting.
@@ -77,6 +109,13 @@ Starting with the most ambitious use case instead of the most checkable one.
 ## Why long chains fail
 Suppose each step of an agent is 95 percent reliable. After 10 steps, the chance that every step is right is 0.95^10, which is 60 percent. After 30 steps it is 21 percent. That is why useful agents have short chains, checks after each step and a person at the risky points. It is also why a tool that lets the agent verify its own work, such as a test, is worth so much.
 
+```mermaid The chance that every step is right falls fast as a chain gets longer, even at 95 percent per step
+xychart-beta
+  x-axis "steps in the chain" [1, 5, 10, 20, 30]
+  y-axis "chance all steps are right, percent" 0 --> 100
+  line "0.95 to the power of steps" [95, 77.4, 59.9, 35.8, 21.5]
+```
+
 ## Hype to discount
 "Autonomous employees", agent swarms for tasks a script could do, and demos that worked once. The real limits are reliability over many steps and cost, because every step re-reads the context. The agents that work today have a narrow scope, good tools and a way to check themselves.
 
@@ -113,6 +152,20 @@ A while loop with a model call inside. Understanding the loop is understanding a
 
 Around the loop, add limits: a maximum number of steps, a cost cap and a timeout. Also log every call, so you can see what the agent did, and give a person a way to interrupt.
 
+```mermaid The model never runs a tool itself, since your program sends each call on and returns the result
+sequenceDiagram
+  participant P as Your program
+  participant M as Model
+  participant T as Tool
+  P->>M: Goal, history, tool definitions
+  M-->>P: Tool call, get_order
+  P->>T: Run get_order
+  T-->>P: Result
+  P->>M: Whole history plus result
+  M-->>P: Final answer
+  Note over P,M: Each turn resends the whole history
+```
+
 ## What goes wrong
 The model picks the wrong tool, repeats the same call, or loses the goal as the history grows. Unclear tool errors make the model retry the same call over and over. Context fills with old results. Fixes are in the harness: clear tool errors, a step limit, trimming or summarizing old output and checks the agent can run itself.
 
@@ -132,6 +185,17 @@ The new information was about 280 tokens, but the loop sent 450 + 580 + 730 = 1,
 
 ## What goes wrong: the repeat spiral
 The symptom is a log showing the same tool with the same arguments five times in a row, each returning the same result. The model does not see progress and tries again. Confirm it by logging every call and checking for identical pairs of tool name and arguments. A simple fix is for the harness to notice a repeat and either stop the run or return the message "You already tried this and got this result. Try something different."
+
+This is what the repeat spiral looks like in a log. The log is invented, and the five identical lines are the sign.
+
+```text
+step 1  get_order {"id": "8123"}  returned: No order found
+step 2  get_order {"id": "8123"}  returned: No order found
+step 3  get_order {"id": "8123"}  returned: No order found
+step 4  get_order {"id": "8123"}  returned: No order found
+step 5  get_order {"id": "8123"}  returned: No order found
+harness  Repeat detected: "You already tried this and got this result. Try something different."
+```
 
 ## When the loop is the wrong tool
 Read the logs of twenty runs. If every run makes the same three calls in the same order, the model is not deciding anything. Write those three calls as plain code and skip the loop. It will be faster, cheaper and easy to test.
@@ -198,7 +262,24 @@ Weak: "search - searches stuff". Better: "search_orders - find orders for a cust
 ## How the model sees your tools
 The model never sees your code. It sees each tool's name, description and argument schema as text, and your program sends all of them on every call. Invented numbers: 30 tools at 150 tokens each is 4,500 tokens of definitions per call. A task with 10 calls resends 45,000 tokens of tool text before any real work.
 
+```mermaid Tool definitions are resent on every call, so a 10-call task carries thousands of tokens of tool text, at an invented 150 tokens per tool
+xychart-beta
+  x-axis "tools offered" [5, 10, 20, 30]
+  y-axis "tool text sent over 10 calls, tokens" 0 --> 50000
+  bar [7500, 15000, 30000, 45000]
+```
+
 Size is only one side. With 30 similar options, the model has more chances to pick the wrong one. This is part of why fewer, clearer tools work better.
+
+```mermaid The model sees only the tool text your program sends, and your code runs on its side of the line
+flowchart TD
+  D[Name, description, schema] -->|Sent as text every call| M[Model]
+  M -->|Tool call with arguments| P[Your program]
+  P --> C[Tool code]
+  C -->|Result| P
+  P -->|Result as text| M
+  class D focus
+```
 
 ## What goes wrong: overlapping tools
 You have search_customers and find_user, and both can look up a person by email. The symptom is that the model picks one on Monday and the other on Tuesday, or picks whichever name sounds nicer. Confirm it by asking the same ten questions and tallying which tool is called. If one question splits close to evenly, the tools overlap. Merge them, or write in each description when it should not be used.
@@ -256,11 +337,42 @@ An empty result is not a failure at all. Return "No order with id 8123 exists." 
 
 If all three return the same vague "Error", the model guesses, and often retries the one case that cannot work.
 
+```mermaid Each kind of failure gets its own message, so the model knows whether to fix, wait or stop
+flowchart TD
+  T[Tool call] --> R{What happened?}
+  R -->|Bad argument| A[Message: fix the argument]
+  R -->|Service broken| B[Message: retry may work]
+  R -->|Nothing found| C[Message: no such order]
+  A --> M[Model retries]
+  B --> H[Harness retries once]
+  C --> U[Model tells the user]
+```
+
 ## What goes wrong: the silent empty result
 A tool catches every exception and returns an empty string. The model reads "nothing came back" as "no order exists" and tells the user their order is missing. The symptom is a confident wrong answer, while the logs show the tool returning empty at the same moment the database was down. Confirm it by switching off the service the tool depends on and reading what the tool returns. It should say it failed.
 
 ## Check the value, not just the type
 A schema can say quantity is an integer, and 1,000,000 is an integer. Types are only the first filter. Add checks on meaning: a refund must not exceed the order total, a date must not be in the past, a path must stay in the project folder. Put these checks in code beside the tool, where the model cannot talk its way around them.
+
+```mermaid Arguments pass a schema check and then a meaning check in code before the tool runs
+flowchart TD
+  M[Model writes arguments] --> S{Fits the schema?}
+  S -->|No| E[Error result to the model]
+  S -->|Yes| V{Value makes sense?}
+  V -->|No| E
+  V -->|Yes| R[Run the tool]
+  class E warn
+  class R good
+```
+
+The table sends four sets of arguments through both checks. The limit of 100 per order and the amounts are invented.
+
+| Arguments the model sent | Schema check | Meaning check | Outcome |
+|---|---|---|---|
+| quantity = "three" | Fails, not an integer | Not reached | Error: quantity must be a whole number |
+| quantity = 1,000,000 | Passes | Fails, above the limit of 100 | Error: quantity must be 100 or less |
+| refund = 90 on an order of 42 | Passes | Fails, above the order total | Error: refund cannot exceed 42 |
+| path = "docs/guide.md" | Passes | Passes, inside the project folder | The tool runs |
 
 ## Common mistake
 Trusting that arguments will be shaped as described. Models make typos and can be manipulated.
@@ -290,21 +402,66 @@ Prompt chaining: break a task into steps where each output feeds the next, with 
 ## Choosing
 Chain when the task splits cleanly. Route when inputs differ in kind. Parallelize for speed or confidence. Use orchestrator-workers when subtasks are not known beforehand. Use evaluator-optimizer when you have clear criteria and revision helps. Each pattern adds calls, so add one only when it improves a measured result.
 
+The table puts the five patterns side by side.
+
+| Pattern | Use it when | Calls it adds |
+|---|---|---|
+| Prompt chaining | The task splits cleanly into steps | One per step |
+| Routing | Inputs differ in kind | A classifier call, then one handler |
+| Parallelization | You want speed or confidence | One per subtask or vote |
+| Orchestrator-workers | Subtasks are not known beforehand | A lead call plus one per worker |
+| Evaluator-optimizer | You have clear criteria and revision helps | A draft, then a check and a revision per round |
+
 ## A worked example: prompt chaining
 Task: write a product page. Step 1: extract key facts from the spec as bullets. Step 2: draft copy from the bullets. Step 3: check the copy against the bullets and list any claim not supported. Step 4: fix those. Each step is small and checkable, so errors are caught early.
 
+```mermaid Prompt chaining feeds each small checked step into the next
+flowchart TD
+  S[Spec] --> F[Extract key facts]
+  F --> D[Draft copy from facts]
+  D --> C[Check claims against facts]
+  C --> X[Fix unsupported claims]
+```
+
 ## A worked example: routing
 An incoming message is classified as billing, technical or sales. Each category goes to a prompt (or model) tuned for it. A cheap model does the classification, a stronger one handles the technical cases.
+
+```mermaid Routing sends each message to the prompt or model tuned for its kind
+flowchart TD
+  M[Incoming message] --> C[Cheap model classifies]
+  C -->|Billing| B[Billing prompt]
+  C -->|Technical| T[Stronger model]
+  C -->|Sales| S[Sales prompt]
+```
 
 ## Parallelization with a vote
 Ask the model three times to label a message. The labels come back bug, bug, billing. The majority is bug. That costs three calls instead of one.
 
 Invented math: if one call is right 80 percent of the time and the three runs make independent mistakes, the majority is right when at least two are right. That is 3 × 0.8 × 0.8 × 0.2 + 0.8³ = 0.384 + 0.512 = 0.896, about 90 percent. The catch is the word independent. If the model misreads a kind of message the same way every time, three votes give the same wrong answer.
 
+The table repeats that math for more votes, with the same 80 percent per call and independent mistakes. Each extra pair of votes buys less than the one before.
+
+| Calls voting | Majority is right |
+|---|---|
+| 1 | 80.0 percent |
+| 3 | 89.6 percent |
+| 5 | 94.2 percent |
+| 7 | 96.7 percent |
+
 ## How evaluator-optimizer stops
 The loop needs an exit. A common version is: draft, then a critic checks the draft against written criteria, then the writer revises. It stops when every criterion passes or after three rounds, whichever comes first.
 
 Two failures to watch for. A critic with vague criteria always finds something to improve, so the loop runs to the cap. Or the revisions flip back and forth between two versions. Confirm either one by saving every round and comparing round 2 with round 4. If they are near identical, cut the loop and fix the criteria.
+
+```mermaid The evaluator-optimizer loop has an exit, either every criterion passes or three rounds are used up
+flowchart TD
+  D[Writer drafts] --> C[Critic checks criteria]
+  C --> Q{Pass or round 3?}
+  Q -->|No| R[Writer revises]
+  R --> C
+  Q -->|Yes| O[Stop]
+  class Q focus
+```
 
 ## When one prompt beats all of them
 Before adding a pattern, run the single plain call on your test set. If it gets 90 of 100 right, a three-step chain has to beat 90 to justify three times the calls. Often the better fix is a clearer prompt, not more structure.
@@ -345,6 +502,22 @@ The model does not read your notes file by itself. At the start of each session 
 
 That has a price. Invented numbers: the file is 2,000 tokens and grows by 200 tokens a session. Every call carries it. After 40 sessions it is 10,000 tokens on every call, even when most lines are irrelevant. That is the point where search over the notes starts to pay for itself.
 
+```mermaid A notes file that grows by 200 tokens a session adds 10,000 tokens to every call after 40 sessions, with invented numbers
+xychart-beta
+  x-axis "sessions so far" [0, 10, 20, 30, 40]
+  y-axis "notes tokens on every call" 0 --> 10000
+  bar [2000, 4000, 6000, 8000, 10000]
+```
+
+```mermaid Memory is just a file the harness pastes back into the prompt at the start of each session
+flowchart TD
+  S1[Session ends] -->|Agent appends| N[(notes.md)]
+  N -->|Harness reads at start| H[Harness]
+  H -->|Pasted into prompt| W[Context window]
+  W --> M[Model call]
+  class N focus
+```
+
 ## What goes wrong: stale memory
 A note says "The project uses PostgreSQL 15." The team has since moved to 16. The agent reads the note, trusts it, and writes code for the old version. The symptom is an agent acting confidently on a fact that was once true. Confirm it by asking the agent where it got the fact, then checking the date on that note. Fix it by dating every entry and having the agent check anything it can look up, such as a version, before acting on it.
 
@@ -382,6 +555,25 @@ Keep each conversation private to its owner. Redact secrets and personal data yo
 ## A worked example: what a saved record looks like
 conversation_id, user_id, created_at, model "sonnet-5-5", prompt_version "v14", messages: [ {role: user, text: ...}, {role: assistant, tool_call: search(...)}, {role: tool, result: ...}, ... ]. When the user returns, load the list, add the new message and send. If it is too long, summarize the oldest part and keep the last few turns.
 
+Here is the same record laid out as JSON, with invented values. Each tool call and its result share an id, which is what lets a trim or a crash check keep them paired.
+
+```json
+{
+  "conversation_id": "c_1042",
+  "user_id": "u_77",
+  "created_at": "2026-03-02T09:14:00Z",
+  "model": "sonnet-5-5",
+  "prompt_version": "v14",
+  "format_version": 2,
+  "messages": [
+    {"role": "user", "text": "Where is my last order?"},
+    {"role": "assistant", "tool_call": {"id": "t1", "name": "search_orders", "args": {"customer_email": "ana@example.com"}}},
+    {"role": "tool", "tool_call_id": "t1", "result": "Order 8123, shipped Tuesday, $42"},
+    {"role": "assistant", "text": "Order 8123 shipped on Tuesday."}
+  ]
+}
+```
+
 ## Resuming, step by step
 1. Load the saved messages by conversation id.
 2. Check the owner is the current user.
@@ -395,8 +587,30 @@ Saving as you go matters. If the process dies midway, you lose one step, not the
 ## What goes wrong: a crash between call and result
 The assistant's tool call was saved, then the server crashed before the tool result was written. On resume, the history has a call with no result. The major provider APIs reject a tool call that has no matching result, so the symptom is an error that only affects conversations that were interrupted. Confirm it by scanning saved conversations for tool calls without a matching result. On load, either drop the dangling call or add a result saying "interrupted before finishing".
 
+```mermaid A crash between saving the call and saving the result leaves a call with no result
+sequenceDiagram
+  participant S as Server
+  participant H as Saved history
+  participant T as Tool
+  S->>H: Save the assistant tool call
+  S->>T: Run the tool
+  Note over S,T: Server crashes here
+  Note over H: Call is saved, result is not
+  S->>H: Later, resume and load history
+  Note over S,H: Provider rejects a call with no result
+```
+
 ## Trimming without losing the goal
 Suppose a conversation has 40 messages and is too long. Keep the first message, since it holds the original goal. Replace messages 2 to 33 with one summary message. Keep the last 7 turns as they are. That is 1 + 1 + 7 = 9 messages instead of 40. Check that a tool call and its result are kept or dropped together, never split.
+
+```mermaid Trimming keeps the first message, one summary and the last turns, which is 9 messages instead of 40
+flowchart TD
+  A[40 messages] --> B[Message 1, the goal]
+  A --> C[Messages 2 to 33, one summary]
+  A --> D[Last 7 turns, unchanged]
+  B & C & D --> E[9 messages sent]
+  class E good
+```
 
 ## Common mistake
 Trimming messages by cutting in the middle of a tool call, leaving a result with no matching call.
@@ -429,6 +643,15 @@ Coding tasks where pieces depend on each other, because agents make conflicting 
 ## A worked example: when it pays off
 Question: "Compare five competitors' pricing." Five subagents each research one competitor and return a short structured summary. The lead agent merges them into a table. Time drops from one long run to five short ones in parallel. Token use goes up because each agent reads its own sources.
 
+```mermaid The lead agent sends one slice to each subagent and merges five short summaries into a table
+flowchart TD
+  Q[Compare five competitors] --> L[Lead agent plans]
+  L --> A1[Subagent 1] & A2[Subagent 2] & A3[Subagent 3] & A4[Subagent 4] & A5[Subagent 5]
+  A1 & A2 & A3 & A4 & A5 -->|Short summaries| M[Lead merges]
+  M --> T[Pricing table]
+  class L focus
+```
+
 ## A case where it hurts
 Two agents editing different parts of the same program must agree on the interface between them. If they decide separately, the pieces do not fit. Keep tightly coupled work in one context.
 
@@ -436,6 +659,13 @@ Two agents editing different parts of the same program must agree on the interfa
 Invented numbers. One agent researches five competitors alone and uses 100,000 tokens in one long run.
 
 With five subagents, each reads about 60,000 tokens of its own sources, so 300,000 in total. The lead adds 20,000 for planning and merging, which makes 320,000. That is 3.2 times the tokens. In return the five readings happen at once, so waiting time drops to roughly one subagent's run.
+
+The table sets the two setups side by side, using the same invented numbers.
+
+| Setup | Total tokens | Waiting time | What the lead reads |
+|---|---|---|---|
+| One agent, five competitors in turn | 100,000 | One long run | Everything, 100,000 |
+| Lead plus five subagents | 320,000 (5 x 60,000 plus 20,000) | About one subagent's run | Five summaries, 1,500 |
 
 The lead does not see the 300,000. It sees five summaries of about 300 tokens each, 1,500 tokens in total.
 
@@ -470,8 +700,28 @@ Over hours, context fills, coherence drops and agents may wrap up early. Compact
 ## A workable design
 An initializer agent expands the spec into a feature list and a setup script. A worker agent takes one feature at a time, commits and updates a progress file. An evaluator agent runs the app and the tests and reports failures with evidence. Tests and the git log are the shared state. Each agent starts by reading the progress file and the latest commits.
 
+```mermaid Three agents share the progress file, the git log and the tests, so each one can start cold
+flowchart TD
+  I[Initializer agent] -->|Expands the spec| F[Feature list and setup script]
+  F --> W[Worker agent, one feature]
+  W -->|Commit and update| P[(Progress file and git log)]
+  P --> E[Evaluator agent]
+  E -->|Runs app and tests| R[Failures with evidence]
+  R --> W
+  class E focus
+```
+
 ## A worked example: a progress file
 progress.md: "Goal: build the invoicing app. Features done: login, customer list. In progress: invoice PDF export. Next: email sending. Tests: 24 passing, 2 failing (export). Notes: use the existing PDF library." A new agent session reads this file and the latest commit messages and continues in minutes.
+
+The same progress file as a feature list. Only a passing test moves a feature to done, so the agent's own opinion never counts as finished.
+
+| Feature | Status | Test result |
+|---|---|---|
+| Login | Done | Passing |
+| Customer list | Done | Passing |
+| Invoice PDF export | In progress | 2 failing |
+| Email sending | Next | Not written yet |
 
 ## Evaluator agents
 A separate agent runs the app and tests it, then writes what it found. The worker agent fixes those issues. Splitting the roles stops the worker from marking its own homework generously.
@@ -482,6 +732,18 @@ Invented numbers. The window holds 100,000 tokens and after hours of work 90,000
 Compaction replaces the history with a 5,000-token summary and the same agent carries on. It is quick, but each summary is made from the last one, so small errors and lost details stack up.
 
 A reset starts a new agent with a 1,000-token handoff plus the files it reads itself. It costs more effort to write the handoff, but the new agent sees the real files, not a retelling.
+
+```mermaid Compaction keeps the same agent working from a summary, while a reset starts a fresh agent that reads the real files
+flowchart TD
+  subgraph C[Compaction]
+    C1[90,000 tokens of history] --> C2[5,000 token summary]
+    C2 --> C3[Same agent carries on]
+  end
+  subgraph R[Reset]
+    R1[90,000 tokens of history] --> R2[1,000 token handoff]
+    R2 --> R3[New agent reads the real files]
+  end
+```
 
 ## What goes wrong: declaring victory early
 The symptom is an agent that announces "done" with five of twenty features working. The cause is that it judges completion by feel. Confirm it by comparing its claim with the feature list and the test results. The fix is to make the list the definition of done. Each feature has a status, and only a passing test may change it to done. The run ends when the list is complete, not when the agent says so.

@@ -9,6 +9,19 @@ A good habit is to say what you want it to do for your thinking, not instead of 
 ## A worked example: learning fractions
 Version one: "Give me the answers to my fractions homework." You get answers and learn nothing. Version two: "Explain adding fractions with a pizza example. Then give me five practice questions, one at a time. After each of my answers, tell me if I am right and why." In ten minutes you have practised five problems, found the step you get wrong, and can try a fresh set tomorrow. The same tool, used differently, is a tutor or a shortcut.
 
+```mermaid Version two turns the model into a tutor: explain, quiz one question at a time, then re-explain only what you got wrong.
+flowchart TD
+  E[Model explains with an example] --> Q[Model asks one question]
+  Q --> Y[You answer]
+  Y --> C[Model says if you are right]
+  C --> W{Got it wrong?}
+  W -->|Yes| R[New explanation of only that part]
+  R --> Q
+  W -->|No| N[Next question]
+  N --> Q
+  class R focus
+```
+
 ## Why the way you ask matters
 A model has no idea what you already know. It sees only the words in the conversation, so the quality of its help depends on what you put in them. Tell it your level, your goal and the format you want. "I am 16, I understand whole numbers, explain fractions" gets a different answer from a bare "explain fractions".
 
@@ -56,6 +69,17 @@ A fluent answer is not a verified one. A few quick habits catch most errors, and
 ## What it is
 Models write confident text whether they are right or wrong, so you need your own checks. Ask for sources and open them, because a made-up link looks just like a real one. Ask for a short quote from the source and search for that quote. Cross-check the key fact in a second, independent place. Recompute numbers yourself or with a calculator. Ask the model to list what it assumed and what it is unsure about. Try it first on something you already know, to learn how reliable it is for that kind of question.
 
+The table shows what each check catches.
+
+| Check | What it catches |
+|---|---|
+| Open the cited source | An invented citation, which looks just like a real one |
+| Search for a quote from the source | A source that exists but does not say that |
+| Cross-check in a second, independent place | A claim that has only one origin |
+| Recompute the numbers | A close but wrong sum, such as 65 where the answer is 68 |
+| Ask what it assumed | Hidden guesses behind a confident answer |
+| Try it first on something you know | A kind of question the model handles badly |
+
 A well-known fact-checking routine called SIFT fits here: stop and think before sharing, investigate who is behind a source, find better coverage, and trace claims back to where they started.
 
 ## A worked example
@@ -63,6 +87,15 @@ You ask for "three studies showing that sleep improves memory", and the answer l
 
 ## How much to check
 Low stakes, such as a joke or a recipe idea: a quick glance. Medium, such as a homework fact or a work email: confirm the key claims. High, such as health, money, law or safety: use an authoritative source or a professional, and treat the model as a starting point only.
+
+```mermaid The more that depends on the answer, the more outside checking it needs.
+flowchart TD
+  A{What is at stake?} -->|Low: joke, recipe idea| L[Quick glance]
+  A -->|Medium: homework, work email| M[Confirm the key claims]
+  A -->|High: health, money, law, safety| H[Authoritative source or professional]
+  class H bad
+  class L good
+```
 
 ## Why models get things wrong
 A language model writes the most likely next words given your question. It does not look facts up unless it is connected to a search tool. When it has little reliable pattern to draw on, such as a rare name or a recent event, it still produces fluent text. That is called a hallucination. The sentence sounds the same whether it is true or invented, so tone tells you nothing.
@@ -110,6 +143,16 @@ Before: "Dear Maria Lopez, your account 4421-8830 is overdue by $240. Please cal
 ## What happens to your message
 Your text travels over the internet to the provider's computers, where the model reads it and writes a reply. The provider may store the conversation, let staff review some of it for safety, or use it to improve future models. Which of these applies depends on the service and plan. That is why the settings page matters more than the logo on the app.
 
+```mermaid Your message passes through the provider, which may do several things with it depending on the service and settings.
+flowchart LR
+  Y[You type a message] --> S[Provider servers]
+  S --> M[Model writes the reply]
+  S -.-> St[May store the conversation]
+  S -.-> Rv[May be reviewed for safety]
+  S -.-> Tr[May train future models]
+  class Tr warn
+```
+
 ## A second example: when redacting is not enough
 Redacting works when the details are separate from the question. Imagine you paste a story about a classmate's family problem with the name removed. People who know your school could still guess who it is from the events. Details such as a rare job, a small town or a date can identify someone without a name. The safer move is to describe the situation in general terms or not share it at all.
 
@@ -151,6 +194,20 @@ Rules about AI differ by school and by assignment. The safe approach is to know 
 
 ## What it is
 Some teachers allow AI for brainstorming and checking, some ban it for graded work, and some require you to show how you used it. Read your school's policy and ask when it is unclear. A simple test: after using it, could you explain every part of the work in your own words, without the chat open? If not, you have borrowed the result, not learned it.
+
+```mermaid Check the rule first, use AI only as the rule allows, and finish with the test of whether you can explain the work.
+flowchart TD
+  P[Read the school policy] --> Q{What does it say?}
+  Q -->|Unclear| T[Ask your teacher]
+  T --> P
+  Q -->|AI banned| D[Do the work without AI]
+  Q -->|AI allowed| U[Use it and say how]
+  U --> E{Can you explain every part?}
+  E -->|Yes| OK[Fine to submit]
+  E -->|No| B[Not your work yet]
+  class OK good
+  class B bad
+```
 
 ## Why detectors are not the answer
 Tools that claim to detect AI writing are unreliable. OpenAI launched its own text classifier in early 2023 and withdrew it a few months later because of its low accuracy. A 2023 Stanford study found that detectors wrongly flagged writing by non-native English speakers much more often. A flag is not proof, and false accusations can hurt real students. If you wrote it yourself, keep your notes and drafts, because they show your work.
@@ -203,6 +260,17 @@ A deepfake is fake audio, video or imagery that looks real. A few seconds of a p
 
 ## A worked example
 You receive a voicemail in your cousin's voice: "I lost my wallet abroad, please wire $800." The voice is perfect. You hang up and call your cousin's saved number. She is at home and answers right away. The voicemail was a clone. The check cost one minute.
+
+```mermaid Do not act on the message itself: hang up and call a number you already trust.
+flowchart TD
+  V[Voicemail asks for money fast] --> H[Hang up]
+  H --> C[Call their saved number]
+  C --> R{Did they send it?}
+  R -->|Yes| Ok[Real request]
+  R -->|No| Cl[Likely a voice clone]
+  class Cl bad
+  class Ok good
+```
 
 ## How a voice or face gets cloned
 Voice-cloning software learns the pattern of a person's voice from a recording, then produces new speech in that voice from typed text. Image and video fakes work in a similar way: a model learns what a face looks like and generates new frames. The quality depends on the tool and on how much material it has. Public videos and voice notes are the usual source, which is why scams often target people who post a lot.

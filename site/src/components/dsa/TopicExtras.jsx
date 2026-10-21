@@ -3,6 +3,7 @@ import { PatternSteps } from './Patterns.jsx'
 import ProblemList from './ProblemList.jsx'
 import SortVisualizer from './SortVisualizer.jsx'
 import DemoFrame from '../shared/DemoFrame.jsx'
+import Explainer from './Explainers.jsx'
 import SectionHeading from '../shared/SectionHeading.jsx'
 import { LevelBadge, Pill } from '../shared/ui.jsx'
 
@@ -15,14 +16,19 @@ export function TopicBadges({ level, patterns }) {
   )
 }
 
-// Sorting topics get the step player; other algorithm and data-structure topics show their first pattern's walkthrough.
-export function TopicDemo({ sortAlgo, pattern }) {
-  if (sortAlgo) return <SortVisualizer algo={sortAlgo} />
-  if (!pattern) return null
+// A topic's own demo comes first. Sorting topics then get the step player; other algorithm and data-structure topics
+// show their first pattern's walkthrough.
+export function TopicDemo({ demo, sortAlgo, pattern }) {
+  const own = demo && <Explainer name={demo} />
+  if (sortAlgo) return <>{own}<SortVisualizer algo={sortAlgo} /></>
+  if (!pattern) return own || null
   return (
-    <DemoFrame boxed title={<>Step through it: <a href={`/dsa/patterns/${pattern.id}`} className="normal-case tracking-normal text-fd-primary hover:underline">{pattern.name} pattern</a></>}>
-      <PatternSteps p={pattern} />
-    </DemoFrame>
+    <>
+      {own}
+      <DemoFrame boxed title={<>Step through it: <a href={`/dsa/patterns/${pattern.id}`} className="normal-case tracking-normal text-fd-primary hover:underline">{pattern.name} pattern</a></>}>
+        <PatternSteps p={pattern} />
+      </DemoFrame>
+    </>
   )
 }
 

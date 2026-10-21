@@ -4,6 +4,17 @@ Explore, plan, implement, verify. The step people skip is verify, and it is the 
 ## What it is
 A coding agent reads your code, edits files and runs commands in a loop. The reliable way to use one has four phases. Explore: let it read the relevant code and answer questions before changing anything. Plan: have it write the approach and review it yourself. Implement: let it work in small steps. Verify: run tests, linters and the app itself, and give the agent those same checks so it can fix its own failures.
 
+```mermaid The four phases run in order, and a failed check sends the agent back to implement
+flowchart TD
+  E[Explore] --> P[Plan]
+  P --> I[Implement]
+  I --> V{Checks pass?}
+  V -->|yes| D[Done]
+  V -->|no| I
+  class V focus
+  class D good
+```
+
 ## Why verification matters
 Google's agentic engineering paper puts the difference between vibe coding and engineering in one place: how output is verified. Tests check the deterministic parts. Evals check the parts that are not. If the agent can run the check, it iterates to green on its own. If only you can run it, you are the bottleneck and the agent stops at "looks right".
 
@@ -18,6 +29,17 @@ Ask for the diff, not a summary. Ask "what did you not verify?" Treat it like a 
 
 ## How the loop works
 A coding agent repeats a cycle. It reads the situation, picks an action such as opening a file or running a command, sees the result, and decides the next step. This continues until it thinks it is done or you stop it. Each result is added to its context window, so the agent can react to real output instead of guessing.
+
+```mermaid The agent acts, reads the real result, and loops until done, so checks steer every step
+flowchart TD
+  T[Task] --> A[Pick an action]
+  A --> R[Run it, see the result]
+  R --> X[Result joins its context]
+  X --> Q{Done?}
+  Q -->|no| A
+  Q -->|yes| S[Report]
+  class R focus
+```
 
 Here is a short trace with invented details. You ask it to fix a failing test.
 1. It runs the tests and sees one failure in a price function.
@@ -51,6 +73,14 @@ Felix Rieseberg, who works on Claude, describes four ways to ask models for more
 
 A worked example of altitude. Level 1: "Write a summary of last month's sales." Level 2: "Tell me what changed last month, why, and what we should do about it." Level 3: "Design a better way for leadership to catch problems early than a monthly report, and show from our history that it would have caught last spring's dip sooner." Each level gives the model more of the goal and less of the steps.
 
+The three levels side by side, with the check each one needs.
+
+| Level | Prompt | What you hand over | What you must check |
+| --- | --- | --- | --- |
+| 1 | Write a summary of last month's sales | The task | The numbers match the sales data |
+| 2 | Tell me what changed last month, why, and what we should do | Part of the goal | The reasons are supported by the data |
+| 3 | Design a better way to catch problems early, and show it would have caught last spring's dip sooner | The goal | The claim holds against the history you supplied |
+
 The cost of ambition is verification. A bigger goal needs data to work from and checks that run, because a high-level goal without checks is how errors get big. "Make my business grow" fails. "Find the three biggest reasons customers cancel, using these exports" works.
 
 ```resources
@@ -80,6 +110,16 @@ Coding agents run in your terminal, your editor or the cloud. They differ in whe
 ## The families
 Terminal agents such as Claude Code, OpenAI Codex CLI and Aider read your repo, edit files and run commands, usually with permission prompts. IDE agents such as Cursor, Windsurf and GitHub Copilot sit in the editor with inline edits and an agent mode. OpenCode is an open-source terminal agent, and Replit Agent builds apps in a hosted environment. Cloud agents run tasks on a remote machine and open a pull request when finished, which suits parallel background work. Chat apps are for questions, drafts and analysis.
 
+The families from above, compared on where they run and what to watch.
+
+| Family | Examples | Where it runs | Suits | Watch for |
+| --- | --- | --- | --- | --- |
+| Terminal agent | Claude Code, Codex CLI, Aider, OpenCode | Your terminal, on your repo | Control and scripting | A learning curve |
+| IDE agent | Cursor, Windsurf, GitHub Copilot | Inside your editor | Inline edits you can see | Accepting quickly without reading |
+| Cloud agent | Codex in the cloud | A remote machine | Parallel background work, ending in a pull request | You see the result only at the end, without your local setup |
+| Hosted builder | Replit Agent | A hosted environment | Building apps from scratch | Fit with an older, larger project |
+| Chat app | Any chat assistant | The provider's site | Questions, drafts and analysis | It cannot see your whole project |
+
 ## How to choose
 Try one tool seriously for two weeks before comparing. Learn its memory file, permission model, and how it handles context. The skills transfer between tools: explore, plan, implement, verify, keep context clean, and give the agent checks it can run. Models change quickly, so prefer tools that let you switch models.
 
@@ -91,6 +131,16 @@ Does it let you pick the model? How does it ask permission before running comman
 
 ## What actually differs between tools
 The model underneath matters, but the wrapper around it matters just as much. The wrapper decides what the agent can see, which commands it can run, how it asks permission, and how it edits files. Two tools using the same model can feel very different. Compare on four things: where it runs (your machine or a remote one), how it handles your files, how much you must approve, and whether you can see and undo each change.
+
+```mermaid The wrapper sits between the model and your project, and decides what it can see, run and change
+flowchart LR
+  M[Model] <--> W[Tool wrapper]
+  W --> F[Files it can see]
+  W --> X[Commands it may run]
+  W --> E[How edits are made]
+  W --> P[Asks you first]
+  class W focus
+```
 
 ## A second example: choosing for a small task
 You want to understand what a function does, with no changes. A chat app is enough: paste the function and ask. A coding agent would work too, but it brings permissions and file access you do not need. For a task that spans many files, such as renaming a concept everywhere, the chat app fails because it cannot see the whole project. The size of the job picks the tool.
@@ -145,8 +195,37 @@ Work through this list once, before any real task.
 ## A worked example: sorting commands
 You ask the agent to fix a failing test. It wants to run seven commands. Allow `npm test` and `git diff` for the rest of the session, because they only read or check. Approve `npm install lodash` once after looking at the package. Refuse `rm -rf build` unless you read the path, and refuse `git push --force` outright. Four commands never interrupt you again, one needed a decision, two were blocked. That is a few seconds of attention instead of a prompt on every step.
 
+Five of the seven commands from the example, with the rule each one gets.
+
+| Command | Rule | Why |
+| --- | --- | --- |
+| npm test | Allow for the session | It only checks |
+| git diff | Allow for the session | It only reads |
+| npm install lodash | Ask, approve once | Look at the package first |
+| rm -rf build | Block, unless you read the path first | It deletes files |
+| git push --force | Block | It can overwrite shared history |
+
 ## How the approval check works
 Before the agent runs a command or edits a file, the harness, the program that wraps the model, compares the request with your rules. A rule can allow it, block it, or ask you. The model does not decide this. That is the point: the check is ordinary code, so a clever prompt cannot talk its way past it. A sandbox adds a second layer, enforced by the operating system or a container, so even an approved command is limited to a small area.
+
+```mermaid The harness checks every request against your rules, and the model has no say in the answer
+sequenceDiagram
+  participant M as Model
+  participant H as Harness
+  participant U as You
+  M->>H: Wants to run a command
+  Note over H: Compare with your rules
+  alt Rule says allow
+    H->>H: Run it
+    H-->>M: Result
+  else Rule says ask
+    H->>U: Approve this?
+    U-->>H: Yes or no
+    H-->>M: Result if yes, refusal if no
+  else Rule says block
+    H-->>M: Refused
+  end
+```
 
 ## A second example: where approvals are not enough
 The agent reads a web page to learn about a library. Hidden in the page is a line telling it to send your files to an address. This is prompt injection: text from outside that tries to give the agent orders. Your approval prompt may catch an obvious command. A harmless-looking command could still pass. A sandbox with no secrets inside and no network access to unknown sites limits the harm even if you click yes. Permissions reduce mistakes. Isolation limits the damage from the ones that slip through.
@@ -201,6 +280,26 @@ Run: pnpm install, pnpm test, pnpm dev. Layout: app code in src/, tests in spec/
 ## How the file is used
 When a session starts, the harness reads the file and puts its text at the top of the model's context. The model does not remember earlier sessions by itself. Each one begins empty, so this file is the main thing that carries project knowledge from one session to the next. The agent can still read the code itself. Because the text sits in the context window, every line uses space and competes with your actual task.
 
+```mermaid The harness puts the file at the top of the context, so the model starts every session with it
+flowchart TD
+  F[CLAUDE.md or AGENTS.md] --> H[Harness reads it at start]
+  H --> C[Context window]
+  U[Your request] --> C
+  C --> M[Model]
+  class F focus
+```
+
+Where each kind of information belongs.
+
+| Information | In the memory file? | Where it goes instead |
+| --- | --- | --- |
+| Install, test and run commands | Yes | Stays in the file |
+| Layout in a few lines | Yes | Stays in the file |
+| Conventions the code does not show | Yes | Stays in the file |
+| Sharp edges such as "do not edit generated files" | Yes | Also a permission setting or hook if it must never break |
+| History and old decisions | No | A docs folder the file links to |
+| A tutorial for the framework | No | The framework's own docs |
+
 ## A second example: a file that makes things worse
 Imagine a file of 300 lines with the full history of the project, old decisions, and a tutorial for the framework. The agent now has to weigh all of it on every task. Important rules, like "never edit generated files", are buried. A shorter version keeps only what the agent cannot discover by reading the code: commands, traps and rules. The history can live in a docs folder that the file links to. Instructions in the file are also advice, not a lock. For a rule that must never break, use a permission setting or a hook.
 
@@ -252,9 +351,34 @@ Goal: always format files after the agent edits them. Not a skill (the agent mig
 ## How each one runs
 A skill works by loading on demand. At the start, the agent sees a one-line description of each skill. When your request matches, it reads the full file and follows it. The match is a judgment by the model, so a vague description may never trigger, or may trigger at the wrong time.
 
+```mermaid A skill loads only when the model judges a match, while a hook runs every time its event fires
+flowchart TD
+  subgraph Skill
+    D[Model sees name and description] --> Q{Request matches?}
+    Q -->|yes| L[Load full SKILL.md]
+  end
+  subgraph Hook
+    EV[Event, such as before a tool call] --> RUN[Harness runs the script]
+    RUN --> X{Blocking exit code?}
+    X -->|yes| ST[Action stopped]
+    X -->|no| GO[Action goes ahead]
+  end
+  class X focus
+  class ST bad
+```
+
 A hook is different. The harness, not the model, runs it when an event happens, such as "after a file is edited". The model cannot skip it. If a before-the-action hook exits with the code the tool treats as blocking (exit 2 in Claude Code), the harness stops the action and shows the message to the agent. Other error codes usually let the action go ahead, so check your tool's docs.
 
 A command is a saved prompt that you start yourself, so it runs when you type its name and not otherwise.
+
+The three tools side by side, using the examples from this lesson.
+
+| | Skill | Hook | Slash command |
+| --- | --- | --- | --- |
+| Who starts it | The model, when your request matches | The harness, when an event fires | You, by typing its name |
+| Guaranteed to run | No, the match is a judgment | Yes | Only when you type it |
+| Best for | A procedure needed only sometimes | A rule that must hold every time | A request you keep retyping |
+| Example | A release checklist | Format files after every edit | Review the last commit for security issues |
 
 ## A second example: choosing wrongly
 You want to stop the agent from ever committing a file called secrets.env. You write a skill saying "never commit secrets". This relies on the model remembering and matching. One day it does not load. A hook that checks the staged files before each commit and fails if that file appears is the right tool, because it runs every time. Now the opposite: you want the agent to know your team's review style. A hook cannot teach style. That is a skill.
@@ -312,7 +436,25 @@ For a five-minute change, one session is simpler. Each agent adds startup cost a
 ## How the pieces fit
 When the main agent starts a subagent, it hands over a written task. The subagent works in its own fresh context, reads whatever it needs, and sends back a final message. Everything it read along the way is discarded from the main chat. If it read fifty files and replied with five lines, the main agent only carries the five lines.
 
+```mermaid The subagent reads freely in its own context, and only its short summary returns to the main agent
+sequenceDiagram
+  participant M as Main agent
+  participant S as Subagent
+  M->>S: Written task
+  Note over S: Reads fifty files in its own context
+  S-->>M: Short summary
+```
+
 A worktree is made with git, the version control tool. Both folders share one history but have separate files and branches. Changes in one do not appear in the other until you merge.
+
+```mermaid Worktrees share one history but keep separate files and branches until you merge
+flowchart TD
+  R[(One shared git history)] --> A[Worktree A, branch a]
+  R --> B[Worktree B, branch b]
+  A --> M[Merge, one at a time]
+  B --> M
+  class M focus
+```
 
 ## A second example: where it does not help
 You ask three agents to refactor the same module, each in its own worktree. All three change the same functions. When you merge, you hit conflicts, and you must decide among three versions of the same code. Worktrees prevent overwriting, not overlapping work. Divide tasks so they touch different files. If two jobs need the same file, run them one after the other. Similarly, a subagent that must understand the whole conversation gains nothing, because its summary will lose context.
@@ -371,7 +513,24 @@ Posts describing this as a trick that "saves huge amounts" are exaggerated. The 
 ## How a routed run is built
 Think of it as a small factory with stations. A script, written once by a strong model, lists the stations and passes each station's output to the next. Each station is a call to a model chosen for that job. Because the script is ordinary code, loops and conditions happen exactly as written, not as the model remembers them.
 
+```mermaid In the audit example, the expensive model sees only what the earlier stations confirmed
+flowchart TD
+  S[Script from a strong model] --> A[Small model scans every file]
+  A --> B[Mid-size model proposes fixes]
+  B --> C[Another agent tries to refute each]
+  C --> D[Large model reads confirmed ones]
+  D --> E[Decides what ships]
+  class D focus
+```
+
 Here is a cost sketch with invented numbers for illustration. Say there are 100 files. A small model reads each at a cost of 1 unit, so scanning costs 100 units. It flags 10. A mid-size model fixes each flagged file at 5 units, so 50 units. A large model reviews the 10 results at 20 units each, so 200 units. Total: 350. If the large model had read all 100 files at 20 units each, it would cost 2000. The saving comes from the large model seeing only 10 percent of the work.
+
+```mermaid Invented cost units for the audit of 100 files: the routed run costs 350, while the large model reading every file costs 2,000
+xychart-beta
+  x-axis [Scan, Fix, Review, Routed total, Large model only]
+  y-axis "cost units" 0 --> 2000
+  bar [100, 50, 200, 350, 2000]
+```
 
 ## A second example: when routing loses
 Take 4 files, all closely linked, where a change in one affects the others. Splitting work among agents means each sees only part of the picture, and you pay to combine the parts. One strong session with all four files in view is cheaper and more accurate. Routing fits work that splits into independent pieces.
@@ -421,6 +580,28 @@ The agent works from the text it is given. A vague request leaves gaps, and the 
 4. When something is wrong, edit the spec, not the code.
 
 Step 4 keeps the spec as the source of truth. If you patch the code by hand, the next agent run will undo your change or contradict it.
+
+```mermaid When a check fails, you edit the spec and go round again, not patch the code by hand
+flowchart TD
+  S[Write behavior and checks] --> P[Agent plans, you read it]
+  P --> I[Implement in steps]
+  I --> Q{Checks pass?}
+  Q -->|yes| D[Done]
+  Q -->|no| E[Edit the spec]
+  E --> P
+  class E focus
+  class D good
+```
+
+Each line of a spec needs a check you could run. Vague lines have none.
+
+| Spec line | Can it be checked | Check |
+| --- | --- | --- |
+| The reset link is valid for 30 minutes | Yes | A test for expired links |
+| The link works once | Yes | A test for reuse |
+| An unknown email shows the same message as a known one | Yes | A test for unknown email |
+| Make the reset flow secure | No | Rewrite it as the lines above |
+| The page should be fast | No | Rewrite: responds in under one second on the test data |
 
 ## A second example: when a spec is too much
 You want a button to change colour. Writing a spec with edge cases would take longer than the change itself. Skip it. A spec pays off when the feature has rules that are easy to get wrong, such as money, permissions or time limits, or when several people or agents will touch it. Equally, a spec cannot capture everything: for a visual design, you may only know it is right when you see it. In that case iterate with the agent and look at the result.
@@ -473,8 +654,28 @@ Summaries can drift from their sources. Keep the raw files, require sources on e
 ## How the compile step works
 Think of it like building notes from a pile of readings. When you ingest a source, the agent reads it, finds the topics it covers, and then edits the matching wiki pages or creates new ones. It adds links between related pages and records where each claim came from. Later, a question is answered from the wiki pages, which are short, instead of from the full sources. That saves effort and gives a consistent view across documents.
 
+```mermaid Ingesting compiles raw sources into linked wiki pages, and questions are answered from the wiki
+flowchart TD
+  R[(Raw folder)] --> I[Agent ingests a source]
+  K[Control file rules] --> I
+  I --> W[(Wiki pages with sources)]
+  Q[Your question] --> A[Agent answers from the wiki]
+  W --> A
+  R -.->|spot-check| W
+  class W focus
+```
+
 ## A second example: when a wiki is the wrong tool
 You have three short articles and want an answer about one detail. Building a wiki is overkill. Paste the articles into a chat and ask. The wiki is worth it when the material is large, grows over time, or you will return to it for months. A wiki is also a poor fit for exact lookups, such as the precise wording of a contract clause, because a summary can change the wording. For those, search the raw file.
+
+Three ways to answer questions over a pile of documents.
+
+| | Wiki the agent maintains | Folder of raw files searched on demand | Paste into a chat |
+| --- | --- | --- | --- |
+| Best when | The material is large, grows, or you return for months | You want less upkeep and less drift | A few short articles and one detail |
+| Upkeep | Each ingest costs usage | Little | None |
+| Main risk | A summary can drift from its source | Slower, and links between documents may be missed | None beyond the chat's own limits |
+| Exact wording | Poor, a summary can change it | Good, search the raw file | Good |
 
 ## Trade-offs
 Compiling saves reading time but puts a layer between you and the source. Each summary is a chance for error. Updating also costs usage each time you ingest. A looser setup, a folder of raw files that the agent searches when asked, has less upkeep and less drift, but each question is slower and may miss links between documents.

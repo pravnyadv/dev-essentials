@@ -7,6 +7,17 @@ Remotion is a React framework where each video frame is a component rendered at 
 ## A workable loop
 Write a short brief with the story beats, the style and the length. Ask the agent to build one scene at a time. Render stills at key frames and check them, since the agent can view images. Keep assets and timing constants in one file so changes are cheap. The skill is directing: the agent handles syntax, you handle taste and pacing.
 
+```mermaid Build one scene at a time and look at a rendered still before moving on.
+flowchart TD
+  B[Brief: beats, style, length] --> S[Agent builds one scene]
+  S --> R[Render a still]
+  R --> L[Agent looks at the image]
+  L --> K{Layout right?}
+  K -->|No| S
+  K -->|Yes| N[Next scene, then the full render]
+  class N good
+```
+
 ## A worked example: a scene as code
 A scene is a function of the frame number. Frames 0 to 30: a title fades in (opacity = frame / 30). Frames 30 to 90: a bar chart grows (height = value × progress). Because it is plain code, the agent can change a number, re-render and compare. Timing constants live in one file so you can retime the whole video in a minute.
 
@@ -19,11 +30,35 @@ Start with arithmetic, since everything in the code runs on frame numbers.
 5. Render one frame as an image, near the middle of the scene. Check the layout, then ask for fixes.
 6. Repeat for scenes two and three, then render the whole video.
 
+The table turns the three scenes into frame numbers at 30 frames per second.
+
+| Scene | Start frame | End frame | Seconds |
+|---|---|---|---|
+| 1 | 0 | 90 | 3 |
+| 2 | 90 | 210 | 4 |
+| 3 | 210 | 300 | 3 |
+
 ## How the timing math works
 A progress value runs from 0 to 1 across a range of frames. A bar chart grows between frame 30 and frame 90, a span of 60 frames. At frame 60, progress is (60 - 30) / 60 = 0.5. If the final bar height is 80 pixels, the bar is 40 pixels tall at that moment. A title that fades in over frames 0 to 30 has opacity 0.5 at frame 15. Easing changes the curve, but the idea stays the same: the picture is a pure function of the frame number.
 
+```mermaid The bar grows in a straight line from frame 30 to frame 90 and is 40 pixels tall at frame 60, halfway
+xychart-beta
+  x-axis "frame" [30, 45, 60, 75, 90]
+  y-axis "bar height in pixels" 0 --> 80
+  line "height" [0, 20, 40, 60, 80]
+```
+
 ## What goes wrong: a preview that flickers
 Preview looks fine, but the final render has parts that jump or flicker. A common cause is timing that does not come from the frame number, such as CSS transitions, a timer, or random values. Rendering draws frames in separate browser tabs, in parallel, and does not wait for real time to pass.
+
+```mermaid A frame computed only from its number always renders the same image, while a clock or random value makes frames differ.
+flowchart LR
+  F[Frame number] --> S[Scene code]
+  S --> I[Image of that frame]
+  X[Clock, timer or random value] -.-> S
+  class X bad
+  class F good
+```
 
 To confirm, render the same frame twice, then compare the two images. A correct scene produces identical stills. If they differ, find the code that reads the clock or a random number, and replace it with a value computed from the frame.
 
@@ -63,6 +98,16 @@ A research question is a fan-out job: search many angles, read sources, cross-ch
 ## How it works
 A deep research system plans sub-questions, runs searches in parallel, fetches and reads pages, extracts claims with their sources, checks claims against each other and writes a cited report. In Claude Code, the built-in /deep-research workflow follows this shape and runs verifier agents that vote on each claim, filtering ones that fail cross-checking. The structure matters more than the brand: parallel gathering, independent verification, citations.
 
+```mermaid Deep research plans sub-questions first, searches them in parallel, then checks claims before writing.
+flowchart TD
+  Q[Question] --> P[Plan sub-questions]
+  P --> S[Parallel searches]
+  S --> R[Read pages, extract claims with sources]
+  R --> C[Check claims against each other]
+  C --> W[Write a cited report]
+  class C focus
+```
+
 ## Using it well
 Ask a specific question with a scope and time frame. Check the citations of any claim you will rely on, since a citation proves a source exists, not that it says what the report claims. Prefer primary sources. Expect cost in tokens to be many times a single chat answer.
 
@@ -74,6 +119,20 @@ Specific scope, time frame and what counts as evidence. "Compare 2023 and 2024 f
 
 ## How verification voting works
 A verifier is a separate agent that checks one claim. Take the claim "Filings fell 8 percent in 2024." Three verifiers each search for support on their own. One rule, an invented policy, keeps a claim only if at least 2 of 3 find a source that states it. Here two find it and one finds a figure of 6 percent for a smaller group. The claim stays, perhaps with the dispute noted.
+
+```mermaid Three verifiers check one claim on their own, and the claim stays only if enough of them find a source.
+flowchart TD
+  C[Claim] --> V1[Verifier 1]
+  C --> V2[Verifier 2]
+  C --> V3[Verifier 3]
+  V1 --> D{2 of 3 found a source?}
+  V2 --> D
+  V3 --> D
+  D -->|Yes| K[Keep the claim]
+  D -->|No| X[Drop the claim]
+  class K good
+  class X bad
+```
 
 The weakness: votes are only independent if the sources are. If all three verifiers land on the same blog post, three votes are really one.
 
@@ -93,6 +152,13 @@ A single fact, such as a city's population, needs one search. A question whose a
 
 ## What the cost looks like
 Parallel gathering reads a lot. Invented numbers: 5 sub-questions, 10 pages each, about 3,000 tokens a page. That is 5 x 10 x 3,000 = 150,000 tokens of reading, before the verifiers fetch pages of their own. A normal chat answer might read 5,000 tokens and write 1,000. You pay for breadth, so a narrower question is both cheaper and easier to check. Cutting the scope from five sub-questions to two cuts the reading to 60,000 tokens.
+
+```mermaid Reading cost scales with the number of sub-questions, against a normal chat answer (invented numbers, verifier reading not counted)
+xychart-beta
+  x-axis [Chat answer, Two sub-questions, Five sub-questions]
+  y-axis "tokens read" 0 --> 160000
+  bar [5000, 60000, 150000]
+```
 
 ## Common mistake
 Treating a long cited report as proof. Check the sources that matter.

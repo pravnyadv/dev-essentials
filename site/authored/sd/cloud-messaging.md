@@ -78,6 +78,13 @@ Orders normally arrive at 50 per second. For 60 seconds during a sale they arriv
 4. Emptying 36,000 messages takes 36,000 / 150 = 240 seconds, 4 minutes.
 5. The last order of the spike had 36,000 messages ahead of it and is served at 200 per second, so it waits 180 seconds.
 
+```mermaid Queue backlog during and after the 60 second spike: it grows by 600 a second, then drains by 150 a second
+xychart-beta
+  x-axis "seconds since the spike began" [0, 60, 120, 180, 240, 300]
+  y-axis "messages in queue" 0 --> 40000
+  line "backlog" [0, 36000, 27000, 18000, 9000, 0]
+```
+
 Now someone turns on autoscaling and the pool grows to 40 consumers. They can now push 400 writes per second into a database that handles 200. The queue drains faster, but the database is overloaded again. The queue only helps if the total consumer rate stays within what the downstream system can take.
 
 ## What goes wrong: the poison message
@@ -161,12 +168,29 @@ flowchart LR
   G2 -->|in order| C2[Consumer B]
 ```
 
+Trace of five messages through two consumers, where each consumer owns one order group at a time:
+
+| Time slot | Consumer A (owns order 17) | Consumer B (owns order 18) |
+| --- | --- | --- |
+| 1 | order 17 create | order 18 create |
+| 2 | order 17 add item | order 18 add item |
+| 3 | order 17 cancel | idle |
+
+Order 17 never runs out of sequence, because only A touches it. Orders 17 and 18 still run side by side.
+
 Choose the key carefully. It is the unit of parallelism. A key that is too coarse, like one customer id for all orders, limits parallel work. Within a group, throughput is limited to one message per processing time. Producers must also set the key correctly, since a wrong key puts a message in the wrong group.
 
 ## A worked example: starvation and a hot key (invented numbers)
 Twelve workers take 2 seconds per job, so the pool completes 12 / 2 = 6 jobs per second. Premium jobs arrive at 4 per second and standard jobs at 3 per second, a total of 7. That is above capacity.
 
 With one shared pool and strict priority, premium takes 4 of the 6 slots. Standard gets the remaining 2 per second, but 3 arrive. The standard backlog grows by 1 per second. After 10 minutes (600 seconds) it holds 600 jobs, and a new standard job waits 600 / 2 = 300 seconds and rising. Nothing is broken, yet standard users see growing delays.
+
+```mermaid Standard backlog under strict priority when 3 standard jobs arrive and only 2 slots are left each second
+xychart-beta
+  x-axis "seconds" [0, 100, 200, 300, 400, 500, 600]
+  y-axis "standard jobs waiting" 0 --> 600
+  line "standard backlog" [0, 100, 200, 300, 400, 500, 600]
+```
 
 For the convoy, say processing one message takes 50 ms, so one group handles 1 / 0.05 = 20 messages per second. Ten consumers can then handle 10 x 20 = 200 messages per second across many groups. One very busy order that produces 100 messages per second is still served by one consumer at a time, so it falls behind by 100 - 20 = 80 messages per second.
 
@@ -275,10 +299,27 @@ Some designs skip the status endpoint. The client polls the final address and ge
 
 Good status responses include the state, when it was created and last updated, and a structured error if it failed. A DELETE on the status resource can cancel the work. An idempotency key on the first request stops a retried request from starting the job twice. Delete old status records after a retention period.
 
+```mermaid A status resource moves from accepted to running to a final state, and the client reads it by polling
+stateDiagram-v2
+  [*] --> Accepted: 202 returned
+  Accepted --> Running: worker takes the job
+  Running --> Succeeded: result stored
+  Running --> Failed: error recorded
+  Succeeded --> [*]
+  Failed --> [*]
+```
+
 ## A worked example: payload size and polling (invented numbers)
 A service sends 10,000 uploads a day, each 40 MiB. Inline, the broker carries 10,000 x 40 = 400,000 MiB, which is about 390 GiB a day. A 40 MiB message is also forty times above the 1 MiB SQS limit, so inline sending is impossible there. With claim checks, each message is about 200 bytes, so the broker carries 10,000 x 200 bytes = 2 MB a day. The 390 GiB still moves, but through the object store that is built for it.
 
 Now polling. A thousand clients wait for a report. If each polls every 2 seconds, the status endpoint sees 1,000 / 2 = 500 requests per second. If the server sends Retry-After: 10 and clients obey, it sees 1,000 / 10 = 100 per second, one fifth of the load. The 45 second job needs about 5 polls instead of 23.
+
+```mermaid Status requests per second from 1,000 waiting clients, by how often each one polls
+xychart-beta
+  x-axis [Every 2 seconds, Retry-After 10 seconds]
+  y-axis "requests per second" 0 --> 500
+  bar [500, 100]
+```
 
 ## What goes wrong: orphans and dead references
 The payload store and the broker are two systems, so there is no single transaction across them. A sender saves the payload, then crashes before publishing. The payload sits in the store forever. The reverse is worse: if the message were sent before the save finished, the receiver would hold a reference to nothing. Another trap is a lifecycle rule that deletes payloads after 7 days while messages can wait in a queue for 14, so valid messages point at deleted data. Symptoms are growing storage bills and consumers failing with "not found". Confirm by comparing payload count to message count and checking retention settings on both sides. Publish only after the save, give payloads a retention longer than message retention, and make consumers [idempotent](/sd/docs/async/delivery-guarantees).
@@ -364,8 +405,28 @@ The slowest stage is the scan, at 5 per second per instance, so it needs 40 / 5 
 
 Suppose resize needs a large machine at $0.40 per hour, and the others run on small ones at $0.05 per hour. As a pipeline: 10 small instances x $0.05 + 4 large x $0.40 = $0.50 + $1.60 = $2.10 per hour. As a monolith, each instance does all four steps, so every instance must be large. One instance takes 330 ms per image, about 3 per second, so 40 / 3.03 is about 14 instances at $0.40, which is $5.60 per hour. The pipeline costs 62.5 percent less, because only the stage that needs big machines gets them. The monolith needs the same instance count here, so the saving is in cost and flexibility, not in raw speed.
 
+```mermaid Hourly cost for 40 images per second in invented prices, pipeline against monolith
+xychart-beta
+  x-axis [Pipeline, Monolith]
+  y-axis "dollars per hour" 0 --> 6
+  bar [2.1, 5.6]
+```
+
 ## What goes wrong: repeated messages
 The resize filter posts its result to the next queue, then crashes before acknowledging its input. The queue redelivers the input to another instance, which processes it and posts a second result. The store filter now gets the same image twice. The symptom is duplicate rows or double charges downstream. Confirm it by finding the same message id arriving at a stage more than once. Fixes: make each filter [idempotent](/sd/docs/async/delivery-guarantees), carry a stable id so a stage can drop duplicates, and use the outbox pattern from that lesson when a filter updates a database and publishes a message.
+
+```mermaid A crash before the ack makes the queue redeliver, so the store filter gets the image twice
+sequenceDiagram
+  participant Q as Resize queue
+  participant R1 as Resize instance 1
+  participant N as Store queue
+  participant R2 as Resize instance 2
+  Q->>R1: image 7
+  R1->>N: resized image 7
+  Note over R1: crashes before the ack
+  Q->>R2: image 7 again
+  R2->>N: resized image 7 again
+```
 
 ## When pipes and filters is the wrong tool
 If the steps share a lot of in-memory state, or each takes microseconds, the queue hops cost more than the work. Use a plain chain of function calls. If the steps must succeed or fail together, a pipeline of independent services does not give you that. The Microsoft page notes that a pipeline is often still one unit: a failure in any filter can fail the whole run, and a change needs an end to end test. For multi-step work that needs recovery logic, look at the [Scheduler Agent Supervisor](/sd/docs/cloud-messaging/choreography-and-supervision).
@@ -468,6 +529,17 @@ A step has a complete-by time of 30 seconds. The Supervisor runs every 60 second
 
 A step that hangs right after starting reaches its deadline at second 30. The Supervisor may scan just before that and miss it, and the next scan comes up to 60 seconds later. So one failed attempt can go unnoticed for up to 30 + 60 = 90 seconds.
 
+Trace of one hung step with a 30 second deadline and a Supervisor scan every 60 seconds, in the worst case where a scan lands just before the deadline:
+
+| Second | Event |
+| --- | --- |
+| 0 | Step starts and is marked running with a complete-by time of 30 |
+| 29 | Supervisor scans, the deadline has not passed, nothing is flagged |
+| 30 | Deadline passes, the step is still running |
+| 89 | Next scan finds the late step and asks the Scheduler to retry it |
+
+The step was late for 59 seconds before anyone noticed, and about 89 seconds passed since it started.
+
 With 4 attempts, the worst case before giving up and compensating is 4 x 90 = 360 seconds, 6 minutes. If the business needs a decision within 2 minutes, tighten the numbers: a 15 second deadline and a 15 second scan give 4 x 30 = 120 seconds. Shorter intervals find faults sooner but cost more scans and risk retrying slow steps that were about to finish.
 
 ## What goes wrong: an order nobody can find
@@ -567,8 +639,22 @@ Compensations must also be idempotent (safe to run twice) and retried until they
 ## Isolation: the missing letter in ACID
 Sagas give up isolation. Between steps 2 and 5 above, other requests can see the card charged and the order pending. Richardson's page warns that concurrent sagas can cause data anomalies, so sagas need countermeasures (design techniques that restore some isolation), which his book describes. One is a semantic lock: set a flag such as `PENDING` on the order so other operations know it is mid-saga and wait or refuse. Others include commutative updates (order does not matter) and re-reading a value before you act on it. Choose the lightest one that makes your anomaly impossible.
 
+```mermaid The PENDING flag is a semantic lock that tells other requests the order is mid-saga
+stateDiagram-v2
+  [*] --> PENDING: order created
+  PENDING --> APPROVED: every step succeeded
+  PENDING --> REJECTED: a step failed and was compensated
+```
+
 ## A worked example: counting the damage
 Invented numbers. A saga has 4 steps, and each can fail with chance 2 percent for business reasons. The chance that all four succeed is $0.98^4 = 0.922$, so about 7.8 percent of orders enter compensation. At 10,000 orders a day, that is 780 compensations, so compensation code is a main path, not an edge case.
+
+```mermaid Share of sagas that need compensation as steps are added, when each step fails 2 percent of the time (invented rate)
+xychart-beta
+  x-axis "steps in the saga" [1, 2, 3, 4, 5, 6, 7, 8]
+  y-axis "percent needing compensation" 0 --> 16
+  line [2.0, 4.0, 5.9, 7.8, 9.6, 11.4, 13.2, 14.9]
+```
 
 Say a refund call fails 1 percent of the time and is retried every minute. Each day about 780 x 0.01 = 8 refunds need at least one retry. Without idempotency keys, a retry after a timeout could refund twice. With an idempotency key such as the order id, the second call is a no-op.
 
@@ -661,7 +747,25 @@ The read store is usually a precomputed view. [Index Table and Materialized View
 ## A worked example: an account (invented numbers)
 Events for account A-7: Opened, Deposited 100, Withdrew 30, Deposited 50, Withdrew 20. Replay: 0 + 100 - 30 + 50 - 20 = 100. A new "withdraw 150" is refused, since 150 is more than 100.
 
+Replay of the stream, one event at a time:
+
+| Event | Effect | Balance after |
+| --- | --- | --- |
+| Opened | start at 0 | 0 |
+| Deposited 100 | add 100 | 100 |
+| Withdrew 30 | subtract 30 | 70 |
+| Deposited 50 | add 50 | 120 |
+| Withdrew 20 | subtract 20 | 100 |
+| Withdraw 150 (command) | refused, 150 is more than 100 | 100, no event appended |
+
 Replay cost: a busy account has 10,000 events and each takes 0.05 ms to apply. A full replay takes 10,000 x 0.05 = 500 ms. With a snapshot every 1,000 events, at most 999 events are replayed, about 50 ms plus the snapshot load.
+
+```mermaid Worst-case replay time for a stream of 10,000 events at 0.05 ms each, by how often snapshots are taken
+xychart-beta
+  x-axis [No snapshot, Every 5000, Every 1000, Every 100]
+  y-axis "milliseconds" 0 --> 500
+  bar [500, 250, 50, 5]
+```
 
 Read side: if the read model updates 200 ms after a write, a user who saves and instantly reloads may not see the change. A fix is to return the new state in the command's response.
 
@@ -768,9 +872,27 @@ Without either structure, finding the town means scanning 10 GB. At 1 million re
 
 With an index table on town plus last name, a search matches 12 customers. Normalized, that is 1 index range read plus 12 fetches, 13 reads. Fully denormalized, it is 1 read. Space: a normalized entry of 50 bytes needs 10,000,000 x 50 bytes = 500 MB, about 5 percent of the table. A fully denormalized index duplicates 10 GB for each indexed field.
 
+```mermaid Disk space for the customer table and the two ways to build the town index
+xychart-beta
+  x-axis [Customer table, Normalized index, Full copy index]
+  y-axis "megabytes" 0 --> 10000
+  bar [10000, 500, 10000]
+```
+
 With a materialized view of totals per customer, one row each, a lookup takes about 2 ms. The 12 customers cost 12 x 2 = 24 ms.
 
 Now freshness. The index is updated from a queue, about 1 second behind. The view refreshes every 5 minutes. A customer who moved to Redmond 10 seconds ago appears in the search, but their spend row can be up to 5 minutes old. The page is fast, and each half has its own lag. Decide for each field how old is acceptable.
+
+```mermaid A customer moves to Redmond: the index catches up in about a second, the view only at its next refresh
+sequenceDiagram
+  participant W as Customer table
+  participant I as Town index
+  participant V as Spend view
+  W->>I: change queued
+  Note over I: about 1 second later the customer shows in Redmond searches
+  Note over V: refreshes every 5 minutes, so spend can be 5 minutes old
+  W->>V: next scheduled refresh
+```
 
 ## What goes wrong: drift in either structure
 A write to the customer table succeeds. The update to the town index fails or is lost. The customer is in the main table but invisible in a search by town. A support agent says "this customer does not exist", while the order system finds them by id. Confirm by counting rows in both tables, or by sampling ids from the main table and looking each up in the index.

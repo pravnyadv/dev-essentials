@@ -63,6 +63,22 @@ RAM is limited, so a full cache must drop something to admit something new.
 
 LRU is a sensible default. Many caches combine a size policy with a TTL.
 
+A trace of an LRU cache that holds 3 items, with the most recently used item first.
+
+| Read | Result | Cache after the read |
+| --- | --- | --- |
+| A | miss | A |
+| B | miss | B A |
+| C | miss | C B A |
+| A | hit | A C B |
+| D | miss, evicts B | D A C |
+| B | miss, evicts C | B D A |
+| A | hit | A B D |
+| E | miss, evicts D | E A B |
+| C | miss, evicts B | C E A |
+
+Two hits in nine reads. A is read often, so it stays. B is evicted once and then comes back as a miss.
+
 ## What goes wrong: a cache that never hits
 You add a cache and the database load barely moves. Typical causes: the key includes something unique per request (a timestamp, a session id), the TTL is shorter than the gap between repeat reads, or the working set is far larger than the cache so LRU keeps evicting items before they are reused. Confirm by reading the cache's own counters (in Redis, `INFO stats` reports `keyspace_hits`, `keyspace_misses` and `evicted_keys`, the number of keys evicted because of the `maxmemory` limit) and computing $h$ as hits divided by hits plus misses. If $h$ is low, say under about 50 percent for a read-heavy workload, the cache adds a network hop and a failure point for little gain.
 
@@ -269,6 +285,13 @@ flowchart TD
   O --> D
   class M bad
   class O good
+```
+
+```mermaid XFetch refresh chance for one read, by time left before expiry, for an entry that takes 0.2 s to rebuild (beta 1)
+xychart-beta
+  x-axis "seconds before expiry" [2, 1, 0.5, 0.2, 0.1, 0]
+  y-axis "percent chance this read refreshes" 0 --> 100
+  bar [0, 0.67, 8.21, 36.79, 60.65, 100]
 ```
 
 ## Negative caching

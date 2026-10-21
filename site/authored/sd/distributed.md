@@ -45,6 +45,16 @@ Daniel Abadi observed that CAP only matters while a partition lasts, and he call
 
 The reason is replication. To stay available when a machine dies, you must keep copies. To give strong answers, a write must reach other copies, or a read must ask them, before returning. Each wait costs a network round trip. Between data centers that is tens or hundreds of milliseconds. Abadi notes this trade is present all the time, so it may shape a design more than CAP does. In his 2012 paper, Dynamo, Cassandra and Riak (default settings) are PA/EL, and VoltDB and HBase are PC/EC. Those labels describe original designs, so check current docs.
 
+```mermaid PACELC asks one of two questions depending on whether a partition is happening
+flowchart LR
+  S{Is there a partition} -->|yes| P[Trade availability against consistency]
+  S -->|no| L[Trade latency against consistency]
+  P --> PA[Answer anyway: stale or conflicting data]
+  P --> PC[Refuse: errors but correct data]
+  L --> EL[Answer from one copy: fast, may be stale]
+  L --> EC[Ask other copies first: slower, up to date]
+```
+
 ## A worked example: the last seat
 An airline keeps one copy of its seat map in Frankfurt and one in Singapore. Seat 14C on flight 88 is free. All numbers here are invented.
 
@@ -53,7 +63,6 @@ An airline keeps one copy of its seat map in Frankfurt and one in Singapore. Sea
 3. AP design: each site answers "confirmed". Both customers have a ticket. When the link returns, the system sees two bookings for one seat. Someone must be moved or compensated.
 4. CP design, where Frankfurt holds the primary copy for this flight: Singapore cannot reach it, so it refuses Ben's booking, or shows "try again". Ana's booking is safe. Ben is unhappy, but the plane never holds two people for one seat.
 5. Now the link is healthy. A design that writes to both sites before confirming adds one round trip, say 180 ms. One that confirms locally and copies later answers in 5 ms, but readers elsewhere may briefly see 14C as free. That is the PACELC choice.
-
 
 ```mermaid The last seat: the AP design confirms both bookings, the CP design refuses one
 sequenceDiagram
@@ -129,6 +138,17 @@ sequenceDiagram
 
 Linearizable: each operation appears to take effect at one instant between its start and its end, and that order respects real time. Bob reads x at time 13, after Alice's write finished. He must see 1. Reads that overlap the write may see 0 or 1, but once any read has returned 1, reads that start after it may not see 0.
 
+What a read by Bob at time 13 may return, for the write of x = 1 acknowledged at time 12:
+
+| Model | Promise in one line | Bob's read at time 13 |
+| --- | --- | --- |
+| Linearizable | One order that respects real time | Must be 1 |
+| Sequential | One shared order, but not tied to the clock | 0 or 1 |
+| Causal | Cause always appears before effect | 0 or 1, since the read is not caused by the write |
+| Read your writes | You see your own writes | 0 or 1, since only Alice is promised her write |
+| Monotonic reads | Your reads never go back in time | 0 or 1, if Bob has not yet seen 1 |
+| Eventual | Copies converge if writes stop | 0 or 1 |
+
 Sequential: everyone sees the same total order of operations, and each person's own operations stay in their program order. The order need not match the clock. If Alice texts Bob "done", Bob's read at time 13 may still return 0, because the order can place his read before her write. Jepsen's page warns that sequential reads may be arbitrarily stale, and points to linearizability when you tell another process about an event through a side channel.
 
 Causal: operations linked by cause and effect appear in that order everywhere. Unrelated operations may appear in different orders to different readers. Example: Alice posts a question, Bob reads it and posts an answer. No reader may see the answer without the question. Two unrelated posts by Carol and Dan may appear in either order.
@@ -145,6 +165,16 @@ Many replicated stores keep N copies, send each write to W of them and read from
 $$ R + W > N $$
 
 then every read set overlaps every write set in at least one copy. A read can then find the newest acknowledged write by picking the highest version among its replies, as long as the write really went to that fixed set of N copies.
+
+For N = 3, whether a read set and a write set must share a copy:
+
+| W (copies written) | R (copies read) | R + W | Overlap guaranteed |
+| --- | --- | --- | --- |
+| 1 | 1 | 2 | No |
+| 2 | 1 | 3 | No |
+| 1 | 3 | 4 | Yes |
+| 2 | 2 | 4 | Yes |
+| 3 | 1 | 4 | Yes |
 
 ## A worked example: N=3, W=2, R=2
 Copies are A, B and C. All hold x = 0 at version 1. Try these numbers in the demo above.
@@ -177,6 +207,26 @@ With W = 1 and R = 1 instead, the write would be acknowledged once A alone store
 
 ## Why quorums alone are not always linearizable
 Overlap guarantees that a read sees an acknowledged write. It does not order things while a write is still running. Suppose a write of x = 1 has reached only A so far. Reader 1 asks A and C, sees version 2 and returns 1. Then Reader 2 starts after Reader 1 finished, asks B and C, and sees only version 1. The value went backward in real time, which linearizability forbids.
+
+```mermaid A write still in progress can be seen by one reader and missed by the next, so the value goes backward
+sequenceDiagram
+  participant A
+  participant B
+  participant C
+  participant R1 as Reader 1
+  participant R2 as Reader 2
+  Note over A,C: write x = 1 (version 2) has reached only A so far
+  R1->>A: read
+  R1->>C: read
+  A-->>R1: version 2
+  C-->>R1: version 1
+  Note over R1: returns 1
+  R2->>B: read, starts after Reader 1 finished
+  R2->>C: read
+  B-->>R2: version 1
+  C-->>R2: version 1
+  Note over R2: returns 0, which went backward
+```
 
 Other gaps exist too. With a sloppy quorum, a write goes to stand-in nodes outside the usual N, so a later read quorum may not overlap it. Two concurrent writes can reach copies in different orders, and a store that picks the winner by timestamp may drop one (see [clocks and ordering](/sd/docs/distributed/clocks-and-ordering)). Read repair often runs after the read has returned, so it does not reliably close the window above. Kleppmann warns that sloppy quorums and read repair combine into tricky edge cases, even deleted data coming back. Abadi notes Dynamo-style systems cannot reach full CAP consistency even with R + W > N. One known fix makes the reader write the newest value back to a quorum before it returns, which costs another round trip.
 
@@ -218,6 +268,16 @@ Machines talk over a network that can delay or lose messages, and a silent machi
 
 ## Raft in steps
 Raft, by Diego Ongaro and John Ousterhout, was designed to be easier to understand than Paxos, the older standard. Its paper says it produces a result equivalent to Multi-Paxos and is as efficient. Every server is a follower, candidate or leader. Time is divided into terms, numbered upward, and each term has at most one leader.
+
+```mermaid The three roles of a Raft server and what moves it between them
+stateDiagram-v2
+  [*] --> Follower
+  Follower --> Candidate: election timeout
+  Candidate --> Leader: votes from a majority
+  Candidate --> Candidate: split vote, new term
+  Candidate --> Follower: hears a leader or a higher term
+  Leader --> Follower: sees a higher term
+```
 
 1. Servers start as followers. The leader sends regular heartbeats.
 2. A follower that hears nothing for the election timeout starts an election. It adds one to its term, votes for itself and asks the others for votes.
@@ -269,6 +329,13 @@ $$ f = \lfloor (n - 1)/2 \rfloor $$
 
 With 5 servers, a majority is 3, so 2 can fail. With 4 servers, a majority is 3 and only 1 can fail, so an even size adds cost and no tolerance. Consul's docs list this table and recommend 3 or 5 servers for production. Any two majorities share at least one server. A committed entry sits on a majority, a winner needs votes from a majority, and the voting rule in step 5 means the winner's log is at least as up to date as every voter's. That is why a new leader always holds every committed entry.
 
+```mermaid Servers that may fail while the cluster still commits writes: even sizes add cost and no tolerance
+xychart-beta
+  x-axis "servers in the cluster" [1, 2, 3, 4, 5, 6, 7]
+  y-axis "failures tolerated" 0 --> 3
+  bar [0, 0, 1, 1, 2, 2, 3]
+```
+
 ## A worked example: a leader dies after a commit
 Five servers, S1 to S5. S1 is leader in term 3. Invented timings.
 
@@ -279,10 +346,38 @@ Five servers, S1 to S5. S1 is leader in term 3. Invented timings.
 5. S2 times out, starts term 5 (it saw term 4 earlier), and wins with S3, S4 and S5, since their logs are no more up to date than its own.
 6. S2 appends a blank entry for term 5 at index 9 and copies its log to the others, so S4 and S5 receive index 8 too. When index 9 is on a majority, S2 knows index 8 is committed as well. The value was never lost.
 
+State after each step, for the five servers:
+
+| After step | Leader | Log index 8 stored on | What happened |
+| --- | --- | --- | --- |
+| 2 | S1, term 3 | S1, S2, S3 | Committed with 3 of 5 |
+| 3 | none, S1 is down | S1 (down), S2, S3 | S4 becomes candidate in term 4 |
+| 4 | none | S1 (down), S2, S3 | S4 gets 2 of 5 votes and loses |
+| 5 | S2, term 5 | S1 (down), S2, S3 | S2 wins with 4 of 5 votes |
+| 6 | S2, term 5 | S1 (down), S2, S3, S4, S5 | Index 8 reaches everyone, index 9 is S2's blank entry |
+
 ## Split brain and fencing tokens
 Split brain means two nodes both believe they lead. Raft prevents two leaders in one term, but an old leader cut off in a minority may not know it was replaced. It cannot commit anything, since it cannot reach a majority, and a higher term number makes everyone reject it once it reconnects. It could still serve stale reads if it answered them alone, so the Raft paper has a leader exchange heartbeats with a majority before it answers a read. The danger comes from outside Raft. Say a client holds a lock with a lease, then pauses for a long garbage collection. The lease expires and another client takes the lock. When the first wakes up, it still believes it holds the lock.
 
 Kleppmann's fix is a fencing token, a number that grows with each lock grant. Client 1 gets 33, client 2 gets 34. The storage service remembers the highest token it saw and rejects any write below it. The storage service must take part in the check. A lock service alone cannot stop the stale write.
+
+```mermaid Fencing tokens: the storage service rejects the write that carries the older token
+sequenceDiagram
+  participant C1 as Client 1
+  participant L as Lock service
+  participant C2 as Client 2
+  participant S as Storage
+  C1->>L: acquire lock
+  L-->>C1: granted, token 33
+  Note over C1: long garbage collection pause
+  Note over L: lease expires
+  C2->>L: acquire lock
+  L-->>C2: granted, token 34
+  C2->>S: write with token 34
+  S-->>C2: accepted
+  C1->>S: write with token 33
+  S-->>C1: rejected, 33 is below 34
+```
 
 ## Leader Election
 ```card Leader Election
@@ -331,6 +426,13 @@ Machines cannot agree on what time it is, so wall clock timestamps are a weak wa
 A wall clock tells the date and time. Computers set it from NTP, a protocol that adjusts it using servers over the network. Two machines never agree exactly. Their clocks drift (run slightly fast or slow) and differ by some skew (the offset between them). NTP may also move a clock backward to correct it: by default it jumps the clock when the error is over 128 ms. Aphyr's course notes list hardware clocks that ran fast, hypervisors that lied about time and a leap second that made time go backward.
 
 A monotonic clock only moves forward and counts elapsed time from some arbitrary start. Use it to measure durations and timeouts. It is useless across machines, since each has its own starting point. It has quirks too. On Linux, CLOCK_MONOTONIC stops counting while the machine is suspended (CLOCK_BOOTTIME keeps counting), and some platforms have had bugs where monotonic time went backward.
+
+| | Wall clock | Monotonic clock |
+| --- | --- | --- |
+| Answers | What date and time is it | How much time has passed since some start |
+| Set by | NTP, which may step it backward | Counts forward only |
+| Comparable across machines | Roughly, within the skew | No, each machine has its own start |
+| Use it for | Timestamps a person reads | Durations and timeouts |
 
 A real case: Cloudflare's DNS software measured how fast its upstream resolvers answered by subtracting two wall clock reads. At midnight UTC on 1 January 2017 a leap second made the clock step back, so some timings came out negative. A negative value reached Go's rand.Int63n function, which panics on a negative argument. At peak, about 0.2 percent of DNS queries to Cloudflare were affected, and the fix was out everywhere by 06:45 UTC.
 
@@ -386,6 +488,14 @@ Now a happened before f, and 1 is less than 5. But c has 1 and b has 2 while the
 
 ## Vector clocks, briefly
 A vector clock keeps one counter per process. Alice's replica writes with [1,0], Bob's with [0,1]. Neither is less than or equal to the other in every slot, so they are concurrent, and the store keeps both for the application to merge. If one vector is at least the other everywhere, that write is the newer. The cost is space that grows with the number of processes.
+
+Comparing two vector clocks slot by slot:
+
+| Clock 1 | Clock 2 | Result |
+| --- | --- | --- |
+| [1,0] | [0,1] | Concurrent, since each is larger in one slot, so keep both |
+| [1,0] | [2,0] | Clock 1 is older, so keep clock 2 |
+| [2,1] | [1,1] | Clock 2 is older, so keep clock 1 |
 
 ## Hybrid clocks and TrueTime
 Hybrid logical clocks (Kulkarni and colleagues, 2014) pair a physical time with a small counter. The time part is the largest wall clock reading the node has seen, from itself or from messages. The counter breaks ties. If event e happened before f, e gets the smaller stamp, as with Lamport clocks, and the stamp stays close to the real clock, within the sync error. The paper notes it fits in a 64-bit NTP timestamp.

@@ -3,9 +3,10 @@
 // In the body, ```mermaid <caption> draws a diagram and ```card <name> holds one `Label | text` line per label of a CARDS shape.
 // Each track's curation file supplies TIERS, STAGES, GOALS, CHAPTERS and EXPLAINERS, and optionally STYLES (the rules for a
 // chapter's `style`); its build script adds what only it has.
-import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { renderMermaidSVG } from 'beautiful-mermaid'
+import { diagramSvg, figureMdx } from './lib-diagrams.mjs'
+import { generatedDir, writeIfChanged } from './lib-files.mjs'
 
 export const KINDS = ['article', 'video', 'course', 'repo', 'paper', 'docs', 'tool', 'book']
 export const CARDS = {
@@ -15,26 +16,9 @@ export const CARDS = {
 }
 const cardKind = labels => Object.keys(CARDS).find(k => CARDS[k].join() === labels.join())
 
-// Highlight classes a diagram may use (`class X bad`), drawn in the theme's status colours.
-const HIGHLIGHTS = Object.entries({ bad: '--color-danger', good: '--color-success', warn: '--color-warning', focus: '--color-fd-primary' })
-  .map(([cls, v]) => `  classDef ${cls} fill:var(${v}),stroke:var(${v}),color:var(--color-fd-background)`).join('\n')
-const svgCache = new Map()
-// Mermaid to SVG at build time, coloured by CSS variables so it follows the light or dark theme with no client code.
-// The renderer imports a web font, which is dropped so text uses the page font. Wide diagrams scroll rather than shrink unreadably.
-function diagramSvg(chart) {
-  if (!svgCache.has(chart)) {
-    const source = /^(flowchart|graph|stateDiagram)/.test(chart) ? `${chart}\n${HIGHLIGHTS}` : chart
-    const svg = renderMermaidSVG(source, { bg: 'var(--color-fd-card)', fg: 'var(--color-fd-foreground)', accent: 'var(--color-fd-primary)', muted: 'var(--color-fd-muted-foreground)', padding: 16, transparent: true })
-    const w = Math.round(+svg.match(/width="([\d.]+)"/)[1])
-    svgCache.set(chart, svg.replace(/@import url\([^)]*\);/g, '').replace(/font-family: '[^']*', system-ui, sans-serif/g, 'font-family: inherit')
-      .replace(/ width="[\d.]+" height="[\d.]+" style="/, ` width="100%" style="display:block;margin:auto;height:auto;max-width:${w}px;min-width:${Math.round(w * 0.75)}px;`))
-  }
-  return svgCache.get(chart)
-}
 const blocksIn = body => [...body.matchAll(/^```(mermaid|card) (.+)\n([\s\S]*?)^```$/gm)].map(m => ({ kind: m[1], arg: m[2].trim(), lines: m[3].trim().split('\n') }))
 const LEVEL = { 1: 'Starter', 2: 'Core', 3: 'Stretch' }
 const here = new URL('.', import.meta.url).pathname
-const write = (path, text) => { mkdirSync(join(path, '..'), { recursive: true }); writeFileSync(path, text) }
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const repoOf = url => url.match(/^https:\/\/github\.com\/([^/]+\/[^/#?]+)\/?$/)?.[1]
 
@@ -95,7 +79,7 @@ export function loadTrack(name, { CHAPTERS, EXPLAINERS, TIERS, STAGES, GOALS, ST
         if (line !== '```') { block.lines.push(line); return null }
         const b = block
         block = null
-        return b.kind === 'card' ? card(b) : `<DiagramFigure caption={${JSON.stringify(b.arg)}} svg={${JSON.stringify(diagramSvg(b.lines.join('\n')))}} />`
+        return b.kind === 'card' ? card(b) : figureMdx(b.arg, b.lines.join('\n'))
       }
       const open = !fenced && line.match(/^```(mermaid|card) (.+)$/)
       if (open) { block = { kind: open[1], arg: open[2].trim(), lines: [] }; return null }
@@ -197,20 +181,21 @@ export function loadTrack(name, { CHAPTERS, EXPLAINERS, TIERS, STAGES, GOALS, ST
     for (const t of Object.values(topics)) for (const r of t.resources) (library[r.url] ??= { ...r, topics: [] }).topics.push({ title: t.title, url: t.url })
     if (errors.length) { console.error(errors.join('\n')); process.exit(1) }
 
-    rmSync(out, { recursive: true, force: true })
+    const pages = generatedDir(out)
     const rootPages = []
     for (const tier of TIERS) {
       rootPages.push(`---${tier.id}. ${tier.title}---`)
       for (const c of chapters.filter(c => c.tier === tier.id)) {
         rootPages.push(c.id)
-        write(join(out, c.id, 'meta.json'), JSON.stringify({ title: c.title, pages: c.topics.map(t => t.slug) }, null, 2))
-        for (const t of c.topics) write(join(out, c.id, `${t.slug}${t.source ? '.md' : '.mdx'}`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : `${toMdx(t.body, t.terms)}\n\n${hiddenStory(t.story)}`}\n`)
+        pages.write(join(out, c.id, 'meta.json'), JSON.stringify({ title: c.title, pages: c.topics.map(t => t.slug) }, null, 2))
+        for (const t of c.topics) pages.write(join(out, c.id, `${t.slug}${t.source ? '.md' : '.mdx'}`), `---\ntitle: ${JSON.stringify(t.title)}\ndescription: ${JSON.stringify(`${t.minutes} min · ${LEVEL[t.level]}`)}\n---\n\n${t.source ? t.body : `${toMdx(t.body, t.terms)}\n\n${hiddenStory(t.story)}`}\n`)
       }
     }
-    write(join(out, 'meta.json'), JSON.stringify({ pages: [`[Dashboard](/${name})`, `[Learning map](/${name}/map)`, ...rootPages, '---Reference---', ...reference] }, null, 2))
+    pages.write(join(out, 'meta.json'), JSON.stringify({ pages: [`[Dashboard](/${name})`, `[Learning map](/${name}/map)`, ...rootPages, '---Reference---', ...reference] }, null, 2))
+    pages.finish()
 
     const slim = Object.fromEntries(Object.entries(topics).map(([id, t]) => [id, { ...t, body: undefined }]))
-    write(join(here, `../src/generated/${name}.json`), JSON.stringify({
+    writeIfChanged(join(here, `../src/generated/${name}.json`), JSON.stringify({
       tiers: TIERS, stages: STAGES, goals: GOALS,
       chapters: chapters.map(c => ({ ...c, topics: c.topics.map(t => slim[t.id]) })),
       topics: slim,

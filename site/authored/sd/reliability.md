@@ -138,6 +138,18 @@ def call_with_retries(fn, tries=4, base=0.1, cap=5.0):
 
 This is "full jitter": sleep a random time between zero and the capped exponential value.
 
+The upper bound of the wait as failures pile up, with base 0.1 s and cap 5 s. The code above allows 4 tries, so it sleeps only after failures 1 to 3. Full jitter picks a random time between 0 and the bound.
+
+| Failure number | Upper bound of the wait |
+| --- | --- |
+| 1 | 0.1 s |
+| 2 | 0.2 s |
+| 3 | 0.4 s |
+| 4 | 0.8 s |
+| 5 | 1.6 s |
+| 6 | 3.2 s |
+| 7 and later | 5 s (the cap) |
+
 ```mermaid With jitter, two clients that failed together retry at different moments
 sequenceDiagram
   participant A as Client A
@@ -166,6 +178,13 @@ Invented numbers. A database can handle 1,000 queries per second and normally ge
 2. Under the fault, many clicks fail all the way down. If 100 clicks per second hit the failing path, the database sees up to 2,700 queries per second.
 3. That is far above its 1,000 limit, so more queries fail and more retries happen.
 4. With retries only in the top layer, the same 100 clicks cause at most 300 queries. The database can recover.
+
+```mermaid Calls reaching the bottom service from one failing request when every layer tries 3 times
+xychart-beta
+  x-axis "layers that retry" [1, 2, 3, 4, 5]
+  y-axis "calls at the bottom" 0 --> 260
+  bar [3, 9, 27, 81, 243]
+```
 
 ## What goes wrong: the retry storm
 A dependency has a 30 second blip. Every client retries after exactly 1 second, then 2, then 4. The dependency recovers, but is hit by thousands of clients in the same instant, falls over again, and repeats. The symptom is request spikes at regular intervals, visible on a per-second graph. Confirm it by looking at call counts per second to the dependency, and check whether they sit at powers of two after the incident started. Fix it with jitter, one retry layer and a budget. The [Retry Storm antipattern](/sd/docs/antipatterns/retry-storm-and-no-caching) lesson shows the same collapse in code, with the measurements that expose it.
@@ -294,6 +313,14 @@ Invented numbers. Capacity 5 tokens, refill 2 tokens per second, bucket starts f
 
 Compare a fixed window of 100 per minute. A client sends 100 requests at 0:59 and 100 more at 1:00. Both windows allow it, yet the server saw 200 in two seconds. For a sliding window counter, Cloudflare's example with a limit of 50 per minute: 42 requests last minute, 18 so far this minute, 15 seconds in. Estimated rate is $42 \times 0.75 + 18 = 49.5$. One more request in the next second pushes the estimate to about 50 and the limiter starts rejecting.
 
+The same two bursts through a fixed window and a token bucket, both set to 100 per minute (the bucket holds 100, starts full at 0:59 and refills about 1.67 per second).
+
+| Time | Requests sent | Pass a fixed window | Pass a token bucket |
+| --- | --- | --- | --- |
+| 0:59 | 100 | 100 | 100 |
+| 1:00 | 100 | 100, a new window just opened | 1, about 1.67 tokens came back |
+| Total passed | 200 | 200 | 101 |
+
 ## What goes wrong: the limiter takes the API down
 A new limiter reads counters from Redis on every request. Redis slows down and each API call now waits on it, so the limiter becomes the outage. Another case: a bug sets limits too low and rejects paying customers. Symptoms are a spike in 429s or latency matching Redis latency. Stripe's advice maps to the fixes: catch errors so the limiter fails open, keep a kill switch, track how often each limiter triggers, and dark launch it first so you can see what it would block.
 
@@ -381,6 +408,14 @@ Invented numbers. A web service has 100 worker threads and receives 100 requests
 3. After about one second all threads are stuck, and the whole site returns errors, including pages that never use recommendations.
 4. With a breaker (opens after 5 failures) and a bulkhead of 10 threads for that call, at most 10 threads are ever stuck. After the breaker opens, calls fail in microseconds and the page shows a default list.
 
+```mermaid Threads busy equal 100 requests per second times the seconds each call waits, so a 2 second hang needs twice the 100 thread pool
+xychart-beta
+  x-axis [50 ms, 200 ms, 500 ms, 1 s, 2 s]
+  y-axis "threads busy" 0 --> 210
+  bar "Threads busy" [5, 20, 50, 100, 200]
+  line "Pool size" [100, 100, 100, 100, 100]
+```
+
 ## What goes wrong: the breaker that flaps
 A breaker is set with a 1 second open period. The dependency needs 30 seconds to recover, so each half-open trial fails and the breaker reopens, while real users keep hitting errors. Or the threshold is so sensitive that two slow calls trip it for everyone. Symptoms are error rates that rise and fall in a regular rhythm. Confirm it by graphing breaker state changes next to dependency latency. Tune the thresholds, wait longer, or allow only a trickle of trial calls.
 
@@ -414,6 +449,14 @@ Observability lets you ask why a system is misbehaving from the data it emits. L
 A log is a record of one event, such as "payment failed for order 812 with a timeout". Logs hold the detail and are usually the largest signal by volume. Write them as structured data, such as JSON, so you can search by field. A metric is a number measured over time, such as requests per second or the 99th percentile latency. Metrics are cheap to store and good for graphs and alerts, but they show that something is wrong, not which request. A trace follows one request through many services. Each step is a span with a start time, an end time and a link to its parent span.
 
 Each answers a question. Metrics ask "is something wrong?". Traces ask "where in the path is the time going?". Logs ask "what exactly happened in this step?". You usually move from a metric alert, to a trace, to the logs of the slow span.
+
+The three signals compared.
+
+| Signal | Question | Strength | Weakness |
+| --- | --- | --- | --- |
+| Metric | Is something wrong? | Cheap to store, good for graphs and alerts | Shows that something is wrong, not which request |
+| Trace | Where is the time going? | Follows one request across services | Needs the trace ID passed along on every call |
+| Log | What exactly happened in this step? | Holds the detail | Usually the largest signal by volume |
 
 ```mermaid An incident usually walks from the metric to the trace to the log line
 flowchart TD
@@ -462,6 +505,13 @@ Invented numbers. SLO: 99.9 percent of requests succeed over 30 days. Traffic is
 2. A bad deploy fails 20 percent of requests for 15 minutes. That is $1{,}000 \times 0.20 \times 15 = 3{,}000$ failures.
 3. That used about 7 percent of the monthly budget.
 4. If instead 10 percent of requests fail steadily, that is 100 times the allowed rate of 0.1 percent. The whole month's budget (720 hours) would last about 7.2 hours. That is worth a page.
+
+```mermaid How long a 99.9 percent monthly error budget lasts at a steady failure rate (720 hour budget)
+xychart-beta
+  x-axis [0.5 percent fail, 1 percent fail, 5 percent fail, 10 percent fail]
+  y-axis "hours until the budget is gone" 0 --> 150
+  bar [144, 72, 14.4, 7.2]
+```
 
 ## What goes wrong: the dashboard that says all is well
 The graph shows average latency of 120 ms and green status, while users complain. Behind it, 2 percent of requests take 8 seconds, from one slow database shard. The average hides them. You confirm it with a latency histogram split by shard, and by pulling a slow trace to see the wait. Fix it by alerting on p99 and on the SLO, not on the mean, and by adding the trace ID to error logs so complaints can be matched to requests.
@@ -561,6 +611,18 @@ Invented numbers. The SLO is 99.9 percent of requests succeed over 30 days (720 
 3. A one-minute spike to 5 percent lifts the 5-minute average but barely moves the 1-hour one, so it does not page.
 4. A steady 0.15 percent error rate is a burn rate of 1.5. It never pages, but it passes the ticket line, so someone looks at it that week.
 
+When the page fires for errors that start at 5 percent (burn rate 50) and were zero before, with the 14.4 line on both windows.
+
+| Minutes since errors began | 5-minute burn rate | 1-hour burn rate | Page? |
+| --- | --- | --- | --- |
+| 1 | 10 | 0.8 | No |
+| 5 | 50 | 4.2 | No |
+| 10 | 50 | 8.3 | No |
+| 17.3 | 50 | 14.4 | Yes, both windows are at the line |
+| 30 | 50 | 25 | Yes |
+
+A one-minute spike looks like the first row and then falls away, so it never pages.
+
 ## What goes wrong: alert fatigue
 A team has 60 alerts and about 40 pages a week, mostly CPU and disk warnings that fix themselves. After a month people mute the channel, and a real database failover pages at 2 a.m. and sits unread for 40 minutes. The symptom is a rising share of pages with no action taken, and incidents that customers find first. Confirm it by counting pages per week and the share that needed a human. Fix it by deleting alerts nobody acted on, moving cause-based alerts to dashboards, and paging on burn.
 
@@ -633,6 +695,14 @@ Invented numbers. An app issues JWTs valid for 24 hours. An employee is dismisse
 2. Every server accepts it, because checking the signature needs no database call, so the account looks disabled only to the login page.
 3. Exposure window: 23.5 hours.
 4. Change tokens to a 15 minute lifetime with a refresh token the server can revoke. The window is now at most 15 minutes. With server sessions it would be zero, at the cost of one lookup per request.
+
+The same dismissal under three designs, for a token issued at 8:30 and an account disabled at 9:00.
+
+| Design | How long the old token still works | Lookup per request |
+| --- | --- | --- |
+| JWT valid for 24 hours | 23.5 hours | None |
+| 15 minute access token, revocable refresh token | At most 15 minutes | None |
+| Server session | None, deleted at once | One |
 
 ## What goes wrong: the key in the repository
 A developer commits a cloud access key to a repository, even a private one. It later leaks through a fork or a laptop. Automated scanners find exposed keys quickly. The symptom may be an unexpected bill or data you did not delete. You confirm it by searching history with a secret scanner and checking the cloud audit log for calls from unknown addresses. The fix is to revoke and rotate the key at once, since deleting the file does not remove it from history, then move secrets to a manager.

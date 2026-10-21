@@ -27,7 +27,7 @@ export default async function Page(props: PageProps<'/dsa/docs/[[...slug]]'>) {
       description={page.data.description}
       next={next && { url: next.url, title: next.title }}
       badges={topic && <TopicBadges level={topic.level} patterns={patterns} />}
-      before={topic && <TopicDemo sortAlgo={sortAlgo(page.slugs)} pattern={topic.kind !== 'Fundamentals' ? patterns[0] : undefined} />}
+      before={topic && <TopicDemo demo={'demo' in topic ? topic.demo : undefined} sortAlgo={sortAlgo(page.slugs)} pattern={topic.kind !== 'Fundamentals' ? patterns[0] : undefined} />}
       after={topic && <Practice patterns={patterns} />}
     />
   );

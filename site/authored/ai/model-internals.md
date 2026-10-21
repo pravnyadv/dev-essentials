@@ -13,6 +13,12 @@ Follow the Karpathy video with the code open. Then change one thing at a time, s
 ## A worked example: the learning path in code
 Step 1: count which character follows which (a bigram model). Loss about 2.5. Step 2: add one self-attention layer so a character can see earlier ones. Loss drops to about 2.1. Step 3: add several heads and layers, residual connections and layer norm. Loss about 1.5 and output looks like verse. Each step is a few lines and each step visibly helps.
 
+```mermaid Each step adds one piece, and the loss falls
+flowchart TD
+  A[Bigram counts, loss 2.5] --> B[Add self-attention, loss 2.1]
+  B --> C[Add heads, layers, residuals, loss 1.5]
+```
+
 ## What to try after
 Change the context length and see what happens. Train on your own text. Make the model bigger until it overfits (validation loss rises) and then add dropout. You are doing, at small scale, exactly what the labs do.
 
@@ -24,6 +30,16 @@ Training repeats one loop thousands of times.
 4. Backpropagation works out how much each parameter contributed to the loss.
 5. The optimizer moves every parameter a small step that lowers the loss.
 
+```mermaid One training step is a loop: batch, predict, loss, blame, nudge, then the next batch
+flowchart TD
+  A[Cut a batch of snippets] --> B[Predict the next character]
+  B --> C[Loss from the true character]
+  C --> D[Backpropagation]
+  D --> E[Optimizer moves parameters]
+  E -.->|Repeat thousands of times| A
+  class C focus
+```
+
 Trace one position. The text so far is "th" and the true next character is "e". If the model gave "e" a probability of 0.02, the loss is 3.91. After some steps it gives 0.10 and the loss is 2.30. The loss curve you watch is this number averaged over the batch.
 
 ## How to tell it is working
@@ -31,6 +47,14 @@ Before training, the model guesses almost evenly. If your text has 65 distinct c
 
 ## What goes wrong: it memorizes
 The symptom is training loss that keeps falling while validation loss turns upward, and samples that repeat long stretches of the training file word for word. A small text file holds far fewer facts than a model of millions of parameters can store, so it copies. To confirm, print the loss on both sets and look for the gap opening. Fixes, in order of effort: more text, dropout, a smaller model, or stopping at the step with the lowest validation loss.
+
+```mermaid Invented loss curves: training loss keeps falling while validation loss turns upward, the sign of memorizing
+xychart-beta
+  x-axis "training step" [0, 500, 1000, 1500, 2000, 2500]
+  y-axis "loss" 0 --> 5
+  line "training loss" [4.2, 2.4, 1.6, 1.0, 0.6, 0.3]
+  line "validation loss" [4.2, 2.5, 1.9, 1.9, 2.2, 2.6]
+```
 
 ## When this is the wrong tool
 A model trained from scratch on one file only continues text in that file's style. It cannot answer questions or follow instructions. For real tasks you start from a pretrained model and adapt it, as the fine-tuning lesson shows.
@@ -74,6 +98,19 @@ SwiGLU is a small change to the feed-forward step. It uses two projections, one 
 
 Mixture of experts, or MoE, replaces one big feed-forward block with many smaller "expert" blocks. A router picks only a few of them for each token. The model can hold a lot of knowledge but only uses a fraction of it per token.
 
+```mermaid Where each trick sits inside one block of a modern model
+flowchart TD
+  X[Token vectors in] --> N1[RMSNorm]
+  N1 --> A[Attention with RoPE and GQA]
+  A --> R1[Add the input back]
+  R1 --> N2[RMSNorm]
+  N2 --> F[SwiGLU or MoE feed-forward]
+  F --> R2[Add the input back]
+  R2 --> Y[Vectors out]
+  class A focus
+  class F focus
+```
+
 ## Why this matters to you
 These choices decide price and speed. Fewer active parameters mean cheaper tokens. A smaller KV cache means longer inputs fit in the same memory. When a model card says "671B total, 37B active", it means the model stores 671 billion parameters but only uses about 37 billion for each token.
 
@@ -83,8 +120,38 @@ Imagine the card says: "128K context, GQA with 8 KV heads, 64 experts with 2 act
 ## How grouped-query attention saves memory
 The KV cache stores one key and one value vector per token, per layer, per key-value head. Use invented numbers for illustration: 32 layers, 128 numbers per head, 2 bytes per number. With 32 key-value heads each token costs 2 × 32 × 32 × 128 × 2 = 524,288 bytes, half a megabyte. An 8,000 token conversation then needs about 4.2 GB of cache. Let groups of heads share keys and values so only 8 are stored, and the same conversation needs about 1.0 GB. The quality drop is usually small, and the memory saving is exactly 32 divided by 8, a factor of four.
 
+```mermaid Grouped-query attention lets several query heads read one shared set of keys and values
+flowchart LR
+  A[Query head 1] --> K1[Shared keys and values A]
+  B[Query head 2] --> K1
+  C[Query head 3] --> K2[Shared keys and values B]
+  D[Query head 4] --> K2
+  class K1 focus
+  class K2 focus
+```
+
+```mermaid KV cache for an 8,000 token conversation shrinks in proportion to the key-value heads kept, using the lesson's invented model sizes
+xychart-beta
+  x-axis "key-value heads stored" [32, 16, 8, 4, 1]
+  y-axis "gigabytes" 0 --> 5
+  bar [4.19, 2.1, 1.05, 0.52, 0.13]
+```
+
 ## How a router picks experts
 Take four experts. For one token the router, a small layer that scores each expert, outputs 2.0, 1.0, 0.5 and -1.0. The model keeps the top two scores, 2.0 and 1.0, and turns them into weights with softmax: 0.73 and 0.27. The token's output is 0.73 times expert one's answer plus 0.27 times expert two's. The other two experts do no work for this token. A different token may score a different pair.
+
+```mermaid The router scores all experts, but only the top two run and their outputs are blended
+flowchart TD
+  T[Token] --> R[Router scores 4 experts]
+  R -->|0.73| E1[Expert 1]
+  R -->|0.27| E2[Expert 2]
+  R -.-> E3[Expert 3, skipped]
+  R -.-> E4[Expert 4, skipped]
+  E1 --> O[Weighted sum]
+  E2 --> O
+  class E3 warn
+  class E4 warn
+```
 
 ## What active parameters do not save
 Every expert must still sit in memory, because the next token might need any of them. A model with 671 billion parameters stored in 16-bit form needs about 1,342 GB just to hold them, even though only 37 billion work per token. Active parameters cut the compute per token. They do not cut the storage, so a big mixture model still needs a large cluster or heavy quantization to run at all.
@@ -128,6 +195,28 @@ A weight matrix of 4,096 by 4,096 holds 16.8 million numbers. Full fine-tuning w
 
 ## How LoRA changes a layer
 For an input vector x of 4,096 numbers, the layer computes the frozen output plus a small correction. The correction multiplies x by A, which squeezes it down to 8 numbers, then by B, which expands those 8 back to 4,096. Because 8 numbers carry the whole change, the update can only move the layer along 8 directions. That limit is called the rank. B starts as all zeros, so before training the correction is zero and the model behaves exactly like the original. After training, you can add B A into W once, so serving costs no extra time.
+
+```mermaid The frozen weights and the small trained pair run side by side, and their outputs are added
+flowchart TD
+  X[Input x, 4096 numbers] --> W[Frozen weights]
+  X --> A[A squeezes to 8 numbers]
+  A --> B[B expands to 4096]
+  W --> S[Add]
+  B --> S
+  S --> Y[Layer output]
+  class A focus
+  class B focus
+```
+
+The rank is the main size dial. The table counts the numbers in A and B for one 4,096 by 4,096 matrix of 16.8 million numbers.
+
+| Rank | Numbers in A and B | Share of the original matrix |
+|---|---|---|
+| 1 | 8,192 | 0.05 percent |
+| 4 | 32,768 | 0.2 percent |
+| 8 | 65,536 | 0.4 percent |
+| 16 | 131,072 | 0.8 percent |
+| 64 | 524,288 | 3.1 percent |
 
 ## A second example: when not to fine-tune
 A shop wants a bot that knows its return policy, which changes every month. Fine-tuning would mean building new training examples and retraining each time, and the model might still quote last month's rule. Putting the policy in a document that a retrieval step fetches means editing one file. Fine-tune for how the bot answers. Retrieve for what it knows.
@@ -174,6 +263,16 @@ It needs a reward you can compute, so it works best on math, code and tasks with
 ## A worked example: one training step
 Prompt: "What is 17 × 24?" The model samples four attempts with answers 408, 398, 408, 418. Rewards: 1, 0, 1, 0. Mean 0.5, standard deviation 0.5. Advantages: +1, -1, +1, -1. The two reasoning chains that reached 408 are made more likely, the others less likely. Repeat over many thousands of problems.
 
+```mermaid One reinforcement learning step: sample attempts, check them, compare with the average, then update
+flowchart TD
+  P[Prompt] --> S[Model samples 4 attempts]
+  S --> R[Reward 1 or 0 per answer]
+  R --> A[Advantage against the average]
+  A --> U[Raise good attempts, lower the rest]
+  U -.->|Next problem| P
+  class R focus
+```
+
 ## What can go wrong
 Reward hacking: if the reward only checks the final number, the model may learn tricks that get the number without good reasoning. Better rewards check format, length, and sometimes the steps too.
 
@@ -183,8 +282,26 @@ Rewards for four attempts are 1, 0, 0, 0. The mean is 0.25 and the standard devi
 ## When there is nothing to learn
 If all four attempts are correct, every reward is 1, the mean is 1, the standard deviation is 0 and every advantage is 0. The same happens when all four fail. The update is empty. This is why training sets are chosen so problems are neither too easy nor too hard. If reward stays flat, check how many prompts in a batch have mixed results.
 
+The table puts the group examples side by side, using the spread of the four rewards.
+
+| Rewards for 4 attempts | Mean | Standard deviation | Advantages |
+|---|---|---|---|
+| 1, 0, 1, 0 | 0.5 | 0.5 | +1, -1, +1, -1 |
+| 1, 0, 0, 0 | 0.25 | 0.43 | +1.73, -0.58, -0.58, -0.58 |
+| 1, 1, 1, 0 | 0.75 | 0.43 | +0.58, +0.58, +0.58, -1.73 |
+| 1, 1, 1, 1 | 1 | 0 | 0, 0, 0, 0 |
+| 0, 0, 0, 0 | 0 | 0 | 0, 0, 0, 0 |
+
 ## How clipping limits a step
 Say the old model gave a reasoning step probability 0.20 and the updated one gives 0.30. The ratio is 1.5. With clipping at 1.2, a positive-advantage sample stops counting beyond 0.24, so one lucky sample cannot drag the model far from where it was.
+
+```mermaid For a positive-advantage sample the clipped objective stops rising once the new probability is 1.2 times the old
+xychart-beta
+  x-axis "new probability divided by old" [0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8]
+  y-axis "objective per unit of advantage" 0 --> 2
+  line "without clipping" [0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8]
+  line "with clipping at 1.2" [0.6, 0.8, 1.0, 1.2, 1.2, 1.2, 1.2]
+```
 
 ## What goes wrong: hacking you can measure
 Suppose the reward is the share of unit tests that pass. A model may learn to write code that detects the test inputs and returns the expected outputs. The symptom is training reward near 100 percent while code fails on new inputs. To confirm, score the model on held-out tests it never trained against, and read some outputs.
@@ -217,6 +334,13 @@ A model with N parameters stored in 16-bit format needs about 2N bytes. A 70 bil
 
 $$\text{memory} \approx N \times \text{bytes per parameter}$$
 
+```mermaid Weight memory for a 70 billion parameter model halves with each step down in precision
+xychart-beta
+  x-axis [16-bit, 8-bit, 4-bit]
+  y-axis "gigabytes" 0 --> 150
+  bar [140, 70, 35]
+```
+
 ## Quantization
 It stores weights with fewer bits, mapping ranges of values to a small set of levels. Quality loss at 8-bit is usually negligible and at 4-bit is small for large models, larger for small ones. Formats like GGUF are for local inference with llama.cpp. Methods like AWQ and GPTQ target GPU serving.
 
@@ -229,6 +353,15 @@ Weights between -1 and 1 stored as 4-bit integers (16 levels). A weight of 0.37 
 ## Why generation is slow in a particular way
 The first stage (prefill) reads the whole prompt at once, fast. The second (decode) produces one token at a time and must read all the weights from memory each time, so memory speed, not raw compute, limits it. Servers batch many users together to share that reading cost.
 
+```mermaid Prefill runs once, then decode repeats one token at a time
+flowchart TD
+  P[Prefill reads whole prompt] --> D[Decode one token]
+  D --> C{Done?}
+  C -->|No| D
+  C -->|Yes| E[Answer complete]
+  class D focus
+```
+
 ## How the squeezing works, step by step
 Take weights between -1 and 1 and 4 bits, which give 16 levels. The levels are spaced 2 / 15 = 0.133 apart: -1, -0.867, and so on. To store 0.37:
 1. Shift and scale it: (0.37 + 1) / 0.133 = 10.3.
@@ -236,16 +369,39 @@ Take weights between -1 and 1 and 4 bits, which give 16 levels. The levels are s
 3. Store the integer 10 plus the shared scale.
 4. When running, convert back: -1 + 10 × 0.133 = 0.333.
 
+```mermaid A weight becomes a small integer plus a shared scale, then is converted back when used
+flowchart TD
+  W[Weight 0.37] --> S[Shift and scale to 10.3]
+  S --> R[Round to level 10]
+  R --> T[Store 10 and the shared scale]
+  T --> B[Convert back to 0.333]
+  class R focus
+```
+
 No weight is ever off by more than half a step, 0.067.
 
 ## What goes wrong: one outlier
 Suppose one weight in a row is 8 and the rest are near 0.3. The range is now -8 to 8, so the step grows to 1.07. The nearest levels to 0.3 are -0.53 and 0.53, so every small weight snaps to 0.53 and the layer breaks. The symptom is a model that works at 8-bit and produces garbage at 4-bit. Practical methods give each small group of weights its own scale, so one outlier damages only its group. To confirm, compare perplexity or your own test answers before and after.
+
+The table shows the same row of weights stored with and without the outlier.
+
+| Row of weights | Range | Step between levels | 0.3 is stored as |
+|---|---|---|---|
+| All between -1 and 1 | -1 to 1 | 0.133 | 0.333 |
+| One weight at 8 | -8 to 8 | 1.067 | 0.533 |
 
 ## What a serving budget looks like
 Memory holds weights plus the KV cache. Invented numbers for a 70B model with grouped-query attention: 80 layers, 8 key-value heads, 128 numbers per head, 2 bytes each. That is 327,680 bytes per token, so one 8,000 token conversation takes 2.6 GB. Ten users at once need 26 GB on top of 35 GB of 4-bit weights.
 
 ## Why batching pays
 Say reading the 35 GB of weights takes 35 ms on a card that moves 1,000 GB per second. One user then gets about 29 tokens a second. Eight users in one batch share that same read, so the step still takes about 35 ms but produces 8 tokens: about 229 tokens a second in total. This ignores the cache reads, which grow with the batch.
+
+```mermaid Total tokens per second grow with the batch because one read of the weights serves every user, using the lesson's invented 35 ms step
+xychart-beta
+  x-axis "users in the batch" [1, 2, 4, 8]
+  y-axis "tokens per second in total" 0 --> 250
+  bar [28.6, 57.1, 114.3, 228.6]
+```
 
 ## Common mistake
 Quantizing a small model to 2 bits and being surprised it got worse.
@@ -282,8 +438,27 @@ A 7 to 8 billion parameter model at 4-bit is about 4.5 GB, comfortable on a lapt
 ## A memory budget in practice
 The rule of half a gigabyte per billion parameters ignores everything else on the machine. On a 16 GB laptop, the system and open apps may take 4 to 5 GB (invented, check your own). That leaves about 11 GB. A 14B model at 4-bit needs about 7 GB, and the context cache adds one or two more, so it fits. A 32B model needs 32 × 0.5 = 16 GB and does not.
 
+On the 16 GB laptop with about 11 GB free, the half-gigabyte rule sorts the model sizes like this.
+
+| Model size | Weights at 4-bit | Fits in about 11 GB free? |
+|---|---|---|
+| 8B | 4 GB | Yes, with room for the cache |
+| 14B | 7 GB | Yes, with 1 to 2 GB for the cache |
+| 32B | 16 GB | No |
+| 70B | 35 GB | No, it needs a workstation |
+
 ## What goes wrong: it slows to a crawl
 If the model plus its cache is larger than free memory, the system pushes part of it to disk. The symptom is words arriving every few seconds and a laptop that gets hot and stuck. To confirm, open the memory monitor while it generates and look for heavy swap use or memory pressure in the red. Choose a smaller model or a more compressed version.
+
+```mermaid A model that does not fit in free memory spills to disk and slows to a crawl
+flowchart TD
+  M[Model plus cache] --> D{Fits in free memory?}
+  D -->|Yes| F[Runs at normal speed]
+  D -->|No| S[Spills to disk and crawls]
+  S --> C[Choose a smaller model]
+  class F good
+  class S bad
+```
 Another symptom is a model that ignores the start of a long document. Many runners start with a short context window by default, so early text is silently dropped. Paste a document with a fact in the first line, ask about it, and raise the context setting if the answer misses.
 
 ## Try it yourself: is it good enough

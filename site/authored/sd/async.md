@@ -43,6 +43,14 @@ Arrivals fall back to 300 per minute. The queue now drains at 400 - 300 = 100 pe
 
 Now add workers. With 60 workers capacity is 1,200 per minute, the net drain is 900 per minute, and the backlog clears in about 10 minutes. Without a queue, a web tier that could only process 400 per minute would have rejected or timed out about 4,600 uploads every minute of the burst. The queue turned a failure into a delay, and extra workers shorten the delay without touching the web servers.
 
+```mermaid Photos still waiting after the burst ends: 60 workers clear the backlog in about 10 minutes, 20 workers need 92 (invented numbers from the example)
+xychart-beta
+  x-axis [Burst ends, 30 min later, 60 min later, 90 min later]
+  y-axis "photos in the queue" 0 --> 10000
+  bar "20 workers" [9200, 6200, 3200, 200]
+  bar "60 workers" [9200, 0, 0, 0]
+```
+
 ## What goes wrong: the job that runs twice
 A report job takes 90 seconds, but the visibility timeout is 30 seconds. At second 30 the message reappears and a second worker starts the same report. At second 60 a third does. The symptom is customers receiving three copies of an email, or load that triples at random. Confirm it by comparing job durations with the timeout, and by looking for the same message id appearing in several workers' logs. The fix is a timeout longer than the slowest normal job, or a heartbeat that extends the timeout while the worker is still busy. SQS supports this with ChangeMessageVisibility. Make the job safe to repeat as well.
 
@@ -111,6 +119,15 @@ flowchart LR
 
 A reader's position is its offset, the number of the next record it will read. The reader, not the log, remembers where it is. That one design choice explains most of Kafka. Reading does not remove anything, so many readers can read the same data at different speeds. The Kafka documentation says events are not deleted after consumption. They are kept for a time you set, called retention.
 
+The three delivery models compared.
+
+| | Work queue | Pub/sub topic | Log such as Kafka |
+| --- | --- | --- | --- |
+| Who gets a message | One consumer | Every subscriber, each with its own copy | Every consumer group, each tracking its own offset |
+| After it is read | Deleted on ack | Each subscriber works on its own copy | Kept until retention ends |
+| Replay | No | Not part of the idea | Yes, reset the offset |
+| Best for | Jobs shared by workers | Telling several services about one event | Several readers, order per key, replay |
+
 ## Partitions, offsets and consumer groups
 One log on one machine cannot grow forever. Kafka splits a topic into partitions, each its own log, spread over different servers. A producer picks a partition for each event, usually by hashing a key such as the customer id. Events with the same key land in the same partition, and Kafka guarantees a reader sees one partition's events in the order they were written. There is no ordering guarantee between partitions. Kreps names this lack of global order as a limitation.
 
@@ -138,6 +155,14 @@ flowchart LR
 ```
 
 Suppose one customer produces 40 percent of all events. Their key hashes to a single partition, so one consumer gets 40 percent of the traffic while the others idle. The symptom is one partition with a growing lag (how far the consumer's offset is behind the end of the log) while the rest sit near zero. Confirm it by listing lag per partition. Fixes include adding a random suffix to the key for that customer, which gives up ordering for them, or splitting the topic.
+
+```mermaid One key with 40 percent of 6,000 events per second overloads its partition while the other eleven sit well below one consumer's limit (12 partitions, invented numbers)
+xychart-beta
+  x-axis [P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11]
+  y-axis "events per second" 0 --> 2500
+  bar "Events" [2400, 327, 327, 327, 327, 327, 327, 327, 327, 327, 327, 327]
+  line "One consumer can handle" [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+```
 
 ## When a log is the wrong tool
 For plain background jobs with retries and per-job delays, a task queue is simpler to run. A log forces you to think about partitions, offsets and rebalancing. Kafka also adds an extra system for a small team to operate. If you have one producer, one consumer and modest volume, a managed queue is likely enough. Choose a log when several consumers need the same events, when order per key matters, or when replay is valuable.
@@ -170,6 +195,14 @@ At-most-once means a message is delivered zero or one times. The sender fires it
 At-least-once means the sender retries until it gets an acknowledgement. Nothing is lost, but duplicates happen. Many brokers work this way by default, and the SQS documentation says SQS has an at-least-once delivery model.
 
 Exactly-once means each message has its effect once, with no loss and no repeats. A network cannot deliver a message exactly once. The sender cannot tell "the message never arrived" from "it arrived and the ack was lost". So the phrase really means effectively-once: the message may be delivered several times, but its effect happens once. Systems get there in two ways. Inside one system the broker can help. Kafka's idempotent producer (since version 0.11) stops a resend from writing a duplicate record, and its transactions let a program that reads from Kafka and writes back to Kafka commit its output and its consumer offset together, so readers set to read only committed data see each result once. Kafka's own documentation says this does not reach outside systems: exactly-once delivery to another destination needs that system's cooperation. Across systems, the consumer is made idempotent.
+
+The three guarantees on the same questions.
+
+| Guarantee | Can a message be lost? | Can it repeat? | How it works | Fits |
+| --- | --- | --- | --- | --- |
+| At-most-once | Yes | Never | Send once, never retry | A metrics ping |
+| At-least-once | Never | Yes | Retry until acked | Most brokers by default, with safe-to-repeat work |
+| Effectively-once | No | Delivered more than once, effect happens once | At-least-once plus an idempotency key | Payments |
 
 ## Where duplicates come from
 ```mermaid A lost ack causes a redelivery, and the effect happens twice
@@ -226,6 +259,16 @@ def handle(msg):  # pseudocode
 
 Note the order: the work and the key commit together, and the ack comes last, also for a duplicate, so the broker stops redelivering it. A crash after commit but before the ack only causes a harmless repeat.
 
+The same message 981 delivered twice, step by step.
+
+| Step | What happens | processed table | payments table |
+| --- | --- | --- | --- |
+| 1 | Message 981 arrives, a transaction starts | empty | empty |
+| 2 | Key 981 and the 40 dollar payment are inserted and committed | 981 | order 981, 40 dollars |
+| 3 | The consumer crashes before the ack | 981 | order 981, 40 dollars |
+| 4 | The broker redelivers 981, the key insert hits the unique constraint | 981 | order 981, 40 dollars |
+| 5 | The consumer treats it as a duplicate and acks | 981 | order 981, 40 dollars |
+
 ## What goes wrong: the check that races
 A consumer first reads "have I seen this id?" and then does the work. Two copies of the message arrive at once, both read "no", both charge. The symptom is rare double charges that show up only under load or after an outage. Confirm it by querying for duplicate order ids in the payments table. A unique constraint fixes it, because the database lets only one insert win.
 
@@ -273,6 +316,24 @@ flowchart LR
 How many workers do you need, and how long will a job wait? [Little's law](/sd/docs/foundations/latency-and-throughput) answers both, and that lesson has the full explanation. Applied here, the number of jobs in progress equals the arrival rate times the time one job takes. If 80 jobs arrive per second and each takes 0.5 seconds, 40 are in progress at any moment, so you need at least 40 workers, and more for bursts.
 
 The same relation gives the wait. A queue of $Q$ jobs served at $\mu$ jobs per second makes a new job wait about $Q / \mu$ seconds. This is why a bound on queue length is also a bound on latency.
+
+Little's law applied to workers, for jobs that take 0.5 seconds.
+
+| Arrivals per second | Jobs in progress | Workers needed at least |
+| --- | --- | --- |
+| 40 | 40 x 0.5 = 20 | 20 |
+| 80 | 80 x 0.5 = 40 | 40 |
+| 120 | 120 x 0.5 = 60 | 60 |
+| 200 | 200 x 0.5 = 100 | 100 |
+
+The longest wait for an accepted job, with workers serving 100 jobs per second.
+
+| Queue bound | Longest wait |
+| --- | --- |
+| 500 jobs | 5 seconds |
+| 1,000 jobs | 10 seconds |
+| 2,000 jobs | 20 seconds |
+| 12,000 jobs (the unbounded case after 10 minutes) | 120 seconds |
 
 ## Your options when arrivals exceed service
 When the arrival rate stays above the service rate, only a few things can happen. Pick on purpose.
@@ -383,6 +444,14 @@ Invented numbers. A queue gets 10,000 jobs an hour, and 2 percent have bad input
 With no attempt limit, every poison job comes back again and again. One pass over them costs 200 x 5 = 1,000 worker-seconds. The 20 workers supply 20 worker-seconds each second, so one pass takes 1,000 / 20 = 50 seconds, and a new pass starts straight away. The workers spend all their time on jobs that cannot succeed, and healthy jobs starve.
 
 Now allow 4 attempts, then move the job to the DLQ. Total waste is 200 x 4 x 5 = 4,000 worker-seconds, which is 4,000 / 20 = 200 seconds of the whole pool, once. After that the 200 messages sit in the DLQ, the queue is clean, and an alarm tells a person.
+
+```mermaid Pool time spent on the 200 poison jobs: with no limit it never stops climbing, with 4 attempts it stops at 200 seconds (20 workers, 5 seconds per failure)
+xychart-beta
+  x-axis "passes over the poison jobs" [1, 2, 3, 4, 5, 6, 7, 8]
+  y-axis "seconds of the whole pool" 0 --> 450
+  line "No attempt limit" [50, 100, 150, 200, 250, 300, 350, 400]
+  line "Limit of 4 attempts" [50, 100, 150, 200, 200, 200, 200, 200]
+```
 
 ## What goes wrong: the job that ran three times
 A nightly cleanup is configured with cron on each of three web servers. At 02:00 all three start it. The symptom is a database CPU spike at 02:00 each night, doubled emails, or deletes that fail on rows another copy already removed. Confirm it by looking for three start lines in the logs at the same minute, one per host. The fix is to run the schedule from one place, or take a lock at the start of the job so a copy that cannot get the lock exits quietly.

@@ -10,11 +10,38 @@ When a tool shows up, find its layer. Many new releases are one layer repackaged
 ## A worked example: a stack for a support bot
 Model: a mid-size API model. Data: documents embedded and stored in pgvector. Orchestration: a short script with one tool-calling loop. Protocol: none yet. Evals and tracing: a test set in promptfoo and traces in Langfuse. Application: a web chat page. Six layers, each with a clear job. Nothing exotic.
 
+The two stacks from this lesson side by side, for the layers the lesson describes. A small stack is a good sign.
+
+| Layer | Support bot | Morning summary script |
+| --- | --- | --- |
+| Model | A mid-size API model | A model and one call |
+| Data and retrieval | Documents embedded and stored in pgvector | None, it reads one text file |
+| Orchestration | A short script with one tool-calling loop | None, no framework |
+| Protocols | None yet | None |
+| Evals and tracing | A test set in promptfoo and traces in Langfuse | Not part of the example |
+
 ## Reading a new tool
 Which aisle is it in? Does it replace something I use, or add a layer I do not have? What problem of mine does it solve today? If you cannot answer the third question, bookmark it and move on.
 
 ## How the layers connect
 Follow one question through the support bot.
+
+```mermaid One question passes through the layers, and each hop has one job
+sequenceDiagram
+  participant V as Visitor
+  participant P as Chat page
+  participant S as Script
+  participant D as Vector database
+  participant M as Model API
+  V->>P: Question
+  P->>S: Question
+  S->>D: Embedded question
+  D-->>S: Similar chunks
+  S->>M: Question and chunks
+  M-->>S: Answer
+  S-->>P: Answer
+  Note over S: Logs the exchange
+```
 
 1. A visitor types into the chat page (application).
 2. A short script (orchestration) receives it.
@@ -76,6 +103,16 @@ Keep model names and prompts in config, wrap calls in one function, and run your
 ## A worked example: one function
 callModel(prompt, options) is the only place in the code that talks to a provider. It reads the model name from config, logs usage and handles retries. Switching providers means changing config and running the test set, not hunting through the code.
 
+```mermaid Only one function talks to providers, and the model name comes from config
+flowchart TD
+  X[Rest of your code] --> W[callModel function]
+  G[Config: model name] --> W
+  W --> L[Lab API]
+  W --> CL[Cloud provider]
+  W --> RT[Router]
+  class W focus
+```
+
 ## Where to call from
 Direct from the lab for the newest features. Through a cloud provider when your company already uses it and needs its controls. Through a router when you want to try many models quickly. Prices, limits and features change often, so check the vendor pages.
 
@@ -86,6 +123,14 @@ Many things look the same: messages in, a message out. The differences are in th
 You change the base URL and model name, and your app runs. But your prompt asked for JSON and the new model sometimes adds a sentence before it, so your parser fails. Invented numbers for illustration: your test set passed 94 of 100 before and passes 81 of 100 now. Without that test, you would find out from angry users. With it, you adjust the prompt, rerun and decide whether the new model is worth it.
 
 ## Trade-offs of each route
+The three ways to reach a model, compared on what each gives and what to watch.
+
+| Route | Choose it when | What you gain | What to watch |
+| --- | --- | --- | --- |
+| Lab directly | You want the newest features | The fewest middlemen | Special features you use everywhere are hard to swap |
+| A cloud such as Bedrock or Vertex AI | Your company already uses it | Company controls and billing | A model may arrive later and some features may differ |
+| A router such as OpenRouter | You want to try many models quickly | One API for many models, with fallback | Another company in the path, one more point of failure |
+
 Calling a lab directly gives the newest features and the fewest middlemen. A cloud adds company controls, but a model may arrive there later and some features may differ. A router makes trying models easy, but it puts another company between you and the model. That is one more point of failure and one more place your data passes through.
 
 ## What goes wrong
@@ -139,7 +184,27 @@ Can you see the exact prompts it sends? Can you swap models? How does it handle 
 ## What a framework does for you
 Every agent has the same loop: call the model, check for a tool call, run it, add the result and repeat until done. A framework wraps that loop and adds three things: saved state, retries and tracing.
 
+```mermaid The framework wraps the agent loop and saves a checkpoint after each step
+flowchart TD
+  A[Call the model] --> B{Tool call?}
+  B -->|yes| C[App runs the tool]
+  C --> D[Add result to context]
+  D --> A
+  D -.-> K[(Checkpoint saved)]
+  B -->|no| E[Final answer]
+  class K focus
+```
+
 Saved state is the part beginners miss. Imagine a six-step task that pauses for approval at step 4. The framework writes a checkpoint after each step. If the server restarts, it resumes at step 4 instead of step 1. Doing this by hand means handling storage, repeated steps and half-finished tool calls.
+
+The six-step task from above, paused for approval at step 4 while the server restarts.
+
+| Moment | With checkpoints | Loop with no saved state |
+| --- | --- | --- |
+| Steps 1 to 3 finish | A checkpoint is written after each | Results sit in memory |
+| Step 4 waits for approval | State is saved at step 4 | Still in memory |
+| The server restarts | Nothing is lost | Memory is gone |
+| Work resumes | Starts at step 4 | Starts at step 1 and repeats steps 1 to 3 |
 
 ## A second example: the framework gets in the way
 You want to change one sentence of the system prompt. Some frameworks add their own instructions around yours and builds the final prompt several layers down. Your edit does nothing visible. To confirm, log the raw request sent to the provider, or use the framework's tracing, and read what the model actually received. If you cannot do either, treat that as a warning sign.
@@ -210,8 +275,27 @@ Hugging Face runs free hands-on courses on LLMs, agents, MCP, deep reinforcement
 ## How a model gets from the Hub to your laptop
 A model repository holds weight files, a config file describing the architecture and the tokenizer files. When you load it, the library downloads these into a local cache folder (a saved copy on disk), builds the model from the config and fills it with the weights. The first run is slow. Later runs reuse the cache.
 
+```mermaid The first load downloads into a local cache, and later loads reuse it
+flowchart TD
+  L[Load model by name] --> Q{In cache?}
+  Q -->|no, first run| H[Download from the Hub]
+  H --> C[(Local cache folder)]
+  Q -->|yes| C
+  C --> B[Build model from config]
+  B --> W[Fill with weights]
+  W --> R[Model ready]
+  class C focus
+```
+
 ## Will it fit? A memory check
 Weights take memory equal to parameters times bytes per parameter. Invented 7 billion parameter model at 16 bits (2 bytes each): 7 billion x 2 = 14 billion bytes, about 14 GB. Quantized to 4 bits (half a byte each), it is about 3.5 GB. Real use needs extra memory beyond the weights, so leave headroom.
+
+```mermaid Memory for the weights alone in gigabytes: only the two 7 billion parameter bars fit under 16 GB, and the 14 GB one leaves almost no headroom
+xychart-beta
+  x-axis [7B at 16 bit, 7B at 4 bit, 70B at 16 bit, 70B at 4 bit]
+  y-axis "gigabytes for weights" 0 --> 150
+  bar [14, 3.5, 140, 35]
+```
 
 ## A second example: a model that does not fit
 A 70 billion parameter model needs about 140 GB at 16 bits and about 35 GB at 4 bits. A typical 16 GB laptop cannot hold either. Your options are a smaller model, an inference provider that hosts it, or a machine with more memory.
